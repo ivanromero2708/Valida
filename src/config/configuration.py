@@ -1,13 +1,36 @@
 # src/config/configuration.py
-from typing import Annotated, Literal, List
+from typing import Annotated, Literal, List, Any, Dict
 from pydantic import BaseModel, Field
 from datetime import datetime
 from textwrap import dedent
 
 today = datetime.now().strftime("%Y-%m-%d")
 
+TEMPLATE_SETS = {
+    "Set 1": {
+        "human_message_prompt": "",
+        "doc_path_list": [],
+        "data_model_key": [],
+    },
+    "Set 2": {
+        "human_message_prompt": "",
+        "doc_path_list": [],
+        "data_model_key": [],
+    },
+    "Set 3": {
+        "human_message_prompt": "",
+        "doc_path_list": [],
+        "data_model_key": [],
+    },
+}
+
 class Configuration(BaseModel):
     """Configuration for the agentic system"""
+    template_sets: Dict[str, Any] = Field(default=TEMPLATE_SETS)
+    
+    
+    
+    
     #########################################################
     # SDT Researcher Supervisor Configuration
     #########################################################
