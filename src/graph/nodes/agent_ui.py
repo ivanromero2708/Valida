@@ -1,6 +1,6 @@
 from langgraph.types import Command, Send
 from langchain_core.runnables import RunnableConfig
-from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 
 from src.graph.state import ValidaState
 from pydantic import BaseModel
@@ -34,7 +34,9 @@ class AgentUI:
                         )
                     ],
                     "doc_path_list": template_sets[set_name]["doc_path_list"],
-                    "data_model_key": template_sets[set_name]["data_model_key"],
+                    "data_extraction_model_key": template_sets[set_name]["data_extraction_model_key"],
+                    "data_rendering_model_key": template_sets[set_name]["data_rendering_model_key"],
+                    "structured_output_supervisor": template_sets[set_name]["structured_output_supervisor"],
                 }
             )
             for set_name in template_sets.keys()
