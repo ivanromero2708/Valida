@@ -1,8 +1,9 @@
 from langgraph.types import Command
 from langchain_core.runnables import RunnableConfig
-from langchain_core.messages import SystemMessage
+from langchain_core.messages import HumanMessage
 
 from src.graph.nodes.supervisor_research_validation.state import SupervisorResearchValidationState
+from src.graph.state import SupervisorResearchValidationOutput
 from src.agents.create_supervisor import make_supervisor
 from src.agents.create_react_agent import make_react_agent
 from src.config.configuration import Configuration
@@ -28,7 +29,7 @@ class SupervisorResearchValidation:
                     "selected_tools": config_overrides.get("loader_tools", self.multiagent_configuration.loader_tools),
                 }
             ),
-            compile= True                        
+            compile= True
         )
         
         vectorstore_agent= await make_react_agent(
@@ -114,10 +115,21 @@ class SupervisorResearchValidation:
         
         context_for_render = response["structured_response"]
         
+        context_for_render = SupervisorResearchValidationOutput(
+            set_name=state.get("set_name"),
+            context_for_set=context_for_render,
+        )
+        
+        final_messages = response["messages"]
+        
         return Command(
             update= {
-                "messages": response.get("messages", []),
-                "context_for_render": [context_for_render]
+                "messages": [
+                    HumanMessage(
+                        content=final_messages[-1].content if final_messages else "Document research completed",
+                    )
+                ],
+                "context_for_render": [context_for_render],
             },
             goto = "render_validation_report"
         )

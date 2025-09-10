@@ -185,6 +185,7 @@ Responde ÚNICAMENTE con la estructura JSON solicitada, sin texto adicional.
                             name = f"Request from {set_name}"
                         )
                     ],
+                    "set_name": set_name,
                     "doc_path_list": template_sets[set_name]["doc_path_list"],
                     "data_extraction_model_key": template_sets[set_name]["data_extraction_model_key"],
                     "data_rendering_model_key": template_sets[set_name]["data_rendering_model_key"],

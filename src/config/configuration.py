@@ -25,7 +25,7 @@ class Configuration(BaseModel):
             "openai/gpt-4.1-mini",
             "openai/o3-mini",
             "openai/o4-mini",
-            "openai/gpt-5"
+            "openai/gpt-5",
             "google/gemini-2.0-flash-lite",
         ], 
         {"__template_metadata__": {"kind": "llm"}},
@@ -50,7 +50,7 @@ class Configuration(BaseModel):
             "openai/gpt-4.1-mini",
             "openai/o3-mini",
             "openai/o4-mini",
-            "openai/gpt-5"
+            "openai/gpt-5",
             "google/gemini-2.0-flash-lite",
         ], 
         {"__template_metadata__": {"kind": "llm"}},
@@ -83,7 +83,7 @@ class Configuration(BaseModel):
             "openai/gpt-4.1-mini",
             "openai/o3-mini",
             "openai/o4-mini",
-            "openai/gpt-5"
+            "openai/gpt-5",
             "google/gemini-2.0-flash-lite",
         ], 
         {"__template_metadata__": {"kind": "llm"}},
@@ -116,7 +116,7 @@ class Configuration(BaseModel):
             "openai/gpt-4.1-mini",
             "openai/o3-mini",
             "openai/o4-mini",
-            "openai/gpt-5"
+            "openai/gpt-5",
             "google/gemini-2.0-flash-lite",
         ], 
         {"__template_metadata__": {"kind": "llm"}},
@@ -149,7 +149,7 @@ class Configuration(BaseModel):
             "openai/gpt-4.1-mini",
             "openai/o3-mini",
             "openai/o4-mini",
-            "openai/gpt-5"
+            "openai/gpt-5",
             "google/gemini-2.0-flash-lite",
         ], 
         {"__template_metadata__": {"kind": "llm"}},
@@ -182,7 +182,7 @@ class Configuration(BaseModel):
             "openai/gpt-4.1-mini",
             "openai/o3-mini",
             "openai/o4-mini",
-            "openai/gpt-5"
+            "openai/gpt-5",
             "google/gemini-2.0-flash-lite",
         ], 
         {"__template_metadata__": {"kind": "llm"}},

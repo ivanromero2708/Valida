@@ -1,5 +1,4 @@
 from langgraph.prebuilt.chat_agent_executor import AgentStateWithStructuredResponse
-from src.graph.nodes.supervisor_research_validation.state import SupervisorResearchValidationOutput
 from typing import Annotated, List, Dict, Any
 from pydantic import Field, BaseModel
 import operator
