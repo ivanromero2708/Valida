@@ -24,7 +24,7 @@ class RenderValidationReport:
 
     def __init__(self):
         # Ruta real del template en este repo
-        self.template_path = "./src/templates/Template_infor_val.docx"
+        self.template_path = "./src/templates/validation_template.docx"
 
     def _aggregate_context(self, context_list: List[Any]) -> Dict[str, Any]:
         """Aplana y unifica la lista de contextos por set (tag -> valor)."""
