@@ -1,10 +1,7 @@
 {
     "dependencies": ["."],
     "graphs": {
-      "usa_product_researcher": "./src/graph/nodes/usa_product_researcher.py:build_usa_product_research_supervisor",
-      "ema_product_researcher": "./src/graph/nodes/ema_product_researcher.py:build_ema_product_research_supervisor",
-      "sdt_researcher": "./src/graph/builder.py:sdt_research_graph",
-      "validation_report": "./src/graph/nodes/render_validation_report.py:build_validation_graph"
+      "valida_agent": "./src/graph/builder.py:valida_graph"
     },
     "env": ".env"
 }
