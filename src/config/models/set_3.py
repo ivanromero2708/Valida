@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import List, Literal
+from src.config.models.set_1 import criterios
 
 # Variables auxiliares
 class LinealidadSistema(BaseModel):
@@ -7,6 +8,7 @@ class LinealidadSistema(BaseModel):
     concentracion: float = Field(..., description = "Concentración de la muestra en mg/mL. Son 3 réplicas, aqui vas a ir reportando cada una de las réplicas")
     area_pico: float = Field(..., description = "Área del pico reportada por cada réplica")
     factor_respuesta: float = Field(..., description= "Factor de respuesta por cada réplica")
+
 
 class ParametroLinealidad(BaseModel):
     nombre: str = Field(..., description="Nombre del ingrediente activo con la data de validación de linealidad")
@@ -18,7 +20,8 @@ class ParametroLinealidad(BaseModel):
     r2: float = Field(..., description="Coeficiente de Determinación (r2)")
     porcentaje_intercepto: float = Field(..., description="Intercepto como porcentaje de 0 al 100%")
     cumple_global: Literal["Cumple", "No Cumple"] = Field(..., description="Cumple con el criterio global")
-    r_min: float = Field(..., description="Valor mínimo de r")
+    criterio_linealidad: List[criterios] = Field(..., description="Criterios de aceptacion para linealidad linealidad")
+   
 
 class LinealidadSistemaExtraccion(LinealidadSistema):
     nivel: str = Field(..., description = "Nivel de concentración de la muestra usada para la validación de linealidad. Se reporta de esta manera (Pueden haber más valores, no necesariamente son estos): Solucion Linealidad Nivel 1 R1, Solucion Linealidad Nivel 2 R2, Solucion Linealidad Nivel 3 R3, Solucion Linealidad Nivel 2 R1, Solucion Linealidad Nivel 2 R2, Solucion Linealidad Nivel 2 R3....")
@@ -35,8 +38,13 @@ class ParametroLinealidadExtraccion(BaseModel):
     r: float = Field(..., description="Coeficiente de correlación (r) (Reportado como Correlation coefficient (r))")
     r2: float = Field(..., description="Coeficiente de Determinación (r2) (Reportado como Determination coefficient (r2))")
     porcentaje_intercepto: float = Field(..., description="Intercepto como porcentaje de 0 al 100% (Reportado como Intercepto as percentage of Y at 100%)")
+    cumple_global: Literal["Cumple", "No Cumple"] = Field(..., description="Cumple con el criterio global")
+    criterio_linealidad: List[criterios] = Field(..., description="Criterios de aceptacion para linealidad linealidad")
 
-# Modelos de validación de datos
+
+#Modelos de validación de datos
+
+
 
 class Set3ExtractionModel(BaseModel):
     """Modelo de validación de datos Set 3"""

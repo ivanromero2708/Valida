@@ -79,4 +79,5 @@ class ValidaState(AgentStateWithStructuredResponse):
     dirs_soportes_cromatográficos_robustez: List[str] = Field(..., description="Directorios de los Soportes Cromatográficos de Robustez")
     
     context_for_render: Annotated[List[SupervisorResearchValidationOutput], operator.add]
+    fname_out: str = Field(..., description="Nombre del archivo de salida")
     

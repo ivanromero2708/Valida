@@ -8,120 +8,135 @@ from src.agents.create_supervisor import make_supervisor
 from src.agents.create_react_agent import make_react_agent
 from src.config.configuration import Configuration
 
+
 from typing import Literal
+
+multiagent_configuration = Configuration()
 
 class SupervisorResearchValidation:
     def __init__(self):
-        self.multiagent_configuration = Configuration()
+        self.multiagent_configuration = multiagent_configuration
     
-    async def build_document_research_supervisor(self, state: SupervisorResearchValidationState, config_overrides: dict | None = None):
+    async def create_document_research_subagents(self, configurable: dict = None):
+        """Crear todos los subagentes usando el patrón make_graph del repositorio oficial."""
         
-        data_extraction_model = state.get("data_extraction_model_key", None)
-        data_rendering_model = state.get("data_rendering_model_key", None)
-        structured_output_supervisor = state.get("structured_output_supervisor", None)
+        # Usar valores configurables si se proporcionan, sino usar defaults
+        if configurable is None:
+            configurable = {}
         
-        loader_agent = await make_react_agent(
-            RunnableConfig(
-                configurable={
-                    "name": "loader_agent",
-                    "model": config_overrides.get("loader_llm", self.multiagent_configuration.loader_llm),
-                    "system_prompt": config_overrides.get("loader_prompt", self.multiagent_configuration.loader_prompt),
-                    "selected_tools": config_overrides.get("loader_tools", self.multiagent_configuration.loader_tools),
-                }
-            ),
-            compile= True
+        # Crear index agent
+        index_config = RunnableConfig(
+            configurable={
+                "model": configurable.get("index_llm", multiagent_configuration.index_llm),
+                "system_prompt": configurable.get("index_prompt", multiagent_configuration.index_prompt),
+                "selected_tools": configurable.get("index_tools", multiagent_configuration.index_tools),
+                "name": "index_agent"
+            }
+        )
+        index_agent = await make_react_agent(index_config)
+        
+        # Crear structured extraction agent
+        structured_extraction_config = RunnableConfig(
+            configurable={
+                "model": configurable.get("structured_extraction_llm", multiagent_configuration.structured_extraction_llm),
+                "system_prompt": configurable.get("structured_extraction_prompt", multiagent_configuration.structured_extraction_prompt),
+                "selected_tools": configurable.get("structured_extraction_tools", multiagent_configuration.structured_extraction_tools),
+                "name": "structured_extraction_agent"
+            }
+        )
+        structured_extraction_agent = await make_react_agent(
+            structured_extraction_config, 
+            response_format=configurable.get("data_extraction_model", None)
         )
         
-        vectorstore_agent= await make_react_agent(
-            RunnableConfig(
-                configurable={
-                    "name": "vectorstore_agent",
-                    "model": config_overrides.get("vectorstore_llm", self.multiagent_configuration.vectorstore_llm),
-                    "system_prompt": config_overrides.get("vectorstore_prompt", self.multiagent_configuration.vectorstore_prompt),
-                    "selected_tools": config_overrides.get("vectorstore_tools", self.multiagent_configuration.vectorstore_tools),
-                }
-            ),
-            compile= True                        
+        # Crear reasoning agent
+        reasoning_config = RunnableConfig(
+            configurable={
+                "model": configurable.get("reasoning_llm", multiagent_configuration.reasoning_llm),
+                "system_prompt": configurable.get("reasoning_prompt", multiagent_configuration.reasoning_prompt),
+                "selected_tools": configurable.get("reasoning_tools", multiagent_configuration.reasoning_tools),
+                "name": "reasoning_agent"
+            }
         )
+        reasoning_agent = await make_react_agent(reasoning_config)
         
-        structured_extraction_agent= await make_react_agent(
-            RunnableConfig(
-                configurable={
-                    "name": "structured_extraction_agent",
-                    "model": config_overrides.get("structured_extraction_llm", self.multiagent_configuration.structured_extraction_llm),
-                    "system_prompt": config_overrides.get("structured_extraction_prompt", self.multiagent_configuration.structured_extraction_prompt),
-                    "selected_tools": config_overrides.get("structured_extraction_tools", self.multiagent_configuration.structured_extraction_tools),
-                }
-            ),
-            response_format = data_extraction_model,
-            compile= True                        
-        )
-        
-        reasoning_agent= await make_react_agent(
-            RunnableConfig(
-                configurable={
-                    "name": "reasoning_agent",
-                    "model": config_overrides.get("reasoning_llm", self.multiagent_configuration.reasoning_llm),
-                    "system_prompt": config_overrides.get("reasoning_prompt", self.multiagent_configuration.reasoning_prompt),
-                    "selected_tools": config_overrides.get("reasoning_tools", self.multiagent_configuration.reasoning_tools),
-                }
-            ),
-            compile= True                        
-        )
-        
-        render_agent= await make_react_agent(
-            RunnableConfig(
-                configurable={
-                    "name": "render_agent",
-                    "model": config_overrides.get("render_llm", self.multiagent_configuration.render_llm),
-                    "system_prompt": config_overrides.get("render_prompt", self.multiagent_configuration.render_prompt),
-                    "selected_tools": config_overrides.get("render_tools", self.multiagent_configuration.render_tools),
-                }
-            ),
-            response_format = data_rendering_model,
-            compile= True                        
-        )
-        
-        # Supervisor
-        document_research_supervisor = await make_supervisor(
-            agents=[loader_agent, vectorstore_agent, structured_extraction_agent, reasoning_agent, render_agent],
-            state_schema=SupervisorResearchValidationState,
-            response_format = structured_output_supervisor,
+        return [index_agent, structured_extraction_agent, reasoning_agent]
+
+    # Función principal de construcción del supervisor siguiendo el patrón oficial
+    async def make_document_research_supervisor(self, config: RunnableConfig):
+        """Construir supervisor de investigación de documentos siguiendo el patrón oficial."""
+            
+        # Extraer valores de configuración directamente del config
+        configurable = config.get("configurable", {})
+        supervisor_model = configurable.get("document_research_supervisor_llm", multiagent_configuration.document_research_supervisor_llm)
+        supervisor_system_prompt = configurable.get("document_research_supervisor_system_prompt", multiagent_configuration.document_research_supervisor_system_prompt)
+            
+        # Crear subagentes usando la función async, pasando valores configurables
+        subagents = await self.create_document_research_subagents(configurable)
+
+        # Crear supervisor
+        supervisor_graph = await make_supervisor(
+            agents=subagents,
             config=RunnableConfig(
                 configurable={
                     "supervisor_name": "document_research_supervisor",
-                    "supervisor_model": config_overrides.get("document_research_supervisor_llm", self.multiagent_configuration.document_research_supervisor_llm),
-                    "supervisor_system_prompt": config_overrides.get("document_research_supervisor_system_prompt", self.multiagent_configuration.document_research_supervisor_system_prompt)
+                    "supervisor_model": supervisor_model,
+                    "supervisor_system_prompt": supervisor_system_prompt
                 }
             ),
-            compile= False
+            state_schema=SupervisorResearchValidationState,
+            response_format=configurable.get("structured_output_supervisor", None),
+            compile=False
+        )
+
+        return supervisor_graph
+    
+    async def document_research_supervisor_wrapper(self, state: SupervisorResearchValidationState, config: RunnableConfig) -> Command[Literal["render_validation_report"]]:
+        # Crear configuración con los parámetros del estado
+        supervisor_config = RunnableConfig(
+            configurable={
+                "data_extraction_model": state.get("data_extraction_model", None),
+                "structured_output_supervisor": state.get("structured_output_supervisor", None),
+                # Agregar otros parámetros de configuración desde el config original
+                **config.get("configurable", {})
+            }
         )
         
-        return document_research_supervisor
-    
-    async def run(self, state: SupervisorResearchValidationState, config_overrides: dict | None = None) -> Command[Literal["render_validation_report"]]:
-        supervisor = await self.build_document_research_supervisor(state, config_overrides)
+        supervisor = await self.make_document_research_supervisor(supervisor_config)
         compiled_supervisor = supervisor.compile()
-        
+            
         response = await compiled_supervisor.ainvoke(
             {
                 "messages": state.get("messages", []),
                 "doc_path_list": state.get("doc_path_list", []),
-                "data_extraction_model_key": state.get("data_extraction_model_key", None),
-                "data_rendering_model_key": state.get("data_rendering_model_key", None),
+                "data_extraction_model": state.get("data_extraction_model", None),
                 "structured_output_supervisor": state.get("structured_output_supervisor", None),
             }
         )
+            
+        structured_response = response["structured_response"]
         
-        context_for_render = response["structured_response"]
-        
+        # Convertir el objeto Pydantic a diccionario si es necesario
+        if hasattr(structured_response, 'model_dump'):
+            # Es un modelo Pydantic, convertir a dict
+            context_data = structured_response.model_dump()
+        elif hasattr(structured_response, 'dict'):
+            # Versión anterior de Pydantic
+            context_data = structured_response.dict()
+        elif isinstance(structured_response, dict):
+            # Ya es un diccionario
+            context_data = structured_response
+        else:
+            # Fallback: intentar convertir a dict
+            context_data = dict(structured_response) if structured_response else {}
+            
         context_for_render = SupervisorResearchValidationOutput(
             set_name=state.get("set_name"),
-            context_for_set=context_for_render,
+            context_for_set=context_data,
         )
-        
+            
         final_messages = response["messages"]
-        
+            
         return Command(
             update= {
                 "messages": [
