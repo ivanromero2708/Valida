@@ -1,0 +1,807 @@
+{
+  "introduccion": "Este reporte presenta la validación del método de valoración por HPLC con detección UV para cuantificar dos principios activos (Activo_1 y Activo_2) en el producto terminado, incluyendo selectividad, linealidad, exactitud, precisión (sistema, método e intermedia), rango, estabilidad de soluciones y fase móvil, y robustez, conforme a ICH Q2(R2).",
+  "nombre_producto": "Tabletas Recubiertas X-200",
+  "codigo_producto": "PRD-TRX-200",
+  "codigo_protocolo_validacion": "PV-AN-HPLC-045",
+  "nombre_del_protocolo_validacion": "Validación de método HPLC para valoración de Activo_1 y Activo_2",
+  "parametros_de_validacion": "selectividad, linealidad, exactitud, precisión del sistema, precisión del método, precisión intermedia, rango, estabilidad de soluciones, estabilidad de fase móvil, robustez",
+  "concepto_cumplimiento_validacion": "Con base en los resultados obtenidos, el método analítico cumple con los criterios de aceptación definidos en el protocolo PV-AN-HPLC-045 para todos los parámetros evaluados.",
+  "criterio_selectividad": "No deben observarse picos que coeluyan con los analitos de interés ni interferencias > 2% del área a NMT 0.05 AUFS.",
+  "resumen_concepto_selectividad": "No se evidenciaron interferencias en blanco, excipientes ni placebos.",
+  "concepto_selectividad": "SI",
+  "criterio_linealidad": "r ≥ 0.999 y r² ≥ 0.998; intercepto (% de ŷ al 100%) entre -2% y 2%; RSD de factores ≤ 2.0%.",
+  "concepto_linealidad": "Cumple criterios de correlación, pendiente e intercepto; distribución de residuales aleatoria.",
+  "criterio_exactitud": "Recuperación media entre 98.0% y 102.0% con RSD ≤ 2.0% por nivel.",
+  "concepto_exactitud": "Cumple en los tres niveles 50–150% para ambos activos.",
+  "criterio_precision_sistema": "RSD de áreas ≤ 1.0% (n≥6).",
+  "concepto_precision_sistema": "Cumple para ambos activos con RSD < 0.5%.",
+  "criterio_precision_metodo": "RSD del % de contenido ≤ 2.0% (n≥6).",
+  "concepto_precision_metodo": "Cumple con RSD < 1.0% para ambos activos.",
+  "criterio_precision_intermedia": "Diferencia entre promedios de analistas/días ≤ 2.0% y RSD combinado ≤ 2.0%.",
+  "concepto_precision_intermedia": "Cumple; variación entre analistas y días dentro de límites.",
+  "criterio_rango": "Al menos 50%–150% de la concentración nominal con linealidad, exactitud y precisión aceptables.",
+  "concepto_rango": "Valido de 50% a 150% de la concentración nominal.",
+  "criterio_estabilidad_soluciones": "Diferencia absoluta de promedios (|di|) ≤ 2.0% respecto a t0.",
+  "concepto_estabilidad_soluciones": "Estandar estable 8 días; muestra estable 7 días en las condiciones evaluadas.",
+  "criterio_estabilidad_fase_movil": "Parámetros del sistema dentro de límites por ≥ 5 días; ΔT ≤ 0.2 min; RSD áreas ≤ 2.0%.",
+  "concepto_estabilidad_fm": "Cumple durante 6 días a temperatura ambiente.",
+  "criterio_robustez": "Cambios pequeños en flujo (±10–15%), temperatura (±2 °C), composición (±6%), e inyección (±10%) no afectan criterios del sistema ni resultados.",
+  "concepto_robustez": "Cumple en todas las variaciones evaluadas.",
+  "muestra_utilizadas": [
+    {
+      "nombre": "Muestra PT Lote A",
+      "codigo": "PT-A-001",
+      "lote": "A00124",
+      "codigo_interno_cim": "CIM-78421"
+    },
+    {
+      "nombre": "Muestra PT Lote B",
+      "codigo": "PT-B-002",
+      "lote": "B00224",
+      "codigo_interno_cim": "CIM-78422"
+    }
+  ],
+  "estandar_utilizados": [
+    {
+      "nombre": "Activo_1 RS",
+      "fabricante": "USP",
+      "lote": "F0H321",
+      "numero_parte": "122345-1",
+      "codigo_identificacion": "RS-ACT1",
+      "concentracion": "1.00 mg/mL",
+      "vencimiento": "2026-12-31"
+    },
+    {
+      "nombre": "Activo_2 RS",
+      "fabricante": "USP",
+      "lote": "G9K221",
+      "numero_parte": "122346-2",
+      "codigo_identificacion": "RS-ACT2",
+      "concentracion": "0.03 mg/mL",
+      "vencimiento": "2026-11-30"
+    }
+  ],
+  "reactivo_utilizados": [
+    {
+      "nombre": "Acetonitrilo HPLC",
+      "fabricante": "JT Baker",
+      "lote": "ACN2405",
+      "numero_parte": "JT-ACN",
+      "vencimiento": "2027-05-31"
+    },
+    {
+      "nombre": "Fosfato Mono/Disódico",
+      "fabricante": "Merck",
+      "lote": "PHOS0924",
+      "numero_parte": "MER-PO4",
+      "vencimiento": "2028-01-31"
+    }
+  ],
+  "materiales_utilizados": [
+    {
+      "nombre": "Viales HPLC 2 mL",
+      "fabricante": "Agilent",
+      "numero_parte": "5182-0714",
+      "lote": "VIA0924"
+    },
+    {
+      "nombre": "Filtros 0.45 µm PVDF",
+      "fabricante": "Millex",
+      "numero_parte": "SLHV033RS",
+      "lote": "FIL0824"
+    }
+  ],
+  "equipos_utilizados": [
+    {
+      "nombre": "HPLC 1260",
+      "consecutivo": "EQ-HPLC-1260-07",
+      "fabricante": "Agilent",
+      "modelo": "1260 Infinity II",
+      "serial": "DEAB12345",
+      "prox_actividad": "2025_12"
+    },
+    {
+      "nombre": "Balanza Analítica",
+      "consecutivo": "EQ-BAL-204",
+      "fabricante": "Mettler Toledo",
+      "modelo": "XS204",
+      "serial": "MTX204778",
+      "prox_actividad": "2025_11"
+    }
+  ],
+  "columna_utilizada": [
+    {
+      "descripcion": "C18, 150×4.6 mm, 5 µm",
+      "fabricante": "Phenomenex",
+      "numero_parte": "00G-4252-E0",
+      "serial": "PXN55231",
+      "numero_interno": "COL-0193"
+    }
+  ],
+  "activos_validados": "Activo_1 y Activo_2",
+  "referencia_selectividad": "RPT-SEL-2025-09-16.pdf",
+  "activos_linealidad": [
+    {
+      "nombre": "Activo_1",
+      "linealidad_sistema": [
+        {
+          "nivel": "50%",
+          "concentracion": 0.39,
+          "area_pico": 512345,
+          "factor_respuesta": 1313705.1282
+        },
+        {
+          "nivel": "80%",
+          "concentracion": 0.6240000000000001,
+          "area_pico": 825432,
+          "factor_respuesta": 1322807.6923
+        },
+        {
+          "nivel": "100%",
+          "concentracion": 0.78,
+          "area_pico": 1032543,
+          "factor_respuesta": 1323773.0769
+        },
+        {
+          "nivel": "120%",
+          "concentracion": 0.9359999999999999,
+          "area_pico": 1254789,
+          "factor_respuesta": 1340586.5385
+        },
+        {
+          "nivel": "150%",
+          "concentracion": 1.17,
+          "area_pico": 1543210,
+          "factor_respuesta": 1318982.906
+        }
+      ],
+      "rsd_factor": "0.89%",
+      "pendiente": 1324567.0,
+      "intercepto": 1500.0,
+      "r": 0.9996,
+      "r2": 0.9992,
+      "porcentaje_intercepto": 0.14,
+      "criterio_linealidad": "r≥0.999; r²≥0.998; |%intercepto|≤2%; RSD factores≤2%",
+      "cumple_global": "Cumple"
+    },
+    {
+      "nombre": "Activo_2",
+      "linealidad_sistema": [
+        {
+          "nivel": "50%",
+          "concentracion": 0.012,
+          "area_pico": 15234,
+          "factor_respuesta": 1269500.0
+        },
+        {
+          "nivel": "80%",
+          "concentracion": 0.019200000000000002,
+          "area_pico": 24321,
+          "factor_respuesta": 1266718.75
+        },
+        {
+          "nivel": "100%",
+          "concentracion": 0.024,
+          "area_pico": 30123,
+          "factor_respuesta": 1255125.0
+        },
+        {
+          "nivel": "120%",
+          "concentracion": 0.0288,
+          "area_pico": 36045,
+          "factor_respuesta": 1251562.5
+        },
+        {
+          "nivel": "150%",
+          "concentracion": 0.036000000000000004,
+          "area_pico": 45120,
+          "factor_respuesta": 1253333.3333
+        }
+      ],
+      "rsd_factor": "0.23%",
+      "pendiente": 1250000.0,
+      "intercepto": 500.0,
+      "r": 0.9998,
+      "r2": 0.9996,
+      "porcentaje_intercepto": 1.64,
+      "criterio_linealidad": "r≥0.999; r²≥0.998; |%intercepto|≤2%; RSD factores≤2%",
+      "cumple_global": "Cumple"
+    }
+  ],
+  "rango_validado": "50%–150%",
+  "concentracion_de_activos": "Activo_1: 0.78 mg/mL; Activo_2: 0.024 mg/mL",
+  "referencia_linealidad": "RPT-LIN-2025-09-16.pdf",
+  "activos_exactitud": [
+    {
+      "nombre": "Activo_1",
+      "exactitud_sistema": [
+        {
+          "nivel": "I (50%)",
+          "recuperacion": 101.3,
+          "promedio": 101.3,
+          "criterio_aceptacion": "98–102%"
+        },
+        {
+          "nivel": "II (100%)",
+          "recuperacion": 99.5,
+          "promedio": 99.5,
+          "criterio_aceptacion": "98–102%"
+        },
+        {
+          "nivel": "III (150%)",
+          "recuperacion": 98.2,
+          "promedio": 98.2,
+          "criterio_aceptacion": "98–102%"
+        }
+      ],
+      "criterio_exactitud": "98–102% por nivel; RSD≤2%",
+      "conclusion_exactitud": "Cumple"
+    },
+    {
+      "nombre": "Activo_2",
+      "exactitud_sistema": [
+        {
+          "nivel": "I (50%)",
+          "recuperacion": 101.2,
+          "promedio": 101.2,
+          "criterio_aceptacion": "98–102%"
+        },
+        {
+          "nivel": "II (100%)",
+          "recuperacion": 101.0,
+          "promedio": 101.0,
+          "criterio_aceptacion": "98–102%"
+        },
+        {
+          "nivel": "III (150%)",
+          "recuperacion": 99.3,
+          "promedio": 99.3,
+          "criterio_aceptacion": "98–102%"
+        }
+      ],
+      "criterio_exactitud": "98–102% por nivel; RSD≤2%",
+      "conclusion_exactitud": "Cumple"
+    }
+  ],
+  "activos": "Activo_1 y Activo_2",
+  "referencia_exactitud": "RPT-EXA-2025-09-16.pdf",
+  "activos_precision_sistema": [
+    {
+      "nombre": "Activo_1",
+      "precision_sistema": [
+        {
+          "replica": 1,
+          "area_activo": 301200
+        },
+        {
+          "replica": 2,
+          "area_activo": 302400
+        },
+        {
+          "replica": 3,
+          "area_activo": 303600
+        },
+        {
+          "replica": 4,
+          "area_activo": 304800
+        },
+        {
+          "replica": 5,
+          "area_activo": 306000
+        },
+        {
+          "replica": 6,
+          "area_activo": 307200
+        }
+      ],
+      "criterio_precision_sistema": "RSD áreas ≤ 1.0% (n=6)",
+      "conclusion_precision_sistema": "Cumple",
+      "rsd_precision_sistema": 0.2
+    },
+    {
+      "nombre": "Activo_2",
+      "precision_sistema": [
+        {
+          "replica": 1,
+          "area_activo": 25100
+        },
+        {
+          "replica": 2,
+          "area_activo": 25200
+        },
+        {
+          "replica": 3,
+          "area_activo": 25300
+        },
+        {
+          "replica": 4,
+          "area_activo": 25400
+        },
+        {
+          "replica": 5,
+          "area_activo": 25500
+        },
+        {
+          "replica": 6,
+          "area_activo": 25600
+        }
+      ],
+      "criterio_precision_sistema": "RSD áreas ≤ 1.0% (n=6)",
+      "conclusion_precision_sistema": "Cumple",
+      "rsd_precision_sistema": 0.3
+    }
+  ],
+  "referencia_precision_sistema": "RPT-PS-2025-09-16.pdf",
+  "activos_precision_metodo": [
+    {
+      "nombre": "Activo_1",
+      "precision_metodo": [
+        {
+          "replica": 1,
+          "porcentaje_activo": 100.47
+        },
+        {
+          "replica": 2,
+          "porcentaje_activo": 100.15
+        },
+        {
+          "replica": 3,
+          "porcentaje_activo": 99.89
+        },
+        {
+          "replica": 4,
+          "porcentaje_activo": 100.15
+        },
+        {
+          "replica": 5,
+          "porcentaje_activo": 100.11
+        },
+        {
+          "replica": 6,
+          "porcentaje_activo": 100.42
+        }
+      ],
+      "criterio_precision_metodo": "RSD ≤ 2.0% (n=6)",
+      "conclusion_precision_metodo": "Cumple",
+      "rsd_precision_metodo": 0.9
+    },
+    {
+      "nombre": "Activo_2",
+      "precision_metodo": [
+        {
+          "replica": 1,
+          "porcentaje_activo": 100.02
+        },
+        {
+          "replica": 2,
+          "porcentaje_activo": 100.71
+        },
+        {
+          "replica": 3,
+          "porcentaje_activo": 100.46
+        },
+        {
+          "replica": 4,
+          "porcentaje_activo": 100.69
+        },
+        {
+          "replica": 5,
+          "porcentaje_activo": 100.36
+        },
+        {
+          "replica": 6,
+          "porcentaje_activo": 99.26
+        }
+      ],
+      "criterio_precision_metodo": "RSD ≤ 2.0% (n=6)",
+      "conclusion_precision_metodo": "Cumple",
+      "rsd_precision_metodo": 0.9
+    }
+  ],
+  "referencia_precision_metodo": "RPT-PM-2025-09-16.pdf",
+  "activos_precision_intermedia": [
+    {
+      "nombre": "Activo_1",
+      "precision_intermedia": [
+        {
+          "replica": 1,
+          "porcentaje_an1": 99.2,
+          "porcentaje_an2": 100.33
+        },
+        {
+          "replica": 2,
+          "porcentaje_an1": 100.85,
+          "porcentaje_an2": 99.35
+        },
+        {
+          "replica": 3,
+          "porcentaje_an1": 100.67,
+          "porcentaje_an2": 99.76
+        },
+        {
+          "replica": 4,
+          "porcentaje_an1": 100.63,
+          "porcentaje_an2": 100.99
+        },
+        {
+          "replica": 5,
+          "porcentaje_an1": 101.15,
+          "porcentaje_an2": 99.6
+        },
+        {
+          "replica": 6,
+          "porcentaje_an1": 100.86,
+          "porcentaje_an2": 100.77
+        }
+      ],
+      "criterio_precision_intermedia": "Δpromedios ≤ 2.0%; RSD combinado ≤ 2.0%",
+      "conclusion_precision_intermedia": "Cumple",
+      "rsd_an1_an2": 1.4,
+      "promedio_an1": 100.6,
+      "promedio_an2": 101.1,
+      "diferencia_promedios_an1_an2": 0.5
+    },
+    {
+      "nombre": "Activo_2",
+      "precision_intermedia": [
+        {
+          "replica": 1,
+          "porcentaje_an1": 99.96,
+          "porcentaje_an2": 99.41
+        },
+        {
+          "replica": 2,
+          "porcentaje_an1": 99.49,
+          "porcentaje_an2": 98.74
+        },
+        {
+          "replica": 3,
+          "porcentaje_an1": 100.64,
+          "porcentaje_an2": 100.61
+        },
+        {
+          "replica": 4,
+          "porcentaje_an1": 101.09,
+          "porcentaje_an2": 98.92
+        },
+        {
+          "replica": 5,
+          "porcentaje_an1": 100.78,
+          "porcentaje_an2": 98.86
+        },
+        {
+          "replica": 6,
+          "porcentaje_an1": 100.91,
+          "porcentaje_an2": 101.07
+        }
+      ],
+      "criterio_precision_intermedia": "Δpromedios ≤ 2.0%; RSD combinado ≤ 2.0%",
+      "conclusion_precision_intermedia": "Cumple",
+      "rsd_an1_an2": 1.5,
+      "promedio_an1": 99.8,
+      "promedio_an2": 100.4,
+      "diferencia_promedios_an1_an2": 0.6
+    }
+  ],
+  "referencia_precision_intermedia": "RPT-PI-2025-09-16.pdf",
+  "activos_estabilidad_solucion_estandar": [
+    {
+      "solucion": "Activo_1",
+      "criterio_aceptacion": "│di│ ≤ 2.0% respecto a t0",
+      "data_estabilidad_solucion": [
+        {
+          "condicion_estabilidad": "Condición 1",
+          "tiempo_estabilidad": "t0",
+          "data_condicion": [
+            {
+              "replica": 1,
+              "area": 301000
+            },
+            {
+              "replica": 2,
+              "area": 302000
+            },
+            {
+              "replica": 3,
+              "area": 303000
+            }
+          ],
+          "promedio_areas": 301000.0,
+          "diferencia_promedios": 0.0,
+          "conclusion_estabilidad": "Referencia"
+        },
+        {
+          "condicion_estabilidad": "Condición 1",
+          "tiempo_estabilidad": "Día 8",
+          "data_condicion": [
+            {
+              "replica": 1,
+              "area": 301750
+            },
+            {
+              "replica": 2,
+              "area": 302700
+            },
+            {
+              "replica": 3,
+              "area": 303650
+            }
+          ],
+          "promedio_areas": 301250.0,
+          "diferencia_promedios": 0.08,
+          "conclusion_estabilidad": "Cumple",
+          "criterio_aceptacion": "≤ 2.0%"
+        }
+      ]
+    },
+    {
+      "solucion": "Activo_2",
+      "criterio_aceptacion": "│di│ ≤ 2.0% respecto a t0",
+      "data_estabilidad_solucion": [
+        {
+          "condicion_estabilidad": "Condición 2",
+          "tiempo_estabilidad": "t0",
+          "data_condicion": [
+            {
+              "replica": 1,
+              "area": 25120
+            },
+            {
+              "replica": 2,
+              "area": 25240
+            },
+            {
+              "replica": 3,
+              "area": 25360
+            }
+          ],
+          "promedio_areas": 25120.0,
+          "diferencia_promedios": 0.0,
+          "conclusion_estabilidad": "Referencia"
+        },
+        {
+          "condicion_estabilidad": "Condición 2",
+          "tiempo_estabilidad": "Día 5",
+          "data_condicion": [
+            {
+              "replica": 1,
+              "area": 25105
+            },
+            {
+              "replica": 2,
+              "area": 25230
+            },
+            {
+              "replica": 3,
+              "area": 25355
+            }
+          ],
+          "promedio_areas": 25100.0,
+          "diferencia_promedios": 0.08,
+          "conclusion_estabilidad": "Cumple",
+          "criterio_aceptacion": "≤ 2.0%"
+        }
+      ]
+    }
+  ],
+  "activos_estabilidad_solucion_muestra": [
+    {
+      "solucion": "Muestra Activo_1",
+      "criterio_aceptacion": "│di│ ≤ 2.0% respecto a t0",
+      "data_estabilidad_solucion": [
+        {
+          "condicion_estabilidad": "Condición 1",
+          "tiempo_estabilidad": "t0",
+          "data_condicion": [
+            {
+              "replica": 1,
+              "area": 299100
+            },
+            {
+              "replica": 2,
+              "area": 300200
+            },
+            {
+              "replica": 3,
+              "area": 301300
+            }
+          ],
+          "promedio_areas": 299100.0,
+          "diferencia_promedios": 0.0,
+          "conclusion_estabilidad": "Referencia",
+          "criterio_aceptacion": "≤ 2.0%"
+        },
+        {
+          "condicion_estabilidad": "Condición 1",
+          "tiempo_estabilidad": "Día 7",
+          "data_condicion": [
+            {
+              "replica": 1,
+              "area": 299020
+            },
+            {
+              "replica": 2,
+              "area": 300140
+            },
+            {
+              "replica": 3,
+              "area": 301260
+            }
+          ],
+          "promedio_areas": 299100.0,
+          "diferencia_promedios": 0.0,
+          "conclusion_estabilidad": "Cumple",
+          "criterio_aceptacion": "≤ 2.0%"
+        }
+      ]
+    }
+  ],
+  "conclusion_estabilidad_muestra": "Las soluciones de muestra se consideran estables por 7 días en las condiciones evaluadas.",
+  "referencia_estabilidad_soluciones_std": "RPT-ES-STD-2025-09-16.pdf",
+  "referencia_estabilidad_soluciones_mta": "RPT-ES-MTA-2025-09-16.pdf",
+  "activos_estabilidad_fase_movil": [
+    {
+      "nombre": "Activo_1",
+      "data_fase_movil_tiempos": [
+        {
+          "tiempo": "t0",
+          "data_fase_movil_replica": [
+            {
+              "replica": 1,
+              "areas_system": 300900,
+              "tiempo_retencion": 5.2,
+              "usp_tailing": 1.1,
+              "resolucion": 2.5,
+              "exactitud": 100.2
+            },
+            {
+              "replica": 2,
+              "areas_system": 301800,
+              "tiempo_retencion": 5.2,
+              "usp_tailing": 1.1,
+              "resolucion": 2.5,
+              "exactitud": 100.2
+            },
+            {
+              "replica": 3,
+              "areas_system": 302700,
+              "tiempo_retencion": 5.2,
+              "usp_tailing": 1.1,
+              "resolucion": 2.5,
+              "exactitud": 100.2
+            }
+          ],
+          "promedio_areas_system": 301200.0,
+          "promedio_tiempo_retencion": 5.2,
+          "promedio_usp_tailing": 1.1,
+          "promedio_sup_tailing": 1.1,
+          "rsd_areas_system": 0.4,
+          "delta_t": 0.0,
+          "criterio_aceptacion": "RSD áreas ≤2.0%; ΔT≤0.2 min",
+          "conclusion_areas_system": "Cumple"
+        },
+        {
+          "tiempo": "Día 6",
+          "data_fase_movil_replica": [
+            {
+              "replica": 1,
+              "areas_system": 300720,
+              "tiempo_retencion": 5.23,
+              "usp_tailing": 1.12,
+              "resolucion": 2.4,
+              "exactitud": 99.8
+            },
+            {
+              "replica": 2,
+              "areas_system": 301640,
+              "tiempo_retencion": 5.24,
+              "usp_tailing": 1.12,
+              "resolucion": 2.4,
+              "exactitud": 99.8
+            },
+            {
+              "replica": 3,
+              "areas_system": 302560,
+              "tiempo_retencion": 5.25,
+              "usp_tailing": 1.12,
+              "resolucion": 2.4,
+              "exactitud": 99.8
+            }
+          ],
+          "promedio_areas_system": 301000.0,
+          "promedio_tiempo_retencion": 5.24,
+          "promedio_usp_tailing": 1.12,
+          "promedio_sup_tailing": 1.12,
+          "rsd_areas_system": 0.6,
+          "delta_t": 0.04,
+          "criterio_aceptacion": "RSD áreas ≤2.0%; ΔT≤0.2 min",
+          "conclusion_areas_system": "Cumple"
+        }
+      ]
+    }
+  ],
+  "conclusion_estabilidad_fase_movil": "Se mantiene la adecuabilidad del sistema por 6 días a temperatura ambiente.",
+  "referencia_estabilidad_fase_movil": "RPT-EFM-2025-09-16.pdf",
+  "experimentos_robustez": [
+    {
+      "nombre_experimento": "EXP-01",
+      "temperatura": 28,
+      "flujo": 0.9,
+      "volumen_inyeccion": 18,
+      "fase_movil": "55:45 ACN:Buffer"
+    },
+    {
+      "nombre_experimento": "EXP-02",
+      "temperatura": 30,
+      "flujo": 1.0,
+      "volumen_inyeccion": 20,
+      "fase_movil": "50:50 ACN:Buffer"
+    },
+    {
+      "nombre_experimento": "EXP-03",
+      "temperatura": 32,
+      "flujo": 1.1,
+      "volumen_inyeccion": 22,
+      "fase_movil": "45:55 ACN:Buffer"
+    }
+  ],
+  "activos_robustez": [
+    {
+      "nombre": "Activo_1",
+      "robustez": [
+        {
+          "experimento": "EXP-01",
+          "replica": 1,
+          "valores_aproximados": 99.8,
+          "promedio_experimento": 100.1,
+          "diferencia_porcentajes": 0.3
+        },
+        {
+          "experimento": "EXP-02",
+          "replica": 1,
+          "valores_aproximados": 100.2,
+          "promedio_experimento": 100.0,
+          "diferencia_porcentajes": 0.2
+        },
+        {
+          "experimento": "EXP-03",
+          "replica": 1,
+          "valores_aproximados": 100.5,
+          "promedio_experimento": 100.3,
+          "diferencia_porcentajes": 0.5
+        }
+      ],
+      "criterio_robustez": "Parámetros del sistema dentro de límites; diferencias ≤ 2.0%",
+      "conclusion_robustez": "Cumple"
+    },
+    {
+      "nombre": "Activo_2",
+      "robustez": [
+        {
+          "experimento": "EXP-01",
+          "replica": 1,
+          "valores_aproximados": 100.3,
+          "promedio_experimento": 100.2,
+          "diferencia_porcentajes": 0.4
+        },
+        {
+          "experimento": "EXP-02",
+          "replica": 1,
+          "valores_aproximados": 99.7,
+          "promedio_experimento": 100.0,
+          "diferencia_porcentajes": 0.3
+        },
+        {
+          "experimento": "EXP-03",
+          "replica": 1,
+          "valores_aproximados": 100.1,
+          "promedio_experimento": 100.0,
+          "diferencia_porcentajes": 0.1
+        }
+      ],
+      "criterio_robustez": "Parámetros del sistema dentro de límites; diferencias ≤ 2.0%",
+      "conclusion_robustez": "Cumple"
+    }
+  ],
+  "referencia_robustez": "RPT-ROB-2025-09-16.pdf"
+}

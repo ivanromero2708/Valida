@@ -1,0 +1,208 @@
+Crea un conjunto de reglas para mejorar el contexto de un sistema agentico siguiendo la estructura del ejemplo dado al final, definiendo claramente las reglas de extracción, reglas de razonamiento y reglas de salida estructurada. Incluye uno o más ejemplos completos que muestren: a) cómo se deben extraer los datos de los documentos de forma estructurada, y b) cómo deben formatearse las salidas del supervisor.
+
+- Asegúrate de que el razonamiento siempre preceda a cualquier conclusión, verificación, clasificación o salida final (incluso si los ejemplos iniciales del usuario lo hicieran al revés; ajusta el orden para cumplir este criterio).
+- Si cualquier extracción o verificación involucra pasos intermedios o de inferencia, pide que estos se documenten explícitamente antes de llegar a la salida estructurada final.
+- Toda salida estructurada debe presentarse al final del proceso, en formato JSON bien formado (sin bloques de código, salvo que se solicite expresamente).
+- Para cada ejemplo, utiliza plantillas con [placeholders] para campos complejos.
+- Indica siempre el orden correcto de razonamiento y conclusión/salida en los ejemplos.
+- Repite o resalta cualquier restricción importante (como mantener razonamiento antes que resultado final).
+- DEBES SER LO MÁS BREVE POSIBLE SIN PERDER ELEMENTOS CLAVE DE LA LÓGICA
+- EN EL CASO QUE TENGAS QUE HACER EXTRACCIÓN ESTRUCTURADA IMPORTANTE CONSIDERAR QUE DEBE SER ITERATIVA, DEBES HACER VARIAS CONSULTAS SOBRE LOS VECTORSTORE DADOS EN VARIOS CICLOS PARA PROFUNDIZAR LA INFORMACIÓN.
+
+## Entradas
+
+- Modelos de validación de datos: ```python
+
+
+
+``` 
+
+
+- Reglas de razonamiento: ```plain_text
+
+
+```
+
+- Ejemplo 1: ```python
+<REGLAS_DE_EXTRACCION>
+            Vas a extraer la siguiente información de los vectorstore creados durante el proceso:
+            - fabricante_razon_social_dmf: Razon social del fabricante. Tomado del DMF.
+            - fei_duns_dmf: Codigos FEI/DUNS del fabricante. Tomados del DMF.
+            - direccion_site_dmf: Dirección del sitio de fabricacion. Tomado del DMF.
+            - fabricante_razon_social_cofa: Razon social del fabricante. Tomado del CofA.
+            - fei_duns_dmf_cofa: Codigos FEI/DUNS del fabricante. Tomados del CofA.
+            - direccion_site_dmf_cofa: Dirección del sitio de fabricacion. Tomado del CofA
+            - fabricante_razon_social_ra: Razon social del fabricante. Tomado de los reportes analíticos.
+            - fei_duns_dmf_ra: Codigos FEI/DUNS del fabricante. Tomados de los reportes analíticos.
+            - direccion_site_dmf_ra: Dirección del sitio de fabricacion. Tomado de los reportes analíticos.
+            
+            - Normalización básica:
+            - Trim de espacios; colapso de espacios múltiples.
+            - Preservar acentos y mayúsculas/minúsculas tal como figuran en el documento, salvo que el Human Message indique lo contrario.
+            - Direcciones: remover duplicaciones de comas, estandarizar “Calle/Cl.” opcionalmente si se instruye.
+
+            - Validación de identificadores:
+            - DUNS: 9 dígitos (permite guiones); si “##-###-####”, normalizar a “#########” cuando las reglas lo autoricen.
+            - FEI: 7–10 dígitos (permite prefijo “FEI”); normalizar a dígitos si se solicita.
+
+            - Trazabilidad mínima obligatoria por campo: fuente_preferida, valor_extraído, notas (si hubo limpieza).
+
+            - Ejemplo de salida de extracción:
+                - RA:
+                {{
+                    "fabricante_razon_social_ra": "[RAZON_SOCIAL_RA]",
+                    "fei_duns_dmf": "FEI 12345678, DUNS 1236548",
+                    "direccion_site_dmf_ra": "[DIRECCION_RA]",
+                    "fabricante_razon_social_dmf": "[RAZON_SOCIAL_RA]",
+                    "fei_duns_dmf": "12345678",
+                    "direccion_site_dmf": "[DIRECCION_RA]",
+                    "fabricante_razon_social_cofa": "[RAZON_SOCIAL_RA]",
+                    "fei_duns_dmf_cofa": "12345678",
+                    "direccion_site_dmf_cofa": "[DIRECCION_RA]"
+                }}
+            </REGLAS_DE_EXTRACCION>
+
+            <REGLAS_DE_RAZONAMIENTO>
+            - Debes comparar las razones sociales extraídas de los documentos y seleccionar la más precisa.
+            - Debes comparar los FEI/DUNS extraídos de los documentos y seleccionar el más preciso.
+            - Debes comparar las direcciones extraídas de los documentos y seleccionar la más precisa.
+            - Ejemplo:
+                1) Validaciones:
+                    - FEI: "FEI 12345678" → normalizado a "12345678" (válido 8 dígitos).
+                    - DUNS: "DUNS 12345678" → normalizado a "12345678" (válido 8 dígitos).
+                    - Direcciones: normalización leve (espacios/comas) sin cambios sustantivos.
+                2) Precedencia aplicada:
+                    - Razón social: RA > DMF > CofA → uso RA: "[RAZON_SOCIAL_RA]".
+                    - FEI/DUNS: FEI y DUNS válidos presentes → "12345678".
+                    - Dirección: RA preferida → "[DIRECCION_RA]".
+                3) Estado:
+                    - Todos los campos presentes y consistentes → status = "validated".
+                4) Justificación resumida:
+                    - Coincidencia total entre fuentes; RA prioritario.
+            </REGLAS_DE_RAZONAMIENTO>
+
+            <REGLAS_DE_SALIDA_SUPERVISOR>
+            - Modelos (resumen):
+            - Set1StructuredOutputSupervisor: fabricante_razon_social, fei_duns, direccion_site
+            - Salida final del Supervisor (envoltorio):
+                {{
+                    "fabricante_razon_social": "[RAZON_SOCIAL_SELECCIONADA]",
+                    "fei_duns": "[FEI_DUNS_SELECCIONADO]",
+                    "direccion_site": "[DIRECCION_SELECCIONADA]",
+                }}
+            - Importante: la salida final debe ser SOLO el JSON anterior, sin texto extra. Si el Human Message exige otro wrapper, se debe respetar ese modelo y las presentes reglas se adaptan.
+            </REGLAS_DE_SALIDA_SUPERVISOR>
+```
+
+- Ejemplo 2: ```python
+<REGLAS_DE_EXTRACCION_ESTRUCTURADA>
+            **ESTAS REGLAS Y EJEMPLOS SOLO APLICAN AL structured_extraction_agent:**
+
+            - Tu objetivo es extraer la siguiente información de los documentos (DMF, CofA, RA, MA) para el modelo **Set3ExtractionModel**:
+                - `ets_dmf`: Lista de especificaciones técnicas del **DMF** (Drug Master File).
+                - `ets_dmf_sustitute`: Lista de especificaciones técnicas del **DMF Sustituto**.
+                - `ets_cofa`: Lista de especificaciones técnicas del **CoA** (Certificate of Analysis).
+                - `ets_ra`: Lista de especificaciones técnicas del **Reporte Analítico**.
+                - `ets_ma`: Lista de especificaciones técnicas del **Método Analítico**.
+
+            - Para cada especificación técnica (`ET`), extrae:
+                - `parameter`: El nombre del parámetro (ej. "Humectant", "Sulphated ash").
+                - `specification`: La especificación técnica (ej. "NLT 98.0%", "NMT 0.1%").
+                - `result`: El resultado del análisis, si está disponible.
+                - `analytical_reference`: La referencia analítica (ej. "<USP 4>").
+                - `source_document`: **(MUY IMPORTANTE)** El tipo de documento del que se extrajo la información (ej. "DMF", "CoA", "MA").
+
+            - **PLAN DE ACCIÓN PARA LA EXTRACCIÓN:**
+                1.  **Itera sobre cada tipo de documento:** Procesa los documentos uno por uno (primero todos los DMF, luego todos los CoA, etc.).
+                2.  **Realiza consultas enfocadas:** Para cada tipo de documento, ejecuta consultas específicas en el `vectorstore` para encontrar todas las especificaciones técnicas contenidas en él.
+                3.  **Puebla el `source_document`:** Por cada especificación técnica que extraigas, DEBES rellenar el campo `source_document` con el tipo de documento correspondiente (ej. "DMF").
+                4.  **Sé exhaustivo:** Asegúrate de recorrer los documentos en su totalidad. Realiza múltiples consultas si es necesario para garantizar que no se omitan parámetros.
+
+            - **REGLA DE ORO:** Ninguna especificación técnica puede ser registrada sin su `source_document`. La trazabilidad es fundamental.
+
+            ### **Ejemplo de Extracción Corregido**
+
+            ```json
+            {
+            "ets_dmf": [
+                {
+                "parameter": "Humectant",
+                "specification": "NLT 98.0%",
+                "analytical_reference": "<USP 4>",
+                "source_document": "DMF"
+                },
+                {
+                "parameter": "Sulphated ash",
+                "specification": "NMT 0.1%",
+                "source_document": "DMF"
+                }
+            ],
+            "ets_cofa": [
+                {
+                "parameter": "Humectant",
+                "specification": "NLT 98.0%",
+                "result": "98.5%",
+                "source_document": "CoA"
+                },
+                {
+                "parameter": "Sulphated ash",
+                "specification": "NMT 0.1%",
+                "result": "0.05%",
+                "source_document": "CoA"
+                }
+            ],
+            "ets_ma": [
+                {
+                "parameter": "Humectant",
+                "analytical_reference": "[REFERENCIA_ANALÍTICA_MA]",
+                "source_document": "MA"
+                }
+            ]
+            }
+            ```
+        </REGLAS_DE_EXTRACCION_ESTRUCTURADA>
+        -----
+        <REGLAS_DE_RAZONAMIENTO>
+            **ESTAS REGLAS Y EJEMPLOS SOLO APLICAN AL reasoning_agent:**
+            - **Regla principal**: Debes comparar las especificaciones técnicas extraídas de todos los documentos para asegurar la **coherencia**.
+            - **Pasos intermedios**:
+                1.  **Comparación de ETs**: Compara los `parameters` y `specifications` de cada documento (`ets_dmf`, `ets_cofa`, etc.). Identifica cualquier **discrepancia** entre ellos.
+                2.  **Verificación de resultados**: Si el `result` del `CoA` o `RA` está disponible, verifica si cumple con la `specification`.
+                3.  **Identificación de discrepancias**: Si hay alguna diferencia entre los documentos o si un resultado no cumple con una especificación, documenta la razón técnica del incumplimiento en la observación (`obs`).
+                4.  **Justificación de conclusiones**: Antes de asignar un concepto (`C`, `NC`, `NA`), debes documentar el razonamiento detallado y técnico que llevó a esa decisión. El razonamiento debe describir el análisis realizado.
+
+            ## Ejemplo razonamiento detallado.
+            - Se compararon las especificaciones técnicas del **DMF** y el **CoA** para el parámetro "Humectant". La especificación `NLT 98.0%` coincide en ambos documentos. El resultado del `CoA` (`98.5%`) cumple con la especificación.
+            - Se compararon las especificaciones para "Sulphated ash". La especificación `NMT 0.1%` del **DMF** coincide con la del **CoA**. El resultado del `CoA` (`0.05%`) cumple con la especificación.
+            - Se verificó el método analítico del **MA** para el parámetro "Humectant", el cual hace referencia a la USP 4, consistente con la referencia analítica del DMF.
+            - No se encontraron inconsistencias en las especificaciones técnicas, resultados de análisis, ni métodos entre los documentos disponibles.
+        </REGLAS_DE_RAZONAMIENTO>
+        -----
+        <REGLAS_DE_SALIDA_ESTRUCTURADA>
+            **ESTAS REGLAS Y EJEMPLOS SOLO APLICAN AL supervisor para su salida estructurada:**
+            - La salida final debe seguir el modelo **Set3StructuredOutputSupervisor** y debe presentarse en formato JSON.
+            - Cada campo de `concepto` debe ser `C` (Cumple), `NC` (No Cumple), o `NA` (No Aplica).
+            - Los campos de `obs` deben contener una descripción detallada del análisis y las razones de las conclusiones.
+
+            ### **Ejemplo de Salida del Supervisor**
+
+            ```json
+            {
+            "concepto_especificaciones_tecnicas": "C",
+            "obs_especificaciones_tecnicas": "Las especificaciones técnicas extraídas del DMF y del CoA para los parámetros 'Humectant' y 'Sulphated ash' son consistentes y coinciden.",
+            "concepto_coa": "C",
+            "obs_coa": "Los resultados del Certificado de Análisis (CoA) cumplen con las especificaciones técnicas establecidas en el DMF para 'Humectant' (98.5% > 98.0%) y 'Sulphated ash' (0.05% < 0.1%).",
+            "concepto_metodo_analitico": "C",
+            "obs_metodo_analitico": "El método analítico del MA coincide con la referencia del DMF.",
+            "concepto_muestras_lotes": "NA",
+            "obs_muestras_lotes": "No se encontraron datos sobre muestras o lotes para su verificación."
+            }
+            ```
+        </REGLAS_DE_SALIDA_ESTRUCTURADA>
+
+```
+
+
+
+
+
