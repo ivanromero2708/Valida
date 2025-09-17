@@ -12,7 +12,7 @@ RULES_SET_3 = """
 <REGLAS_DE_EXTRACCION_ESTRUCTURADA>
 Estas reglas aplican al agente de extracción estructurada (`structured_extraction_agent`).
 
-  - **Objetivo**: Extraer los datos de validación para el parámetro de **linealidad** de cada ingrediente activo (API) a partir de los documentos proporcionados (reportes LIMS, protocolos de validación) y estructurarlos según el modelo `Set3ExtractionModel`.
+  - **Objetivo**: Extraer los datos de validación para el parámetro de **linealidad** de cada ingrediente activo (API) a partir de los documentos proporcionados (reportes LIMS, protocolos de validación) y estructurarlos según el modelo `Set3ExtractionModel`. NECESITO QUE EXTRAIGAS TODOS LOS DATOS DE RÉPLICAS Y REPETICIONES DEL PARÁMETRO DE VALIDACIÓN LINEALIDAD
 
   - **Plan de Acción Iterativo**:
 
@@ -25,7 +25,7 @@ Estas reglas aplican al agente de extracción estructurada (`structured_extracti
     3.  **Trazabilidad**: Asegúrate de que cada pieza de información extraída mantenga una referencia a su documento de origen (ej. "Reporte LIMS", "Protocolo de Validación").
 
   - **Ejemplo de Extracción Estructurada**:
-
+    * NOTA: EN LOS EJEMPLOS SOLO HAY UNA RÉPLICA, PERO NECESITO QUE EXTRAIGAS TODOS LOS DATOS DE RÉPLICAS Y REPETICIONES DEL PARÁMETRO DE VALIDACIÓN LINEALIDAD
     ```json
     {
       "activos_linealidad": [

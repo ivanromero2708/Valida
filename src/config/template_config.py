@@ -87,7 +87,8 @@ TEMPLATE_SETS_TRIAL = {
     "Set 3": {
         "human_message_prompt": RULES_SET_3,
         "doc_path_list": [
-            "dir_reporte_lims_linealidad_sistema",
+            "dir_protocolo",
+            "dir_reporte_lims_linealidad",
             "dirs_hoja_trabajo_linealidad",
             "dirs_bitacoras_linealidad",
             "dirs_soportes_cromatográficos_linealidad",

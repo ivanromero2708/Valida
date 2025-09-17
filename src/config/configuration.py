@@ -14,6 +14,7 @@ class Configuration(BaseModel):
         Literal[
             "anthropic/claude-sonnet-4-20250514",
             "anthropic/claude-3-5-sonnet-latest",
+            "openai/gpt-4o-mini",
             "openai/gpt-4.1",
             "openai/gpt-4.1-mini",
             "openai/o3-mini",
@@ -39,6 +40,7 @@ class Configuration(BaseModel):
         Literal[
             "anthropic/claude-sonnet-4-20250514",
             "anthropic/claude-3-5-sonnet-latest",
+            "openai/gpt-4o-mini",
             "openai/gpt-4.1",
             "openai/gpt-4.1-mini",
             "openai/o3-mini",
@@ -72,6 +74,7 @@ class Configuration(BaseModel):
         Literal[
             "anthropic/claude-sonnet-4-20250514",
             "anthropic/claude-3-5-sonnet-latest",
+            "openai/gpt-4o-mini",
             "openai/gpt-4.1",
             "openai/gpt-4.1-mini",
             "openai/o3-mini",
@@ -105,6 +108,7 @@ class Configuration(BaseModel):
         Literal[
             "anthropic/claude-sonnet-4-20250514",
             "anthropic/claude-3-5-sonnet-latest",
+            "openai/gpt-4o-mini",
             "openai/gpt-4.1",
             "openai/gpt-4.1-mini",
             "openai/o3-mini",
