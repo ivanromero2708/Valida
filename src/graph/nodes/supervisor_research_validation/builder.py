@@ -91,7 +91,7 @@ class SupervisorResearchValidation:
 
         return supervisor_graph
     
-    async def document_research_supervisor_wrapper(self, state: SupervisorResearchValidationState, config: RunnableConfig) -> Command[Literal["render_validation_report"]]:
+    async def run(self, state: SupervisorResearchValidationState, config: RunnableConfig) -> Command[Literal["render_validation_report"]]:
         # Crear configuración con los parámetros del estado
         supervisor_config = RunnableConfig(
             configurable={

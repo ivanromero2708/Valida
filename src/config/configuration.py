@@ -126,9 +126,9 @@ class Configuration(BaseModel):
     )
     
     reasoning_tools: List[Literal[
-        "local_research_query_tool",
+        "",
     ]] = Field(
-        default=["local_research_query_tool"],
+        default=[""],
         description="Las herramientas a usar para el agente.",
         json_schema_extra={"langgraph_nodes": ["reasoning_agent"]},
     )

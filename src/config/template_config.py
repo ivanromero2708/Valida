@@ -11,7 +11,7 @@ from src.config.models.set_10 import (Set10ExtractionModel,Set10StructuredOutput
 from src.config.models.set_11 import (Set11ExtractionModel,Set11StructuredOutputSupervisor,)
 
 
-TEMPLATE_SETS = {
+TEMPLATE_SETS_TRIAL = {
     "Set 1": {
         "human_message_prompt": "",
         "doc_path_list": [
@@ -197,4 +197,8 @@ TEMPLATE_SETS = {
         "structured_output_supervisor": Set11StructuredOutputSupervisor,
         "tags": ["activos_robustez", "refencia_robustez"],
     },
+}
+
+TEMPLATE_SETS = {
+    "Set 3": TEMPLATE_SETS_TRIAL["Set 3"]
 }

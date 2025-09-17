@@ -27,7 +27,7 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 _BASE_DIR = Path(__file__).resolve().parents[2]
-TEMPLATE_PATH = _BASE_DIR / "templates" / "validation_template20250915.docx"
+TEMPLATE_PATH = _BASE_DIR / "templates" / "validation_template20250916.docx"
 OUTPUT_DIR = _BASE_DIR / "output"
 
 class RenderValidationReport:
@@ -196,21 +196,8 @@ class RenderValidationReport:
             ]
         }
 
-        # 3) Agregar contextos específicos de validación
-        validation_context = {
-            "linearity_data": self._state_get(state, "linearity_data", ""),
-            "accuracy_data": self._state_get(state, "accuracy_data", ""),
-            "precision_data": self._state_get(state, "precision_data", ""),
-            "repeatability_data": self._state_get(state, "repeatability_data", ""),
-            "intermediate_precision_data": self._state_get(state, "intermediate_precision_data", ""),
-            "solution_stability_data": self._state_get(state, "solution_stability_data", ""),
-            "mobile_phase_stability_data": self._state_get(state, "mobile_phase_stability_data", ""),
-            "robustness_data": self._state_get(state, "robustness_data", ""),
-            "materials_supplies_data": self._state_get(state, "materials_supplies_data", ""),
-        }
-
         # 4) Combinar y limpiar texto
-        final_context = self._merge_contexts(self._merge_contexts(basic_context, tags_map), validation_context)
+        final_context = self._merge_contexts(basic_context, tags_map)
         for key, value in list(final_context.items()):
             if isinstance(value, str):
                 final_context[key] = self._clean_text(value)

@@ -12,7 +12,7 @@ valida_builder = StateGraph(ValidaState)
 
 # Add nodes
 valida_builder.add_node("agent_ui", AgentUI().run)
-valida_builder.add_node("supervisor_research_validation", SupervisorResearchValidation().document_research_supervisor_wrapper)
+valida_builder.add_node("supervisor_research_validation", SupervisorResearchValidation().run)
 valida_builder.add_node("render_validation_report", RenderValidationReport().run)
 
 # Set entry point
