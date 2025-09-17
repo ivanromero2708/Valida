@@ -1,0 +1,94 @@
+{
+    "dir_reporte_lims_linealidad": [
+      "C:/Users/Ivan/OneDrive - Grupo Procaps/Portafolio NTF/16 - I&D 4.0/12. Informes de validación/documentos_ejemplos/VALORACION/LINEALIDAD/REPORTE_LINEALIDAD/REPORTE_LIMS_LINEALIDAD_ACETAMINOFEN.pdf",
+      "C:/Users/Ivan/OneDrive - Grupo Procaps/Portafolio NTF/16 - I&D 4.0/12. Informes de validación/documentos_ejemplos/VALORACION/LINEALIDAD/REPORTE_LINEALIDAD/REPORTE_LIMS_LINEALIDAD_HIDROCODONA.pdf"
+    ],
+    "validacion": "Validación del método analítico devaloración de Hidrocodona y acetaminofen en el producto terminado hidrocona 10 mg + acetaminofen 325 mg",
+    "codigo_informe": "PRO-I&D-0404-Versión 00",
+    "nombre_producto": "HIDROCODONA 10mg + ACETAMINOFEN 325mg",
+    "codigo_producto": "400002770",
+    "lista_activos": [
+      "ACETAMINOFEN",
+      "HIDROCODONA"
+    ],
+    "rango_validado": "95% - 105%",
+    "dir_protocolo": "C:/Users/Ivan/OneDrive - Grupo Procaps/Portafolio NTF/16 - I&D 4.0/12. Informes de validación/documentos_ejemplos/VALORACION/PROTOCOLO_VALIDACION/PROTOCOLO DE VALIDACION.pdf",
+    "dir_hoja_trabajo_preparacion": [
+      "C:/Users/Ivan/OneDrive - Grupo Procaps/Portafolio NTF/16 - I&D 4.0/12. Informes de validación/documentos_ejemplos/VALORACION/DATA_HOJAS_TRABAJO_BITACORAS/HOJAS DE TRABAJO SOLUCION.pdf",
+      "C:/Users/Ivan/OneDrive - Grupo Procaps/Portafolio NTF/16 - I&D 4.0/12. Informes de validación/documentos_ejemplos/VALORACION/DATA_HOJAS_TRABAJO_BITACORAS/HOJAS DE TRABAJOS PREPARACION.pdf"
+    ],
+    "dirs_bitacora_preparacion": [
+      ""
+    ],
+    "dirs_soportes_cromatográficos_linealidad": [
+      "C:/Users/Ivan/OneDrive - Grupo Procaps/Portafolio NTF/16 - I&D 4.0/12. Informes de validación/documentos_ejemplos/VALORACION/LINEALIDAD/DATA_CROMATOGRAFICA_LINEALIDAD/DATA_CROMATOGRAFICA_LINEALIDAD_ACETAMINOFEN.pdf",
+      "C:/Users/Ivan/OneDrive - Grupo Procaps/Portafolio NTF/16 - I&D 4.0/12. Informes de validación/documentos_ejemplos/VALORACION/LINEALIDAD/DATA_CROMATOGRAFICA_LINEALIDAD/DATA_CROMATOGRAFICA_LINEALIDAD_HIDROCODONA.pdf"
+    ],
+    "dir_reporte_lims_precision_sistema": [
+      "C:/Users/Ivan/OneDrive - Grupo Procaps/Portafolio NTF/16 - I&D 4.0/12. Informes de validación/documentos_ejemplos/VALORACION/PRECISION_SISTEMA/REPORTE_PRECISION_SISTEMA/REPORTE_LIMS_PRECISION_SISTEMA.pdf"
+    ],
+    "dirs_soportes_cromatográficos_precision_sistema": [
+      "C:/Users/Ivan/OneDrive - Grupo Procaps/Portafolio NTF/16 - I&D 4.0/12. Informes de validación/documentos_ejemplos/VALORACION/PRECISION_SISTEMA/DATA_CROMATOGRAFICA/DATA_CROMATOIGRAFICA_PRECISION_SISTEMA.pdf"
+    ],
+    "dir_reporte_lims_precision_metodo": [
+      "C:/Users/Ivan/OneDrive - Grupo Procaps/Portafolio NTF/16 - I&D 4.0/12. Informes de validación/documentos_ejemplos/VALORACION/PRECISION_METODO/REPORTE_LIMS_PRECISION_METODO.pdf"
+    ],
+    "dirs_soportes_cromatográficos_precision_metodo": [
+      "C:/Users/Ivan/OneDrive - Grupo Procaps/Portafolio NTF/16 - I&D 4.0/12. Informes de validación/documentos_ejemplos/VALORACION/PRECISION_METODO/DATA_CROMATOGRAFICA_PRECISION_METODO.pdf"
+    ],
+    "dir_reporte_lims_precision_intermedia": [
+      "C:/Users/Ivan/OneDrive - Grupo Procaps/Portafolio NTF/16 - I&D 4.0/12. Informes de validación/documentos_ejemplos/VALORACION/PRECISION_INTERMEDIA/REPORTE_PRECISION_INTERMEDIA/REPORTE_LIMS_PRECISION_INTERMEDIA.pdf"
+    ],
+    "dirs_soportes_cromatográficos_precision_intermedia": [
+      "C:/Users/Ivan/OneDrive - Grupo Procaps/Portafolio NTF/16 - I&D 4.0/12. Informes de validación/documentos_ejemplos/VALORACION/PRECISION_INTERMEDIA/DATA_CROMATOGRAFICA/DATA_CROMATOGRAFICA_PRECISION_INTERMEDIA_A1D1.pdf",
+      "C:/Users/Ivan/OneDrive - Grupo Procaps/Portafolio NTF/16 - I&D 4.0/12. Informes de validación/documentos_ejemplos/VALORACION/PRECISION_INTERMEDIA/DATA_CROMATOGRAFICA/DATA_CROMATOGRAFICA_PRECISION_INTERMEDIA_A2D2.pdf"
+    ],
+    "dir_reporte_lims_exactitud": [
+      "C:/Users/Ivan/OneDrive - Grupo Procaps/Portafolio NTF/16 - I&D 4.0/12. Informes de validación/documentos_ejemplos/VALORACION/EXACTITUD/REPORTE_EXACTITUD/REPORTE_LIMS_EXACTITUD_ACETAMINOFEN.pdf",
+      "C:/Users/Ivan/OneDrive - Grupo Procaps/Portafolio NTF/16 - I&D 4.0/12. Informes de validación/documentos_ejemplos/VALORACION/EXACTITUD/REPORTE_EXACTITUD/REPORTE_LIMS_EXACTITUD_HIDROCODONA.pdf"
+    ],
+    "dirs_soportes_cromatográficos_exactitud": [
+      "C:/Users/Ivan/OneDrive - Grupo Procaps/Portafolio NTF/16 - I&D 4.0/12. Informes de validación/documentos_ejemplos/VALORACION/EXACTITUD/DATA_CROMATOGRAFICA_EXACTITUD/DATA_CROMATOGRAFICA_EXACTITUD_ACETAMINOFEN.pdf",
+      "C:/Users/Ivan/OneDrive - Grupo Procaps/Portafolio NTF/16 - I&D 4.0/12. Informes de validación/documentos_ejemplos/VALORACION/EXACTITUD/DATA_CROMATOGRAFICA_EXACTITUD/DATA_CROMATOGRAFICA_EXACTITUD_HIDROCODONA.pdf"
+    ],
+    "dir_reporte_lims_estabilidad_solucion_estandar": [
+      "C:/Users/Ivan/OneDrive - Grupo Procaps/Portafolio NTF/16 - I&D 4.0/12. Informes de validación/documentos_ejemplos/VALORACION/ESTABILIDAD_SOLUCIONES/REPORTE_ESTABILIDAD_SOLUIONES/REPORTE_LIMS_ESTABILIDAD_SOLUCIONES.pdf"
+    ],
+    "dirs_soportes_cromatográficos_estabilidad_solucion_estandar": [
+      "C:/Users/Ivan/OneDrive - Grupo Procaps/Portafolio NTF/16 - I&D 4.0/12. Informes de validación/documentos_ejemplos/VALORACION/ESTABILIDAD_SOLUCIONES/DATA_CROMATOGRAFICA_ESTABILIDAD_SOLUCIONES/DATA_CROMATOGRAFICA_ESTABILIDAD_SOLUCIONES_T0.pdf",
+      "C:/Users/Ivan/OneDrive - Grupo Procaps/Portafolio NTF/16 - I&D 4.0/12. Informes de validación/documentos_ejemplos/VALORACION/ESTABILIDAD_SOLUCIONES/DATA_CROMATOGRAFICA_ESTABILIDAD_SOLUCIONES/DATA_CROMATOGRAFICA_ESTABILIDAD_SOLUCIONES_T1.pdf",
+      "C:/Users/Ivan/OneDrive - Grupo Procaps/Portafolio NTF/16 - I&D 4.0/12. Informes de validación/documentos_ejemplos/VALORACION/ESTABILIDAD_SOLUCIONES/DATA_CROMATOGRAFICA_ESTABILIDAD_SOLUCIONES/DATA_CROMATOGRAFICA_ESTABILIDAD_SOLUCIONES_T2.pdf",
+      "C:/Users/Ivan/OneDrive - Grupo Procaps/Portafolio NTF/16 - I&D 4.0/12. Informes de validación/documentos_ejemplos/VALORACION/ESTABILIDAD_SOLUCIONES/DATA_CROMATOGRAFICA_ESTABILIDAD_SOLUCIONES/DATA_CROMATOGRAFICA_ESTABILIDAD_SOLUCIONES_T3.pdf"
+    ],
+    "dir_reporte_lims_estabilidad_solucion_muestra": [
+      "C:/Users/Ivan/OneDrive - Grupo Procaps/Portafolio NTF/16 - I&D 4.0/12. Informes de validación/documentos_ejemplos/VALORACION/ESTABILIDAD_SOLUCIONES/REPORTE_ESTABILIDAD_SOLUIONES/REPORTE_LIMS_ESTABILIDAD_SOLUCIONES.pdf"
+    ],
+    "dirs_soportes_cromatográficos_estabilidad_solucion_muestra": [
+      "C:/Users/Ivan/OneDrive - Grupo Procaps/Portafolio NTF/16 - I&D 4.0/12. Informes de validación/documentos_ejemplos/VALORACION/ESTABILIDAD_SOLUCIONES/DATA_CROMATOGRAFICA_ESTABILIDAD_SOLUCIONES/DATA_CROMATOGRAFICA_ESTABILIDAD_SOLUCIONES_T0.pdf",
+      "C:/Users/Ivan/OneDrive - Grupo Procaps/Portafolio NTF/16 - I&D 4.0/12. Informes de validación/documentos_ejemplos/VALORACION/ESTABILIDAD_SOLUCIONES/DATA_CROMATOGRAFICA_ESTABILIDAD_SOLUCIONES/DATA_CROMATOGRAFICA_ESTABILIDAD_SOLUCIONES_T1.pdf",
+      "C:/Users/Ivan/OneDrive - Grupo Procaps/Portafolio NTF/16 - I&D 4.0/12. Informes de validación/documentos_ejemplos/VALORACION/ESTABILIDAD_SOLUCIONES/DATA_CROMATOGRAFICA_ESTABILIDAD_SOLUCIONES/DATA_CROMATOGRAFICA_ESTABILIDAD_SOLUCIONES_T2.pdf",
+      "C:/Users/Ivan/OneDrive - Grupo Procaps/Portafolio NTF/16 - I&D 4.0/12. Informes de validación/documentos_ejemplos/VALORACION/ESTABILIDAD_SOLUCIONES/DATA_CROMATOGRAFICA_ESTABILIDAD_SOLUCIONES/DATA_CROMATOGRAFICA_ESTABILIDAD_SOLUCIONES_T3.pdf"
+    ],
+    "dir_reporte_lims_estabilidad_solucion_fase_movil": [
+      "C:/Users/Ivan/OneDrive - Grupo Procaps/Portafolio NTF/16 - I&D 4.0/12. Informes de validación/documentos_ejemplos/VALORACION/ESTABILIDAD_FASE_MOVIL/REPORTE_ESTABILIDAD_FASE_MOVIL/HOJAS_TRABAJO_REPORTE_ESTABILIDAD_FASE-MOVIL.pdf"
+    ],
+    "dirs_soportes_cromatográficos_estabilidad_solucion_fase_movil": [
+      "C:/Users/Ivan/OneDrive - Grupo Procaps/Portafolio NTF/16 - I&D 4.0/12. Informes de validación/documentos_ejemplos/VALORACION/ESTABILIDAD_FASE_MOVIL/DATA_CROMATOGRAFICA_ESTABILIDAD_FASE_MOVIL/ESTABILIDAD FM T0.pdf",
+      "C:/Users/Ivan/OneDrive - Grupo Procaps/Portafolio NTF/16 - I&D 4.0/12. Informes de validación/documentos_ejemplos/VALORACION/ESTABILIDAD_FASE_MOVIL/DATA_CROMATOGRAFICA_ESTABILIDAD_FASE_MOVIL/ESTABILIDAD FM T1.pdf",
+      "C:/Users/Ivan/OneDrive - Grupo Procaps/Portafolio NTF/16 - I&D 4.0/12. Informes de validación/documentos_ejemplos/VALORACION/ESTABILIDAD_FASE_MOVIL/DATA_CROMATOGRAFICA_ESTABILIDAD_FASE_MOVIL/ESTABILIDAD FM T2.pdf"
+    ],
+    "dir_reporte_lims_robustez": [
+      "C:/Users/Ivan/OneDrive - Grupo Procaps/Portafolio NTF/16 - I&D 4.0/12. Informes de validación/documentos_ejemplos/VALORACION/ROBUSTEZ/REPORTE_ROBUSTEZ/REPORTE_LIMS_ROBUSTEZ.pdf"
+    ],
+    "dirs_soportes_cromatográficos_robustez": [
+      "C:/Users/Ivan/OneDrive - Grupo Procaps/Portafolio NTF/16 - I&D 4.0/12. Informes de validación/documentos_ejemplos/VALORACION/ROBUSTEZ/DATA_CROMATOGRAFICA_ROBUSTEZ/DATA_CROMATOGRAFICA_ROBUSTEZ_EXP_1.pdf",
+      "C:/Users/Ivan/OneDrive - Grupo Procaps/Portafolio NTF/16 - I&D 4.0/12. Informes de validación/documentos_ejemplos/VALORACION/ROBUSTEZ/DATA_CROMATOGRAFICA_ROBUSTEZ/DATA_CROMATOGRAFICA_ROBUSTEZ_EXP_2.pdf",
+      "C:/Users/Ivan/OneDrive - Grupo Procaps/Portafolio NTF/16 - I&D 4.0/12. Informes de validación/documentos_ejemplos/VALORACION/ROBUSTEZ/DATA_CROMATOGRAFICA_ROBUSTEZ/DATA_CROMATOGRAFICA_ROBUSTEZ_EXP_3.pdf",
+      "C:/Users/Ivan/OneDrive - Grupo Procaps/Portafolio NTF/16 - I&D 4.0/12. Informes de validación/documentos_ejemplos/VALORACION/ROBUSTEZ/DATA_CROMATOGRAFICA_ROBUSTEZ/DATA_CROMATOGRAFICA_ROBUSTEZ_EXP_4.pdf",
+      "C:/Users/Ivan/OneDrive - Grupo Procaps/Portafolio NTF/16 - I&D 4.0/12. Informes de validación/documentos_ejemplos/VALORACION/ROBUSTEZ/DATA_CROMATOGRAFICA_ROBUSTEZ/DATA_CROMATOGRAFICA_ROBUSTEZ_EXP_5.pdf",
+      "C:/Users/Ivan/OneDrive - Grupo Procaps/Portafolio NTF/16 - I&D 4.0/12. Informes de validación/documentos_ejemplos/VALORACION/ROBUSTEZ/DATA_CROMATOGRAFICA_ROBUSTEZ/DATA_CROMATOGRAFICA_ROBUSTEZ_EXP_6.pdf",
+      "C:/Users/Ivan/OneDrive - Grupo Procaps/Portafolio NTF/16 - I&D 4.0/12. Informes de validación/documentos_ejemplos/VALORACION/ROBUSTEZ/DATA_CROMATOGRAFICA_ROBUSTEZ/DATA_CROMATOGRAFICA_ROBUSTEZ_EXP_7.pdf",
+      "C:/Users/Ivan/OneDrive - Grupo Procaps/Portafolio NTF/16 - I&D 4.0/12. Informes de validación/documentos_ejemplos/VALORACION/ROBUSTEZ/DATA_CROMATOGRAFICA_ROBUSTEZ/DATA_CROMATOGRAFICA_ROBUSTEZ_EXP_8.pdf",
+      "C:/Users/Ivan/OneDrive - Grupo Procaps/Portafolio NTF/16 - I&D 4.0/12. Informes de validación/documentos_ejemplos/VALORACION/ROBUSTEZ/DATA_CROMATOGRAFICA_ROBUSTEZ/DATA_CROMATOGRAFICA_ROBUSTEZ_NOMINAL.pdf"
+    ]
+  }

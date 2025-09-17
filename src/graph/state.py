@@ -29,7 +29,7 @@ class ValidaState(AgentStateWithStructuredResponse):
     dirs_bitacora_preparacion: List[str] = Field(..., description="Listado de las rutas de las bitacoras de preparación para todos los parámetros de validación")
     
     # Linealidad
-    dir_reporte_lims_linealidad: List[str] = Field(..., description="Directorio del reporte LIMS de Linealidad")
+    dir_reporte_lims_linealidad_sistema: List[str] = Field(..., description="Directorio del reporte LIMS de Linealidad")
     dirs_hoja_trabajo_linealidad: List[str] = Field(..., description="Directorios de las Hojas de Trabajo de Linealidad")
     dirs_bitacoras_linealidad: List[str] = Field(..., description="Directorios de las Bitacoras de Linealidad")
     dirs_soportes_cromatográficos_linealidad: List[str] = Field(..., description="Directorios de los Soportes Cromatográficos de Linealidad")

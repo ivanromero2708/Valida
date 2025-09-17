@@ -10,7 +10,7 @@ A continuación se encuentran todas las particularidades y reglas para extracci�
 
 1) Entradas requeridas
 
-* Lista de directorios locales de los documentos a procesar: <LISTA_DOCS>{doc_dir_list}</LISTA_DOCS>
+* Lista de directorios locales de los documentos a procesar: <LISTA_DOCS>{doc_path_list}</LISTA_DOCS>
 
 2) Objetivo operacional
 
@@ -72,5 +72,5 @@ Tras mostrar tu razonamiento completo, **imprime únicamente**:
 
 **Recuerda**:
 - No imprimas conclusiones, resultados ni tags **antes** del razonamiento.
-- Respeta los nombres de clave y contenedores exactamente como se proveen: `<REGLAS_DE_EXTRACCION_RAZONAMIENTO>`, `<TAGS>`, `<LISTA_DOCS>`, y las variables `{reglas_extraccion_razonamiento}`, `{tags}`, `{doc_dir_list}`.
+- Respeta los nombres de clave y contenedores exactamente como se proveen: `<REGLAS_DE_EXTRACCION_RAZONAMIENTO>`, `<TAGS>`, `<LISTA_DOCS>`, y las variables `{reglas_extraccion_razonamiento}`, `{tags}`, `{doc_path_list}`.
 """

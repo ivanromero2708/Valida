@@ -1,210 +1,121 @@
 from __future__ import annotations
-"""
-Local Research Query Tool – Consulta robusta de vectorstores locales
-------------------------------------------------------------------
-Herramienta LangChain que permite realizar consultas semánticas sobre
-vectorstores persistentes (.parquet) generados por el RAG Pipeline Tool.
-
-Características:
-- Búsqueda robusta con degradación automática (MMR → similarity)
-- Ajuste automático de parámetros k y fetch_k según disponibilidad
-- Manejo de errores de n_neighbors <= n_samples_fit
-- Formateo estructurado de resultados
-- Soporte para vectorstores vacíos o corruptos
-
-Requisitos:
-- langchain, langchain_community, langchain_openai
-- scikit-learn
-- OPENAI_API_KEY en el entorno
-
-Devuelve contenido formateado de documentos relevantes encontrados.
-"""
-
-import logging
-from pathlib import Path
-from typing import Any, Optional, Type
-
-from langchain_community.vectorstores import SKLearnVectorStore
-from langchain_core.callbacks import CallbackManagerForToolRun, AsyncCallbackManagerForToolRun
-from langchain_core.tools import BaseTool, ToolException
 from langchain_openai import OpenAIEmbeddings
-from pydantic import BaseModel, Field
+from langchain_community.vectorstores import SKLearnVectorStore
+from langchain_core.tools import tool
+import logging
 
-# Configuración de logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-class LocalResearchQueryInput(BaseModel):
-    """Schema de entrada para la Local Research Query Tool."""
-    query: str = Field(
-        ..., 
-        description="Consulta de búsqueda semántica para realizar sobre el vectorstore"
-    )
-    persist_path: str = Field(
-        ..., 
-        description="Ruta al archivo vectorstore persistente (.parquet) a consultar"
-    )
-    max_results: int = Field(
-        15, 
-        description="Número máximo de documentos relevantes a retornar",
-        ge=1,
-        le=50
-    )
-    search_type: str = Field(
-        "mmr", 
-        description="Tipo de búsqueda inicial a intentar: 'mmr' o 'similarity'"
-    )
-
-
-class LocalResearchQueryTool(BaseTool):
-    """LangChain Tool para consulta robusta de vectorstores locales con degradación automática."""
-    
-    name: str = "local_research_query_tool"
-    description: str = """Realiza consultas semánticas robustas sobre vectorstores persistentes (.parquet). 
-    Ajusta automáticamente parámetros de búsqueda para evitar errores de n_neighbors y proporciona 
-    degradación automática de MMR a similarity search. Devuelve documentos relevantes formateados."""
-    args_schema: Type[BaseModel] = LocalResearchQueryInput
-    return_direct: bool = False
-    handle_tool_error: bool = True
-
-    @staticmethod
-    def _safe_k(store: SKLearnVectorStore, desired_k: int) -> int:
-        """Calcula el k seguro basado en el número de muestras disponibles en el vectorstore."""
-        try:
-            n_samples = len(store._embeddings)  # atributo privado pero estable
-        except Exception:
-            # Fallback por si la implementación interna cambia:
-            n_samples = getattr(store, "_neighbors", None)
-            if isinstance(n_samples, int):
-                pass
+def _safe_k(store: SKLearnVectorStore, desired_k: int) -> int:
+    """Devuelve min(desired_k, n_samples)."""
+    try:
+        # Primary method: try to load the parquet file directly to count rows
+        # This is the most reliable method since SKLearnVectorStore may not load data into memory immediately
+        import pandas as pd
+        import os
+        if hasattr(store, 'persist_path') and store.persist_path and os.path.exists(store.persist_path):
+            df = pd.read_parquet(store.persist_path)
+            n_samples = len(df)
+            logger.debug(f"_safe_k: found {n_samples} samples from parquet file")
+        else:
+            # Fallback methods if parquet file is not accessible
+            if hasattr(store, '_embeddings') and store._embeddings is not None:
+                n_samples = len(store._embeddings)
+                logger.debug(f"_safe_k: found {n_samples} samples from _embeddings")
+            elif hasattr(store, 'docstore') and hasattr(store.docstore, '_dict'):
+                n_samples = len(store.docstore._dict)
+                logger.debug(f"_safe_k: found {n_samples} samples from docstore")
             else:
                 n_samples = 0
-        return max(0, min(desired_k, n_samples))
+                logger.debug("_safe_k: no data found, returning 0")
+    except Exception as e:
+        logger.debug(f"Failed to determine n_samples: {e}")
+        n_samples = 0
+    
+    result = max(0, min(desired_k, n_samples))
+    logger.debug(f"_safe_k: returning {result} (desired_k={desired_k}, n_samples={n_samples})")
+    return result
 
-    def _load_vectorstore(self, persist_path: str) -> SKLearnVectorStore:
-        """Carga el vectorstore desde la ruta especificada con validación."""
-        if not persist_path:
-            raise ToolException("No se proporcionó ruta al vectorstore")
-        
-        path = Path(persist_path)
-        if not path.exists():
-            raise ToolException(f"El vectorstore no existe en la ruta: {persist_path}")
-        
-        if not path.suffix.lower() == '.parquet':
-            raise ToolException(f"El archivo debe ser un vectorstore .parquet: {persist_path}")
-        
+
+@tool
+def local_research_query_tool(query: str, persist_path: str) -> str:
+    """
+    Consulta de documentos locales usando un retriever robusto.
+
+    Ajusta automáticamente k y fetch_k para evitar:
+        ValueError: Expected n_neighbors <= n_samples_fit …
+    """
+    if not persist_path:
+        return "There is no provided documentation to search in."
+
+    # 1. Cargamos el vectorstore
+    store = SKLearnVectorStore(
+        embedding=OpenAIEmbeddings(model="text-embedding-3-small"),
+        persist_path=persist_path,
+        serializer="parquet",
+    )
+
+    # 2. Calculamos cuántos vectores hay
+    n_samples = _safe_k(store, 10)  # no importa el desired_k aquí
+    if n_samples == 0:
+        return "Vectorstore is empty – no documents to search."
+
+    # 3. Manejo especial para vectorstores con un solo documento
+    if n_samples == 1:
         try:
-            store = SKLearnVectorStore(
-                embedding=OpenAIEmbeddings(model="text-embedding-3-small"),
-                persist_path=persist_path,
-                serializer="parquet",
+            retriever = store.as_retriever(
+                search_type="similarity",
+                search_kwargs={"k": 1}
             )
-            return store
+            relevant_docs = retriever.invoke(query)
+            logger.debug("Single document retrieval → %s docs", len(relevant_docs))
         except Exception as e:
-            raise ToolException(f"Error cargando vectorstore: {e}")
-
-    def _perform_search(self, store: SKLearnVectorStore, query: str, max_results: int, search_type: str) -> str:
-        """Realiza la búsqueda con degradación automática de parámetros."""
-        # Calculamos cuántos vectores hay disponibles
-        n_samples = self._safe_k(store, 10)  # el valor no importa aquí
-        if n_samples == 0:
-            return "El vectorstore está vacío – no hay documentos para buscar."
-
-        # Secuencia de degradación basada en el tipo de búsqueda inicial
-        if search_type == "mmr":
-            search_plans = [
-                ("mmr", min(max_results, n_samples)),
-                ("mmr", min(max_results // 2, n_samples)),
-                ("similarity", min(4, n_samples)),
-                ("similarity", 1),
-            ]
-        else:
-            search_plans = [
-                ("similarity", min(max_results, n_samples)),
-                ("similarity", min(4, n_samples)),
-                ("similarity", 1),
-            ]
+            logger.warning("Single document retrieval failed: %s", e)
+            relevant_docs = None
+    else:
+        # 4. Secuencia de degradación para múltiples documentos: MMR(15) → MMR(n_samples) → similarity(4→1)
+        search_plans = [
+            ("mmr", 15),
+            ("mmr", n_samples),
+            ("similarity", min(4, n_samples)),
+            ("similarity", 1),
+        ]
 
         relevant_docs = None
-        for search_method, desired_k in search_plans:
-            k = self._safe_k(store, desired_k)
+        for search_type, desired_k in search_plans:
+            k = _safe_k(store, desired_k)
             if k == 0:
                 continue  # nada que buscar
-            
             try:
+                # Calculamos fetch_k seguro para MMR
+                if search_type == "mmr":
+                    fetch_k = _safe_k(store, max(k * 2, k))
+                else:
+                    fetch_k = k
+                    
                 retriever = store.as_retriever(
-                    search_type=search_method,
+                    search_type=search_type,
                     search_kwargs={
                         "k": k,
-                        # en MMR conviene que fetch_k ≥ k
-                        "fetch_k": max(k * 2, k) if search_method == "mmr" else k,
+                        "fetch_k": fetch_k,
                     },
                 )
                 relevant_docs = retriever.invoke(query)
-                logger.info(f"Búsqueda exitosa: {search_method} (k={k}) → {len(relevant_docs)} documentos")
+                logger.debug("Retriever %s (k=%s) → %s docs", search_type, k, len(relevant_docs))
                 break  # éxito
             except ValueError as e:
-                logger.warning(f"Búsqueda {search_method} (k={k}) falló: {e}")
+                logger.warning("Searcher %s (k=%s) failed: %s", search_type, k, e)
                 continue
-            except Exception as e:
-                logger.error(f"Error inesperado en búsqueda {search_method} (k={k}): {e}")
-                continue
-        
-        if relevant_docs is None:
-            return "La búsqueda falló – no se pudo configurar ningún retriever."
+        else:
+            return "Search failed – no retriever could be configured."
 
-        # Formateo del resultado
-        if not relevant_docs:
-            return "No se encontraron documentos relevantes para la consulta."
+    # 4. Formateo del resultado
+    if not relevant_docs:
+        return "No relevant documents found."
 
-        formatted_docs = []
-        for i, doc in enumerate(relevant_docs, 1):
-            content = doc.page_content.strip()
-            if content:
-                formatted_docs.append(f"==DOCUMENTO {i}==\n{content}")
-        
-        if not formatted_docs:
-            return "Los documentos encontrados no contienen contenido válido."
-        
-        return "\n\n".join(formatted_docs)
-
-    def _run(
-        self,
-        query: str,
-        persist_path: str,
-        max_results: int = 15,
-        search_type: str = "mmr",
-        run_manager: Optional[CallbackManagerForToolRun] = None,
-    ) -> str:
-        """Ejecuta la consulta sobre el vectorstore local."""
-        
-        if not query.strip():
-            raise ToolException("La consulta no puede estar vacía")
-        
-        # Cargar vectorstore
-        store = self._load_vectorstore(persist_path)
-        
-        # Realizar búsqueda
-        result = self._perform_search(store, query, max_results, search_type)
-        
-        return result
-
-    async def _arun(
-        self,
-        query: str,
-        persist_path: str,
-        max_results: int = 15,
-        search_type: str = "mmr",
-        run_manager: Optional[AsyncCallbackManagerForToolRun] = None,
-    ) -> str:
-        """Versión asíncrona de la consulta al vectorstore local."""
-        import asyncio
-        return await asyncio.to_thread(
-            self._run,
-            query,
-            persist_path,
-            max_results,
-            search_type,
-            run_manager.get_sync() if run_manager else None,
-        )
+    formatted = "\n\n".join(
+        f"==DOCUMENT {i+1}==\n{doc.page_content}" for i, doc in enumerate(relevant_docs)
+    )
+    return formatted

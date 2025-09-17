@@ -1,22 +1,16 @@
 from __future__ import annotations
 """
-RAG Pipeline Tool – Procesamiento paralelo de directorios
----------------------------------------------------------
-Herramienta LangChain que recibe una lista de rutas a directorios locales y,
-para cada directorio, procesa en paralelo todos los documentos soportados
-(.docx, .pdf, .xls/.xlsx, imágenes), extrayendo texto vía OCR Mistral para
-PDF/imágenes y loaders estándar para Word/Excel, hace chunking, vectoriza
-y genera un vectorstore persistente (.parquet) por cada directorio.
+RAG Pipeline Tool – Procesamiento de directorios/archivos (fix metadatas parquet)
+---------------------------------------------------------------------------------
+- Evita el error: "Cannot write struct type 'metadatas' with no child field to Parquet"
+  añadiendo metadatos mínimos a cada chunk (source_dir, chunk_index).
+- Resto: igual que versión anterior (OCR Mistral base64, Word/Excel loaders, etc.)
 
 Requisitos:
-- mistralai (>=1.5.0)
+- mistralai>=1.5.0 (MISTRAL_API_KEY)
 - langchain, langchain_community, langchain_openai
-- pandas, pillow, openpyxl, xlrd
-- scikit-learn
-- MISTRAL_API_KEY y OPENAI_API_KEY en el entorno
-
-Devuelve JSON mapeando cada directorio a la ruta de su vectorstore generado
-y logs/errores de cualquier fallo en el pipeline.
+- pandas, openpyxl, xlrd, scikit-learn, pyarrow
+- OPENAI_API_KEY
 """
 
 import os
@@ -25,91 +19,69 @@ import json
 import logging
 import time
 import uuid
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from collections import Counter
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any, Dict, List, Optional, Type
 
 import pandas as pd
 from langchain.schema import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.document_loaders import UnstructuredWordDocumentLoader
+from langchain_community.document_loaders import (
+    UnstructuredWordDocumentLoader,
+    PyPDFLoader,
+    Docx2txtLoader,
+)
 from langchain_community.vectorstores import SKLearnVectorStore
-from langchain_core.callbacks import CallbackManagerForToolRun, AsyncCallbackManagerForToolRun
+from langchain_core.callbacks import (
+    CallbackManagerForToolRun,
+    AsyncCallbackManagerForToolRun,
+)
 from langchain_core.tools import BaseTool, ToolException
 from langchain_openai import OpenAIEmbeddings
 from mistralai import Mistral
 from mistralai.models import SDKError
 from pydantic import BaseModel, Field
-from langsmith import traceable
-import openai
 
-# Configuración de logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-# Extensiones soportadas
-SUPPORTED_EXTENSIONS = {
-    'pdf': ['.pdf'],
-    'word': ['.doc', '.docx'],
-    'excel': ['.xls', '.xlsx', '.xlsm'],
-    'image': ['.png', '.jpg', '.jpeg', '.tiff', '.bmp', '.gif', '.webp']
+SUPPORTED_EXTENSIONS: Dict[str, List[str]] = {
+    "pdf": [".pdf"],
+    "word": [".doc", ".docx"],
+    "excel": [".xls", ".xlsx", ".xlsm"],
+    "image": [".png", ".jpg", ".jpeg", ".tiff", ".bmp", ".gif", ".webp"],
 }
+ALL_EXTENSIONS: List[str] = [e for lst in SUPPORTED_EXTENSIONS.values() for e in lst]
 
-ALL_EXTENSIONS = []
-for ext_list in SUPPORTED_EXTENSIONS.values():
-    ALL_EXTENSIONS.extend(ext_list)
+SEP_DOCUMENT = "=====DOCUMENT BREAK====="
+SEP_SHEET = "-----SHEET BREAK-----"
+SEP_PAGE = "-----PAGE BREAK-----"
 
 
 def _create_mistral_client() -> Mistral:
-    """Crea un cliente Mistral independiente por hilo para evitar problemas de concurrencia."""
     api_key = os.getenv("MISTRAL_API_KEY")
     if not api_key:
-        raise EnvironmentError(
-            "Defina la variable MISTRAL_API_KEY con su API-Key de Mistral AI"
-        )
+        raise EnvironmentError("Defina la variable MISTRAL_API_KEY con su API-Key de Mistral AI")
     return Mistral(api_key=api_key, timeout_ms=300000)
 
 
 class RAGPipelineInput(BaseModel):
-    """Schema de entrada para la RAG Pipeline Tool."""
-    directories: List[str] = Field(
-        ..., 
-        description="Lista de rutas a directorios locales para procesar"
-    )
-    max_workers: int = Field(
-        4, 
-        description="Número máximo de workers para procesamiento paralelo"
-    )
-    chunk_size: int = Field(
-        2000, 
-        description="Tamaño de chunk para text splitting"
-    )
-    chunk_overlap: int = Field(
-        250, 
-        description="Overlap entre chunks"
-    )
-    recursive: bool = Field(
-        True, 
-        description="Buscar archivos recursivamente en subdirectorios"
-    )
+    directory: str = Field(..., description="Ruta a directorio o archivo local")
+    chunk_size: int = Field(2000, description="Tamaño de chunk")
+    chunk_overlap: int = Field(250, description="Overlap entre chunks")
+    recursive: bool = Field(True, description="Buscar archivos en subdirectorios")
     specific_files: Optional[List[str]] = Field(
-        None,
-        description="Lista opcional de nombres de archivos específicos a procesar en cada directorio"
+        None, description="Nombres de archivos específicos a procesar"
     )
 
 
 class DocumentExtractor:
-    """Extractor de contenido de documentos con soporte para múltiples formatos."""
-    
     @staticmethod
     def _file_to_base64(path: str) -> str:
-        """Convierte archivo a base64."""
         with open(path, "rb") as f:
             return base64.b64encode(f.read()).decode()
 
-    @traceable
-    def extract_pdf(self, path_doc: str, ocr_model: str = "mistral-ocr-latest", retries: int = 3) -> str:
-        """Extrae contenido de PDF usando OCR Mistral."""
+    def _extract_pdf_via_mistral_ocr(self, path_doc: str, ocr_model: str = "mistral-ocr-latest", retries: int = 3) -> str:
         client = _create_mistral_client()
         b64_pdf = self._file_to_base64(path_doc)
 
@@ -119,11 +91,15 @@ class DocumentExtractor:
                     model=ocr_model,
                     document={
                         "type": "document_url",
-                        "document_url": f"data:application/pdf;base64,{b64_pdf}",
+                        "document_url": f"data:application/pdf;base64,{b64_pdf}"
                     },
                     include_image_base64=False,
                 )
-                break
+                pages_markdown: List[str] = [p.markdown for p in ocr_response.pages]
+                result = f"\n{SEP_PAGE}\n".join(pages_markdown)
+                if result.strip():
+                    logger.info(f"[OCR Mistral] PDF extraído: {len(result)} chars")
+                return result
             except SDKError as e:
                 if attempt == retries or getattr(e, "status_code", 0) < 500:
                     raise
@@ -132,41 +108,50 @@ class DocumentExtractor:
                 if attempt == retries:
                     raise
                 time.sleep(2 ** (attempt - 1))
+        return ""
 
-        pages_markdown: List[str] = [page.markdown for page in ocr_response.pages]
-        return "\n-----PAGE BREAK-----\n".join(pages_markdown)
+    def extract_pdf(self, path_doc: str) -> str:
+        try:
+            logger.info(f"[PDF] Intentando PyPDF: {path_doc}")
+            pages = PyPDFLoader(path_doc).load()
+            text = f"\n{SEP_PAGE}\n".join(p.page_content for p in pages if p.page_content.strip())
+            if text.strip():
+                return text
+            logger.warning(f"[PDF] PyPDF no extrajo texto útil: {path_doc}")
+        except Exception as e:
+            logger.warning(f"[PDF] PyPDF falló para {path_doc}: {e}")
 
-    @traceable
+        logger.info(f"[PDF] Intentando OCR Mistral: {path_doc}")
+        return self._extract_pdf_via_mistral_ocr(path_doc)
+
     def extract_image(self, path_doc: str, ocr_model: str = "mistral-ocr-latest", retries: int = 3) -> str:
-        """Extrae contenido de imagen usando OCR Mistral."""
         client = _create_mistral_client()
+        b64_image = self._file_to_base64(path_doc)
         
-        # Detectar tipo MIME de la imagen
+        # Detectar el tipo MIME de la imagen
         ext = Path(path_doc).suffix.lower()
-        mime_types = {
+        mime_type = {
             '.png': 'image/png',
-            '.jpg': 'image/jpeg',
+            '.jpg': 'image/jpeg', 
             '.jpeg': 'image/jpeg',
             '.tiff': 'image/tiff',
             '.bmp': 'image/bmp',
             '.gif': 'image/gif',
             '.webp': 'image/webp'
-        }
-        mime_type = mime_types.get(ext, 'image/jpeg')
-        
-        b64_image = self._file_to_base64(path_doc)
+        }.get(ext, 'image/jpeg')
 
         for attempt in range(1, retries + 1):
             try:
                 ocr_response = client.ocr.process(
                     model=ocr_model,
                     document={
-                        "type": "document_url",
-                        "document_url": f"data:{mime_type};base64,{b64_image}",
+                        "type": "image_url",
+                        "image_url": f"data:{mime_type};base64,{b64_image}"
                     },
                     include_image_base64=False,
                 )
-                break
+                pages_markdown: List[str] = [p.markdown for p in ocr_response.pages]
+                return f"\n{SEP_PAGE}\n".join(pages_markdown)
             except SDKError as e:
                 if attempt == retries or getattr(e, "status_code", 0) < 500:
                     raise
@@ -175,363 +160,315 @@ class DocumentExtractor:
                 if attempt == retries:
                     raise
                 time.sleep(2 ** (attempt - 1))
+        return ""
 
-        pages_markdown: List[str] = [page.markdown for page in ocr_response.pages]
-        return "\n-----PAGE BREAK-----\n".join(pages_markdown)
-
-    @traceable
     def extract_word(self, path_doc: str) -> str:
-        """Extrae contenido de documento Word."""
+        ext = Path(path_doc).suffix.lower()
+        if ext == ".docx":
+            try:
+                loader = Docx2txtLoader(path_doc)
+                docs = loader.load()
+                content = "\n".join(doc.page_content for doc in docs if doc.page_content.strip())
+                if content.strip():
+                    return content
+            except Exception as e:
+                logger.warning(f"[WORD] Docx2txt falló para {path_doc}: {e}")
         docs = UnstructuredWordDocumentLoader(path_doc).load()
-        if not docs:
-            raise ValueError(f"No se encontró contenido en {path_doc}")
-        return "\n-----PAGE BREAK-----\n".join(doc.page_content for doc in docs)
+        return "\n".join(doc.page_content for doc in docs if doc.page_content.strip())
 
-    @traceable
     def extract_excel(self, path_doc: str) -> str:
-        """Extrae contenido de archivo Excel."""
-        ext = os.path.splitext(path_doc)[1].lower()
+        ext = Path(path_doc).suffix.lower()
         if ext not in (".xls", ".xlsx", ".xlsm"):
-            raise ValueError(f"{path_doc} no parece ser un archivo de Excel soportado.")
+            raise ValueError(f"{path_doc} no es un Excel soportado.")
 
         engine = "xlrd" if ext == ".xls" else "openpyxl"
         try:
             xls = pd.ExcelFile(path_doc, engine=engine)
         except Exception as e:
-            raise ValueError(f"No se pudo abrir el archivo {path_doc}: {e}") from e
+            raise ValueError(f"No se pudo abrir {path_doc}: {e}") from e
 
-        sheets = []
+        sheets: List[str] = []
         for name in xls.sheet_names:
             df = xls.parse(name)
-            csv_content = df.to_csv(sep='\t', index=False)
+            csv_content = df.to_csv(sep="\t", index=False)
             sheets.append(f"--SHEET:{name}--\n{csv_content}")
-            
+
         if not sheets:
             raise ValueError(f"No se pudo extraer contenido de {path_doc}")
-        return "\n-----SHEET BREAK-----\n".join(sheets)
+        return f"\n{SEP_SHEET}\n".join(sheets)
 
-    @traceable
     def extract_single_document(self, path_doc: str) -> str:
-        """Extrae contenido de un documento individual."""
         ext = Path(path_doc).suffix.lower()
-        
         try:
-            if ext in SUPPORTED_EXTENSIONS['pdf']:
+            if ext in SUPPORTED_EXTENSIONS["pdf"]:
                 return self.extract_pdf(path_doc)
-            elif ext in SUPPORTED_EXTENSIONS['word']:
+            if ext in SUPPORTED_EXTENSIONS["word"]:
                 return self.extract_word(path_doc)
-            elif ext in SUPPORTED_EXTENSIONS['excel']:
+            if ext in SUPPORTED_EXTENSIONS["excel"]:
                 return self.extract_excel(path_doc)
-            elif ext in SUPPORTED_EXTENSIONS['image']:
+            if ext in SUPPORTED_EXTENSIONS["image"]:
                 return self.extract_image(path_doc)
-            else:
-                raise ValueError(f"Extensión no soportada: {ext}")
+            raise ValueError(f"Extensión no soportada: {ext}")
         except Exception as e:
-            logger.warning(f"[DocumentExtractor] {path_doc} → {e}")
-            return ""
+            logger.error(f"[Extractor] Error procesando {path_doc}: {e}")
+            raise
 
 
 class RAGProcessor:
-    """Procesador principal del pipeline RAG."""
-    
     def __init__(self, chunk_size: int = 2000, chunk_overlap: int = 250):
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         self.extractor = DocumentExtractor()
 
     def discover_files(self, directory: str, recursive: bool = True, specific_files: Optional[List[str]] = None) -> List[str]:
-        """Descubre archivos soportados, opcionalmente filtrando por una lista específica."""
         if specific_files:
-            # Usar solo los archivos específicos que existen y están soportados
-            return [
-                f for f in specific_files
-                if Path(f).exists() and Path(f).suffix.lower() in ALL_EXTENSIONS
-            ]
+            out: List[str] = []
+            for f in specific_files:
+                p = Path(f)
+                p = p if p.is_absolute() else Path(directory) / p
+                if p.exists() and p.is_file() and p.suffix.lower() in ALL_EXTENSIONS:
+                    try:
+                        _ = p.stat().st_size
+                        out.append(str(p))
+                    except Exception as e:
+                        logger.warning(f"[discover_files] No accesible: {p} - {e}")
+            return out
 
-        directory_path = Path(directory)
-        if not directory_path.is_dir():
+        dpath = Path(directory)
+        if not dpath.is_dir():
             raise ValueError(f"La ruta {directory} no es un directorio válido")
 
-        files = []
         pattern = "**/*" if recursive else "*"
-        for file_path in directory_path.glob(pattern):
-            if file_path.is_file() and file_path.suffix.lower() in ALL_EXTENSIONS:
-                files.append(str(file_path))
+        files: List[str] = []
+        for fp in dpath.glob(pattern):
+            if fp.is_file() and fp.suffix.lower() in ALL_EXTENSIONS:
+                try:
+                    _ = fp.stat().st_size
+                    files.append(str(fp))
+                except Exception:
+                    logger.warning(f"[discover_files] No accesible: {fp}")
+
+        if files:
+            cnt = Counter(Path(f).suffix.lower() for f in files)
+            logger.info(f"[discover_files] {len(files)} archivos en {directory}: {dict(cnt)}")
+        else:
+            logger.warning(f"[discover_files] No se encontraron archivos soportados en {directory}")
         return files
 
     def extract_directory_content(self, directory: str, recursive: bool = True, specific_files: Optional[List[str]] = None) -> str:
-        """Extrae contenido de archivos en un directorio, opcionalmente de una lista específica."""
         files = self.discover_files(directory, recursive, specific_files)
-        
         if not files:
-            logger.warning(f"No se encontraron archivos soportados para procesar en {directory}")
+            logger.warning(f"[extract_directory_content] Sin archivos en {directory}")
             return ""
-        
-        log_msg = f"Procesando {len(files)} archivos específicos en {directory}" if specific_files else f"Procesando {len(files)} archivos descubiertos en {directory}"
-        logger.info(log_msg)
-        
-        contents = []
-        for file_path in files:
-            content = self.extractor.extract_single_document(file_path)
+
+        logger.info(
+            f"[extract_directory_content] Procesando {len(files)} archivo(s) "
+            + ("específicos" if specific_files else "descubiertos")
+            + f" en {directory}"
+        )
+
+        contents: List[str] = []
+        for fp in files:
+            content = self.extractor.extract_single_document(fp)
             if content.strip():
                 contents.append(content)
-        
-        return "\n=====DOCUMENT BREAK=====\n".join(contents)
+        return f"\n{SEP_DOCUMENT}\n".join(contents)
 
-    def split_documents(self, content: str) -> List[Document]:
-        """Divide el contenido en chunks usando RecursiveCharacterTextSplitter."""
+    # ⬇️ FIX: añadimos directory para poder setear metadatos base
+    def split_documents(self, content: str, directory: str) -> List[Document]:
         if not content.strip():
             return []
-        
+
         splitter = RecursiveCharacterTextSplitter(
             chunk_size=self.chunk_size,
             chunk_overlap=self.chunk_overlap,
-            separators=[
-                "=====DOCUMENT BREAK=====",
-                "-----SHEET BREAK-----",
-                "-----PAGE BREAK-----",
-                "\n\n",
-                "\n",
-                " ",
-                "",
-            ],
+            separators=[SEP_DOCUMENT, SEP_SHEET, SEP_PAGE, "\n\n", "\n", " ", ""],
         )
-        
-        document = Document(page_content=content)
-        chunks = splitter.split_documents([document])
-        
-        # Filtrar chunks vacíos
-        return [chunk for chunk in chunks if chunk.page_content.strip()]
+
+        # Metadatos base para evitar struct vacío en parquet
+        base_md = {"source_dir": directory}
+        doc = Document(page_content=content, metadata=base_md)
+        chunks = splitter.split_documents([doc])
+
+        # Garantizar que cada chunk tenga AL MENOS una clave en metadata
+        fixed: List[Document] = []
+        for i, c in enumerate(chunks):
+            md = dict(c.metadata or {})
+            md.setdefault("source_dir", directory)
+            md.setdefault("chunk_index", i)
+            c.metadata = md
+            fixed.append(c)
+
+        return [c for c in fixed if c.page_content.strip()]
 
     def _safe_build_vectorstore(
-        self,
-        splits: List[Document],
-        embeddings: OpenAIEmbeddings,
-        persist_path: Path,
+        self, splits: List[Document], embeddings: OpenAIEmbeddings, persist_path: Path
     ) -> SKLearnVectorStore:
-        """Construye el vectorstore con manejo de errores de tokens."""
         try:
-            # Crear vectorstore con persistencia directa
-            vectorstore = SKLearnVectorStore.from_documents(
+            return SKLearnVectorStore.from_documents(
                 documents=splits,
                 embedding=embeddings,
                 persist_path=persist_path.as_posix(),
                 serializer="parquet",
             )
-            return vectorstore
-        except openai.BadRequestError as e:
-            if "max_tokens_per_request" not in str(e):
+        except Exception as e:
+            msg = str(e).lower()
+            tokenish = any(
+                s in msg
+                for s in (
+                    "max_tokens_per_request",
+                    "maximum context length",
+                    "too many inputs",
+                    "invalidrequesterror",
+                )
+            )
+            if not tokenish:
                 raise
-
-            logger.warning(
-                "[RAGProcessor] Exceso de tokens → reintento con lote reducido"
-            )
-            smaller_embeddings = OpenAIEmbeddings(
-                model="text-embedding-3-small",
-                chunk_size=32,  # Máx. 32 docs por llamada
-            )
-            vectorstore = SKLearnVectorStore.from_documents(
+            logger.warning("[_safe_build_vectorstore] Exceso de tokens/inputs → reintento con chunk_size=32")
+            smaller = OpenAIEmbeddings(model="text-embedding-3-small", chunk_size=32)
+            return SKLearnVectorStore.from_documents(
                 documents=splits,
-                embedding=smaller_embeddings,
+                embedding=smaller,
                 persist_path=persist_path.as_posix(),
                 serializer="parquet",
             )
-            return vectorstore
 
-    def create_vectorstore(self, splits: List[Document], directory: str) -> str:
-        """Crea y persiste el vectorstore para un directorio."""
+    # ⬇️ FIX adicional (cinturón y tirantes): sanitizar metadatos antes de persistir
+    def _ensure_metadata(self, splits: List[Document], directory: str) -> List[Document]:
+        for i, d in enumerate(splits):
+            if not d.metadata:
+                d.metadata = {"source_dir": directory, "chunk_index": i}
+            else:
+                d.metadata.setdefault("source_dir", directory)
+                d.metadata.setdefault("chunk_index", i)
+        return splits
+
+    def create_vectorstore_from_splits(self, splits: List[Document], directory: str) -> str:
         if not splits:
-            logger.warning(f"Sin contenido utilizable para {directory} → vectorstore dummy")
-            splits = [
-                Document(
-                    page_content="Contenido no disponible para este directorio.",
-                    metadata={"dummy": True, "source": directory},
-                )
-            ]
+            raise RuntimeError(f"Sin contenido utilizable para {directory}: no se creará vectorstore")
 
-        # Configuración de embeddings
-        embeddings = OpenAIEmbeddings(
-            model="text-embedding-3-small",
-            chunk_size=96,  # Máx. 96 docs por request
-        )
+        # ⬇️ asegurar metadatos válidos
+        splits = self._ensure_metadata(splits, directory)
 
-        # Ruta de persistencia centralizada
-        output_dir = Path.cwd() / "vectorstores"
-        directory_name = Path(directory).name
-        persist_path = output_dir / f"vectorstore_{directory_name}_{uuid.uuid4().hex[:8]}.parquet"
-        
-        # Crear directorio de salida si no existe
-        output_dir.mkdir(exist_ok=True, parents=True)
+        embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 
-        # Añadir metadata a cada chunk para evitar error de Parquet
-        for split in splits:
-            split.metadata["source"] = directory
+        output_dir = (Path(__file__).resolve().parents[2] / "vectorstores").resolve()
+        output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Crear vectorstore
-        try:
-            vectorstore = self._safe_build_vectorstore(splits, embeddings, persist_path)
-            vectorstore.persist()
-            
-            # Verificar que el archivo se creó correctamente
-            if not persist_path.exists():
-                raise RuntimeError(f"Error: No se pudo crear el vectorstore en {persist_path}")
-            
-            # Log para verificar la ruta
-            logger.info(f"Vectorstore creado exitosamente en: {persist_path.as_posix()}")
-            
-            return persist_path.as_posix()
-            
-        except Exception as e:
-            logger.error(f"Error detallado creando vectorstore: {e}")
-            logger.error(f"Tipo de error: {type(e).__name__}")
-            logger.error(f"Directorio objetivo: {persist_path.parent}")
-            logger.error(f"Archivo objetivo: {persist_path.name}")
-            logger.error(f"Número de splits: {len(splits)}")
-            raise RuntimeError(f"Error: No se pudo crear el vectorstore en {persist_path}") from e
+        dir_name = Path(directory).name
+        unique_id = str(uuid.uuid4())[:8]
+        output_path = output_dir / f"vectorstore_{dir_name}_{unique_id}.parquet"
+
+        vs = self._safe_build_vectorstore(splits, embeddings, output_path)
+        vs.persist()
+        return str(output_path)
 
     def process_directory(self, directory: str, recursive: bool = True, specific_files: Optional[List[str]] = None) -> Dict[str, Any]:
-        """Procesa un directorio (o archivos específicos dentro de él) y devuelve el resultado."""
         try:
-            # Extraer contenido
             content = self.extract_directory_content(directory, recursive, specific_files)
-            
-            # Hacer chunking
-            splits = self.split_documents(content)
-            
-            # Crear vectorstore
-            vectorstore_path = self.create_vectorstore(splits, directory)
-            
+            splits = self.split_documents(content, directory)  # ⬅️ pasa directory
+            vectorstore_path = self.create_vectorstore_from_splits(splits, directory)
             return {
                 "directory": directory,
                 "vectorstore_path": vectorstore_path,
                 "chunks_count": len(splits),
-                "status": "success"
+                "status": "success",
             }
-            
         except Exception as e:
-            logger.error(f"Error procesando el trabajo para {directory}: {e}")
+            logger.error(f"[process_directory] Error en {directory}: {e}")
             return {
                 "directory": directory,
                 "vectorstore_path": None,
                 "error": str(e),
-                "status": "failed"
+                "status": "failed",
             }
 
 
 class RAGPipelineTool(BaseTool):
-    """LangChain Tool para procesamiento paralelo de directorios con pipeline RAG."""
-    
     name: str = "rag_pipeline_tool"
-    description: str = """Procesa múltiples directorios en paralelo, extrayendo texto de documentos 
-    (PDF, Word, Excel, imágenes), hace chunking, vectoriza y genera vectorstores persistentes (.parquet). 
-    Devuelve JSON mapeando cada directorio a su vectorstore generado."""
+    description: str = (
+        "Procesa un directorio o archivo (PDF/Word/Excel/Imágenes), extrae texto, chunk-ea, "
+        "vectoriza y genera un vectorstore persistente (.parquet). Devuelve JSON."
+    )
     args_schema: Type[BaseModel] = RAGPipelineInput
     return_direct: bool = False
     handle_tool_error: bool = True
 
     def _run(
         self,
-        directories: List[str],
-        max_workers: int = 4,
+        directory: str,
         chunk_size: int = 2000,
         chunk_overlap: int = 250,
         recursive: bool = True,
         specific_files: Optional[List[str]] = None,
         run_manager: Optional[CallbackManagerForToolRun] = None,
     ) -> str:
-        """Ejecuta el pipeline RAG en paralelo para múltiples directorios."""
-        
-        if not directories:
-            raise ToolException("Se requiere al menos una ruta (directorio o archivo) para procesar")
+        if not directory:
+            raise ToolException("Se requiere una ruta (directorio o archivo) para procesar")
 
-        # Normalizar entradas: agrupar archivos por directorio padre
-        tasks = {}
-        results = {}
-        logs = []
-        
-        # Si se especifican archivos específicos, usarlos directamente
-        if specific_files:
-            for directory in directories:
-                dir_path = Path(directory)
-                if dir_path.exists() and dir_path.is_dir():
-                    tasks[str(dir_path)] = {"specific_files": specific_files}
+        p = Path(directory)
+        if not p.exists():
+            return json.dumps(
+                {
+                    "directory": directory,
+                    "vectorstore_path": None,
+                    "chunks_count": 0,
+                    "status": "failed",
+                    "error": f"La ruta no existe: {directory}",
+                },
+                indent=2,
+                ensure_ascii=False,
+            )
+
+        if p.is_file():
+            work_directory = str(p.parent)
+            if specific_files is None:
+                specific_files = [p.name]
+            else:
+                specific_files = list(specific_files) + [p.name]
         else:
-            # Lógica original para procesar directorios o archivos
-            for path_str in directories:
-                path = Path(path_str)
-                if not path.exists():
-                    logs.append({"directory": path_str, "error": f"La ruta no existe: {path_str}", "status": "failed"})
-                    results[path_str] = None
-                    continue
-
-                if path.is_dir():
-                    dir_key = str(path)
-                    if dir_key not in tasks:
-                        tasks[dir_key] = {"specific_files": None} # Procesar directorio completo
-                elif path.is_file():
-                    dir_key = str(path.parent)
-                    if dir_key not in tasks:
-                        tasks[dir_key] = {"specific_files": []}
-                    # Asegurarse de no añadir archivos si el directorio ya está para procesamiento completo
-                    if tasks[dir_key]["specific_files"] is not None:
-                        tasks[dir_key]["specific_files"].append(path.name)
+            work_directory = directory
 
         processor = RAGProcessor(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
 
-        # Procesamiento secuencial (paralelismo deshabilitado para depuración)
-        logger.warning("Ejecutando RAG Pipeline en modo secuencial (sin paralelismo).")
-        for dir_path, task_info in tasks.items():
-            try:
-                result = processor.process_directory(
-                    directory=dir_path,
-                    recursive=recursive,
-                    specific_files=task_info["specific_files"]
-                )
-                
-                # Para specific_files, usar el directorio como clave
-                if result["status"] == "success":
-                    results[dir_path] = result["vectorstore_path"]
-                    logger.info(f"✓ {dir_path} → {result['vectorstore_path']} ({result['chunks_count']} chunks)")
-                else:
-                    results[dir_path] = None
-                    logs.append({
-                        "directory": dir_path,
-                        "error": result.get("error", "Unknown error"),
-                        "status": "failed"
-                    })
-
-            except Exception as exc:
-                logger.error(f"Error crítico procesando el directorio {dir_path}: {exc}")
-                results[dir_path] = None
-                logs.append({
-                    "directory": dir_path,
+        try:
+            logger.info(f"[RAGPipelineTool] Procesando: {work_directory}")
+            result = processor.process_directory(
+                directory=work_directory, recursive=recursive, specific_files=specific_files
+            )
+            if result["status"] == "success":
+                logger.info(f"✓ {work_directory} → {result['vectorstore_path']} ({result['chunks_count']} chunks)")
+            else:
+                logger.error(f"✗ {work_directory} → {result.get('error', 'Unknown error')}")
+            return json.dumps(result, indent=2, ensure_ascii=False)
+        except Exception as exc:
+            logger.error(f"[RAGPipelineTool] Error crítico en {work_directory}: {exc}")
+            return json.dumps(
+                {
+                    "directory": work_directory,
+                    "vectorstore_path": None,
+                    "chunks_count": 0,
+                    "status": "failed",
                     "error": str(exc),
-                    "status": "failed"
-                })
-        
-        # Construir respuesta
-        response = {"directories": results}
-        if logs:
-            response["logs"] = logs
-        
-        return json.dumps(response, indent=2, ensure_ascii=False)
+                },
+                indent=2,
+                ensure_ascii=False,
+            )
 
     async def _arun(
         self,
-        directories: List[str],
-        max_workers: int = 4,
+        directory: str,
         chunk_size: int = 2000,
         chunk_overlap: int = 250,
         recursive: bool = True,
         specific_files: Optional[List[str]] = None,
         run_manager: Optional[AsyncCallbackManagerForToolRun] = None,
     ) -> str:
-        """Versión asíncrona del pipeline RAG."""
         import asyncio
+
         return await asyncio.to_thread(
             self._run,
-            directories,
-            max_workers,
+            directory,
             chunk_size,
             chunk_overlap,
             recursive,

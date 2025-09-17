@@ -10,10 +10,12 @@ from src.config.models.set_9 import (Set9ExtractionModel,Set9StructuredOutputSup
 from src.config.models.set_10 import (Set10ExtractionModel,Set10StructuredOutputSupervisor,)
 from src.config.models.set_11 import (Set11ExtractionModel,Set11StructuredOutputSupervisor,)
 
+from src.config.prompt_sets import (RULES_SET_1,RULES_SET_2,RULES_SET_3,RULES_SET_4,RULES_SET_5,RULES_SET_6,RULES_SET_7,RULES_SET_8,RULES_SET_9,RULES_SET_10,RULES_SET_11)
+
 
 TEMPLATE_SETS_TRIAL = {
     "Set 1": {
-        "human_message_prompt": "",
+        "human_message_prompt": RULES_SET_1,
         "doc_path_list": [
             "validacion",
             "codigo_informe",
@@ -41,7 +43,7 @@ TEMPLATE_SETS_TRIAL = {
         ],
     },
     "Set 2": {
-        "human_message_prompt": "",
+        "human_message_prompt": RULES_SET_2,
         "doc_path_list": [
             "dirs_hoja_trabajo_linealidad",
             "dirs_bitacoras_linealidad",
@@ -83,7 +85,7 @@ TEMPLATE_SETS_TRIAL = {
         ],
     },
     "Set 3": {
-        "human_message_prompt": "",
+        "human_message_prompt": RULES_SET_3,
         "doc_path_list": [
             "dir_reporte_lims_linealidad_sistema",
             "dirs_hoja_trabajo_linealidad",
@@ -95,7 +97,7 @@ TEMPLATE_SETS_TRIAL = {
         "tags": ["activos_linealidad", "referencia_linealidad"],
     },
     "Set 4": {
-        "human_message_prompt": "",
+        "human_message_prompt": RULES_SET_4,
         "doc_path_list": [
             "dir_reporte_lims_exactitud",
             "dirs_hoja_trabajo_exactitud",
@@ -107,7 +109,7 @@ TEMPLATE_SETS_TRIAL = {
         "tags": ["activos_exactitud", "referencia_exactitud"],
     },
     "Set 5": {
-        "human_message_prompt": "",
+        "human_message_prompt": RULES_SET_5,
         "doc_path_list": [
             "dir_reporte_lims_precision_sistema",
             "dirs_hoja_trabajo_preparacion_precision_sistema",
@@ -120,7 +122,7 @@ TEMPLATE_SETS_TRIAL = {
         "tags": ["activos_precision_sistema", "refencia_precision_sistema"],
     },
     "Set 6": {
-        "human_message_prompt": [],
+        "human_message_prompt": RULES_SET_6,
         "doc_path_list": [
             "dir_reporte_lims_precision_metodo",
             "dirs_hoja_trabajo_preparacion_precision_metodo",
@@ -133,7 +135,7 @@ TEMPLATE_SETS_TRIAL = {
         "tags": ["activos_precision_metodo", "refencia_precision_metodo"],
     },
     "Set 7": {
-        "human_message_prompt": [],
+        "human_message_prompt": RULES_SET_7,
         "doc_path_list": [
             "dir_reporte_lims_precision_intermedia",
             "dirs_hoja_trabajo_preparacion_precision_intermedia",
@@ -146,7 +148,7 @@ TEMPLATE_SETS_TRIAL = {
         "tags": ["activos_precision_intermedia", "refencia_precision_intermedia"],
     },
     "Set 8": {
-        "human_message_prompt": [],
+        "human_message_prompt": RULES_SET_8,
         "doc_path_list": [
             "dir_reporte_lims_estabilidad_solucion_estandar",
             "dirs_hoja_trabajo_preparacion_estabilidad_solucion_estandar",
@@ -159,7 +161,7 @@ TEMPLATE_SETS_TRIAL = {
         "tags": ["activos_estabilidad_solucion_estandar", "refencia_estabilidad_solucion_std"],
     },
     "Set 9": {
-        "human_message_prompt": [],
+        "human_message_prompt": RULES_SET_9,
         "doc_path_list": [
             "dir_reporte_lims_estabilidad_solucion_muestra",
             "dirs_hoja_trabajo_preparacion_estabilidad_solucion_muestra",
@@ -172,7 +174,7 @@ TEMPLATE_SETS_TRIAL = {
         "tags": ["activos_estabilidad_solucion_muestra", "refencia_estabilidad_solucion_mta"],
     },
     "Set 10": {
-        "human_message_prompt": [],
+        "human_message_prompt": RULES_SET_10,
         "doc_path_list": [
             "dir_reporte_lims_estabilidad_solucion_fase_movil",
             "dirs_hoja_trabajo_preparacion_estabilidad_solucion_fase_movil",
@@ -185,7 +187,7 @@ TEMPLATE_SETS_TRIAL = {
         "tags": ["activos_estabilidad_solucion_fase_movil", "refencia_estabilidad_solucion_fase_movil"],
     },
     "Set 11": {
-        "human_message_prompt": [],
+        "human_message_prompt": RULES_SET_11,
         "doc_path_list": [
             "dir_reporte_lims_robustez",
             "dirs_hoja_trabajo_preparacion_robustez",

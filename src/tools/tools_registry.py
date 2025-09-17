@@ -4,12 +4,10 @@ from typing import Any, Callable, Dict, List
 
 # --- Importa tus herramientas personalizadas ---
 from src.tools.rag_pipeline_tool import RAGPipelineTool
-from src.tools.local_research_query_tool import LocalResearchQueryTool
-from datetime import datetime
+from src.tools.local_research_query_tool import local_research_query_tool
 
 # --- Instanciación de las herramientas basadas en clases ---
 rag_pipeline_tool = RAGPipelineTool()
-local_research_query_tool = LocalResearchQueryTool()
 
 # --- Registro Central de Herramientas ---
 # Usamos un diccionario para que sea fácil de mantener y escalar.

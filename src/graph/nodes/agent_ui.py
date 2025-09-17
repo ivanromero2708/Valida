@@ -39,7 +39,7 @@ class AgentUI:
     @traceable
     def build_doc_path_list(self, state: ValidaState, set_name: str) -> list[str]:
         cfg = template_sets.get(set_name, {})
-        keys: list[str] = cfg.get("doc_dir_list", [])
+        keys: list[str] = cfg.get("doc_path_list", [])
         paths: list[str] = []
 
         for k in keys:
@@ -59,8 +59,7 @@ class AgentUI:
     @traceable
     def run(self, state: ValidaState, config: RunnableConfig) -> Command[Literal["supervisor_research_validation"]]:
         return Command(
-            "supervisor_research_validation",
-            {
+            update= {
                 "messages": [HumanMessage(content="Inicio de proceso de investigación en documentos entregados.")],
             },
             goto = [
@@ -72,7 +71,7 @@ class AgentUI:
                                 content= self.human_message_prompt.format(
                                     reglas_extraccion_razonamiento=template_sets[set_name]["human_message_prompt"],
                                     tags=template_sets[set_name]["tags"],
-                                    doc_dir_list=self.build_doc_path_list(state, set_name)
+                                    doc_path_list=self.build_doc_path_list(state, set_name)
                                 )
                             )
                         ],

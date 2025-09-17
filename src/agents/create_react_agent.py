@@ -23,48 +23,19 @@ from langgraph.prebuilt import create_react_agent
 from src.config.configuration import Configuration
 from src.tools.tools_registry import get_tools
 
-# Optional: load .env if present (won't fail if dotenv missing)
-try:
-    from dotenv import load_dotenv
+from dotenv import load_dotenv
 
-    load_dotenv()
-except Exception:
-    pass
+load_dotenv()
 
-
-def _auto_load_chat_model() -> Callable[[str], object]:
-    """
-    Try to import the project's model loader; if not found, raise a helpful error.
-    """
-    try:
-        from src.utils.serialization_utils import load_chat_model as _load_chat_model  # type: ignore
-    except Exception as e:
-        raise ImportError(
-            "Could not import load_chat_model from src.utils.serialization_utils. "
-            "Pass `load_chat_model_fn` explicitly to make_react_agent(...)."
-        ) from e
-    return _load_chat_model
-
-
-def _auto_config_schema():
-    """
-    Try to import your Configuration class to use as `config_schema`.
-    Safe to return None if it's not available.
-    """
-    try:
-        from src.config.configuration import Configuration as _Configuration  # type: ignore
-
-        return _Configuration
-    except Exception:
-        return None
-
+from src.config.configuration import Configuration
+from src.utils.serialization_utils import load_chat_model
 
 async def make_react_agent(
     config: RunnableConfig,
     *,
     load_chat_model_fn: Optional[Callable[[str], object]] = None,
+    response_format: Optional[type] = None,
     config_schema: Optional[type] = None,
-    compile: bool = False,
 ):
     """
     Build a single ReAct agent graph from a RunnableConfig.
@@ -93,14 +64,14 @@ async def make_react_agent(
     -------
     StateGraph | CompiledGraph
     """
-    configurable = config.get("configurable", {})
-    llm_id = configurable.get("model", "openai/gpt-4.1-mini")
-    selected_tools = configurable.get("selected_tools", ["get_todays_date"])
-    system_prompt = configurable.get("system_prompt", "You are a helpful assistant.")
-    name = configurable.get("name", "react_agent")
+    agent_config = config.get("configurable", {})
+    llm_id = agent_config.get("model", "openai/gpt-4.1-mini")
+    selected_tools = agent_config.get("selected_tools", ["get_todays_date"])
+    system_prompt = agent_config.get("system_prompt", "You are a helpful assistant.")
+    name = agent_config.get("name", "react_agent")
 
-    load_chat_model_fn = load_chat_model_fn or _auto_load_chat_model()
-    config_schema = config_schema if config_schema is not None else _auto_config_schema()
+    load_chat_model_fn = load_chat_model
+    config_schema = Configuration
 
     # Build
     graph = create_react_agent(
@@ -108,6 +79,7 @@ async def make_react_agent(
         tools=get_tools(selected_tools),
         prompt=system_prompt,
         config_schema=config_schema,
+        response_format= response_format,
         name=name,
     )
     

@@ -57,7 +57,6 @@ class MinimalSupervisorState(TypedDict, total=False):
     `state_schema` if you need extra fields.
     """
     messages: Annotated[Sequence[AnyMessage], add_messages]
-    remaining_steps: NotRequired[int]
 
 
 def _auto_load_chat_model() -> Callable[[str], object]:
@@ -93,13 +92,13 @@ async def make_supervisor(
     output_mode: str = "last_message",
     compile: bool = True,
 ):
-    configurable = config.get("configurable", {})
-    supervisor_model = configurable.get("supervisor_model", "openai/gpt-4.1-mini")
-    supervisor_system_prompt = configurable.get(
+    supervisor_config = config.get("configurable", {})
+    supervisor_model = supervisor_config.get("supervisor_model", "openai/gpt-4.1-mini")
+    supervisor_system_prompt = supervisor_config.get(
         "supervisor_system_prompt", "You are a helpful coordinator."
     )
     # ✅ preferir 'supervisor_name', pero soportar 'name' por compatibilidad
-    supervisor_name = configurable.get("supervisor_name") or configurable.get("name", "supervisor")
+    supervisor_name = supervisor_config.get("supervisor_name") or supervisor_config.get("name", "supervisor")
 
     load_chat_model_fn = load_chat_model_fn or _auto_load_chat_model()
     state_schema = state_schema or MinimalSupervisorState
@@ -121,3 +120,4 @@ async def make_supervisor(
     supervisor.name = supervisor_name
     
     return supervisor.compile() if compile else supervisor
+
