@@ -1,4 +1,3 @@
-from src.config.models.set_1 import (Set1ExtractionModel,Set1StructuredOutputSupervisor,)
 from src.config.models.set_2 import (Set2ExtractionModel,Set2StructuredOutputSupervisor,)
 from src.config.models.set_3 import (Set3ExtractionModel,Set3StructuredOutputSupervisor,)        
 from src.config.models.set_4 import (Set4ExtractionModel,Set4StructuredOutputSupervisor,)
@@ -10,38 +9,10 @@ from src.config.models.set_9 import (Set9ExtractionModel,Set9StructuredOutputSup
 from src.config.models.set_10 import (Set10ExtractionModel,Set10StructuredOutputSupervisor,)
 from src.config.models.set_11 import (Set11ExtractionModel,Set11StructuredOutputSupervisor,)
 
-from src.config.prompt_sets import (RULES_SET_1,RULES_SET_2,RULES_SET_3,RULES_SET_4,RULES_SET_5,RULES_SET_6,RULES_SET_7,RULES_SET_8,RULES_SET_9,RULES_SET_10,RULES_SET_11)
+from src.config.prompt_sets import (RULES_SET_2,RULES_SET_3,RULES_SET_4,RULES_SET_5,RULES_SET_6,RULES_SET_7,RULES_SET_8,RULES_SET_9,RULES_SET_10,RULES_SET_11)
 
 
 TEMPLATE_SETS_TRIAL = {
-    "Set 1": {
-        "human_message_prompt": RULES_SET_1,
-        "doc_path_list": [
-            "validacion",
-            "codigo_informe",
-            "nombre_producto",
-            "codigo_producto",
-            "lista_activos",
-            "rango_validado",
-            "ctiterio_aceptacion",
-            "parámetros_validacion",
-        ],
-        "data_extraction_model": Set1ExtractionModel,
-        "structured_output_supervisor": Set1StructuredOutputSupervisor,
-        "tags": [
-            "validacion",
-            "codigo_informe",
-            "nombre_producto",
-            "codigo_producto",
-            "lista_activos",
-            "concentracion_activos",
-            "rango_validado",
-            "activos",
-            "ctiterio_aceptacion",
-            "parámetros_validacion",
-
-        ],
-    },
     "Set 2": {
         "human_message_prompt": RULES_SET_2,
         "doc_path_list": [
@@ -103,6 +74,7 @@ TEMPLATE_SETS_TRIAL = {
     "Set 4": {
         "human_message_prompt": RULES_SET_4,
         "doc_path_list": [
+            "dir_protocolo",
             "dir_reporte_lims_exactitud",
             "dirs_hoja_trabajo_exactitud",
             "dirs_bitacoras_exactitud",
@@ -115,6 +87,7 @@ TEMPLATE_SETS_TRIAL = {
     "Set 5": {
         "human_message_prompt": RULES_SET_5,
         "doc_path_list": [
+            "dir_protocolo",
             "dir_reporte_lims_precision_sistema",
             "dirs_hoja_trabajo_precision_sistema",
             "dirs_bitacoras_precision_sistema",
@@ -127,6 +100,7 @@ TEMPLATE_SETS_TRIAL = {
     "Set 6": {
         "human_message_prompt": RULES_SET_6,
         "doc_path_list": [
+            "dir_protocolo",
             "dir_reporte_lims_precision_metodo",
             "dirs_hoja_trabajo_preparacion_precision_metodo",
             "dirs_hoja_trabajo_reporte_precision_metodo",
@@ -205,5 +179,5 @@ TEMPLATE_SETS_TRIAL = {
 }
 
 TEMPLATE_SETS = {
-    "Set 2": TEMPLATE_SETS_TRIAL["Set 2"]
+    "Set 4": TEMPLATE_SETS_TRIAL["Set 4"]
 }

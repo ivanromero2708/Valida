@@ -9,27 +9,27 @@ from src.config.models.set_1 import criterios
 
 class DatosExactitudStrOutput(BaseModel):
     nivel: str = Field(..., description="Nivel de concentración")
-    recuperacion: float = Field(..., ge=0, le=200, description="Recuperación en porcentaje")
-    promedio: float = Field(..., ge=0, le=200, description="Promedio en porcentaje")
+    recuperacion: float = Field(..., description="Recuperación en porcentaje")
+    promedio: float = Field(..., description="Promedio en porcentaje")
 
 
 class ActivoExactitudStrOutput(BaseModel):
     nombre: str = Field(..., description="Nombre del ingrediente activo")
     exactitud_metodo: List[DatosExactitudStrOutput] = Field(..., min_length=1, description="Datos de exactitud del sistema")
     conclusion_exactitud: str = Field(..., description="Cumple o No cumple con el criterio global")
-    criterio_exactitud: List[criterios] = Field(..., description="Criterio de exactitud")
+    criterio_exactitud: str = Field(..., description="Criterio de exactitud")
 
 
 class DatosExactitudStrExt(BaseModel):
     nivel: str = Field(..., description="Nivel de concentración")
-    recuperacion: float =Field(..., ge=0, le=200, description="Recuperación en porcentaje")
+    recuperacion: float =Field(..., description="Recuperación en porcentaje")
 
 
 class ActivoExactitudStrExt(BaseModel):
     nombre: str = Field(..., description="Nombre del ingrediente activo")
     exactitud_metodo: List[DatosExactitudStrExt] = Field(..., min_length=1, description="Datos de exactitud del sistema")
     conclusion_exactitud: str = Field(..., description="Cumple o No cumple con el criterio global")
-    criterio_exactitud: List[criterios] = Field(..., description="Criterio de exactitud")
+    criterio_exactitud: str = Field(..., description="Criterio de exactitud")
 
 
 class Set4ExtractionModel(BaseModel):

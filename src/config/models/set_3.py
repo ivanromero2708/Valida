@@ -20,7 +20,7 @@ class ParametroLinealidad(BaseModel):
     r2: float = Field(..., description="Coeficiente de Determinación (r2)")
     porcentaje_intercepto: float = Field(..., description="Intercepto como porcentaje de 0 al 100%")
     cumple_global: Literal["Cumple", "No Cumple"] = Field(..., description="Cumple con el criterio global")
-    criterio_linealidad: List[criterios] = Field(..., description="Criterios de aceptacion para linealidad linealidad")
+    criterio_linealidad: str = Field(..., description="Criterios de aceptacion para linealidad linealidad")
    
 
 class LinealidadSistemaExtraccion(LinealidadSistema):
@@ -39,7 +39,7 @@ class ParametroLinealidadExtraccion(BaseModel):
     r2: float = Field(..., description="Coeficiente de Determinación (r2) (Reportado como Determination coefficient (r2))")
     porcentaje_intercepto: float = Field(..., description="Intercepto como porcentaje de 0 al 100% (Reportado como Intercepto as percentage of Y at 100%)")
     cumple_global: Literal["Cumple", "No Cumple"] = Field(..., description="Cumple con el criterio global")
-    criterio_linealidad: List[criterios] = Field(..., description="Criterios de aceptacion para linealidad linealidad")
+    criterio_linealidad: str = Field(..., description="Criterios de aceptacion para linealidad linealidad")
 
 
 #Modelos de validación de datos
