@@ -45,6 +45,9 @@ TEMPLATE_SETS_TRIAL = {
     "Set 2": {
         "human_message_prompt": RULES_SET_2,
         "doc_path_list": [
+            "dir_protocolo",
+            "dir_hoja_trabajo_preparacion",
+            "dirs_bitacora_preparacion",
             "dirs_hoja_trabajo_linealidad",
             "dirs_bitacoras_linealidad",
             "dirs_soportes_cromatográficos_linealidad",
@@ -113,10 +116,9 @@ TEMPLATE_SETS_TRIAL = {
         "human_message_prompt": RULES_SET_5,
         "doc_path_list": [
             "dir_reporte_lims_precision_sistema",
-            "dirs_hoja_trabajo_preparacion_precision_sistema",
-            "dirs_hoja_trabajo_reporte_precision_sistema",
-            "dirs_bitacoras_preparacion_precision_sistema",
-            "dirs_bitacoras_reporte_precision_sistema",
+            "dirs_hoja_trabajo_precision_sistema",
+            "dirs_bitacoras_precision_sistema",
+            "dirs_soportes_cromatograficos_precision_sistema",
         ],
         "data_extraction_model": Set5ExtractionModel,
         "structured_output_supervisor": Set5StructuredOutputSupervisor,
@@ -203,5 +205,5 @@ TEMPLATE_SETS_TRIAL = {
 }
 
 TEMPLATE_SETS = {
-    "Set 3": TEMPLATE_SETS_TRIAL["Set 3"]
+    "Set 2": TEMPLATE_SETS_TRIAL["Set 2"]
 }

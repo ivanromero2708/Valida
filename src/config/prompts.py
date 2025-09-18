@@ -95,7 +95,7 @@ Construir índices RAG persistentes a partir de archivos específicos recibidos 
 
 <expected_human_message>
 Debe contener:
-- Directorio del documento a procesar: Recibirás uno o varios strings con los directorios de los diferentes documentos de entrada.
+- Directorio del documento a procesar: Recibirás uno o varios strings con los directorios de los diferentes documentos de entrada. VAS A TOMAR LITERALMENTE LA RUTA RECIBIDA EN <LISTA_DOCS>. ESTO ES DEMASIADO IMPORTANTE, NO TE EQUIVOQUES EN NINGUN CARACTER. NO INVENTES RUTAS, NI LAS MODIFIQUES.
 - Reglas de indexación, extracción estructurada o impresión de forma estructurada.
 </expected_human_message>
 
@@ -122,7 +122,7 @@ Usa la herramienta únicamente si <LISTA_DOCS> está presente y normalizada a li
 
 <method>
 1) Normalización de entradas:
-   1.1. Recibir el directorio/ruta o la lista de directorios/rutas de archivos a indexar
+   1.1. Recibir el directorio/ruta o la lista de directorios/rutas de archivos a indexar. VAS A TOMAR LITERALMENTE LAS RUTA RECIBIDAS EN <LISTA_DOCS>. ESTO ES DEMASIADO IMPORTANTE, NO TE EQUIVOQUES EN NINGUN CARACTER. NO INVENTES RUTAS, NI LAS MODIFIQUES.
 
 2) Validaciones previas:
    - Si la lista de rutas está vacía, ir a <failure_handling> (motivo: NO_INPUT_DIRECTORIES).
@@ -131,7 +131,7 @@ Usa la herramienta únicamente si <LISTA_DOCS> está presente y normalizada a li
    3.1. Para cada archivo específico en <LISTA_DOCS>:
        - Extraer directorio padre del archivo
        - Preparar llamada `rag_pipeline_tool` con: directory=directorio_padre, specific_files=[nombre_archivo]
-   3.2. Ejecutar TODAS las llamadas a rag_pipeline_tool en PARALELO (una por archivo)
+   3.2. Ejecutar TODAS las llamadas a rag_pipeline_tool en PARALELO (una por archivo). VAS A TOMAR LITERALMENTE LAS RUTAS RECIBIDAS EN <LISTA_DOCS>. ESTO ES DEMASIADO IMPORTANTE, NO TE EQUIVOQUES EN NINGUN CARACTER. NO INVENTES RUTAS, NI LAS MODIFIQUES.
    3.3. ESPERAR que TODAS las herramientas respondan antes de continuar
    3.4. NUNCA inventes rutas de vectorstores. Solo usa las que devuelven las herramientas.
    3.5. Una vez que tengas TODAS las respuestas, procede inmediatamente al paso 4.
@@ -269,10 +269,6 @@ Uso: iterar POR CADA persist_path recibido en <VECTORSTORES_PERSISTENTES>.
 Devuelve SOLO un JSON válido (sin comentarios) con la estructura definida por las reglas de extracción y, como mínimo, los siguientes contenedores:
 {{
   "structured_data": {{ ... EXACTO al Esquema ... }},
-  "evidence_map": {{ "<campo>": [ {{ "snippet": "<texto breve>", "vectorstore": "<ruta.parquet>" }} ] }},
-  "coverage_map": {{ "<campo>": "found"|"missing"|"partial" }},
-  "retrieval_stats": {{ "queries_issued": ["<q1>", "..."], "hits_total": <int>, "vectorstores_used": <int> }},
-  "unresolved": ["<campo>", "..."],
   "issues": ["<mensaje_breve>", "..."]
 }}
 </output_contract>
@@ -281,17 +277,11 @@ Devuelve SOLO un JSON válido (sin comentarios) con la estructura definida por l
 - Sin vectorstores válidos:
   {{
     "structured_data": {{}},
-    "evidence_map": {{}},
-    "coverage_map": {{}},
-    "retrieval_stats": {{ "queries_issued": [], "hits_total": 0, "vectorstores_used": 0 }},
     "issues": ["NO_VECTORSTORES"]
   }}
 - Si detectas rutas a documentos originales:
   {{
     "structured_data": {{}},
-    "evidence_map": {{}},
-    "coverage_map": {{}},
-    "retrieval_stats": {{ "queries_issued": [], "hits_total": 0, "vectorstores_used": 0 }},
     "issues": ["ORIGINAL_DOC_PATHS_DETECTED"]
   }}
 </failure_handling>
@@ -368,13 +358,7 @@ Debe contener:
 <output_contract>
 Devuelve ÚNICAMENTE un JSON válido (sin comentarios) con la siguiente forma:
 {{
-  "validated_data": {{ ... EXACTO al Modelo de Render/Salida ... }},
-  "conflicts_resolved": [
-    {{ "field": "<nombre_campo>", "decision": "<valor/acción adoptada>", "basis": "regla X / evidencia Y" }}
-  ],
-  "limitations": ["<supuesto_o_incertidumbre>", "..."],
-  "audit": {{ "checks_passed": <int>, "checks_failed": <int> }},
-  "issues": ["<mensaje_breve>", "..."]
+  "validated_data": {{ ... EXACTO al Modelo del Supervisor ... }},
 }}
 </output_contract>
 
@@ -382,9 +366,6 @@ Devuelve ÚNICAMENTE un JSON válido (sin comentarios) con la siguiente forma:
 - Si los datos son insuficientes para validar razonablemente:
 {{
   "validated_data": {{}},
-  "conflicts_resolved": [],
-  "limitations": ["INSUFFICIENT_DATA"],
-  "audit": {{ "checks_passed": 0, "checks_failed": 0 }},
   "issues": ["FALTAN_CAMPOS_CLAVE"]
 }}
 </failure_handling>
