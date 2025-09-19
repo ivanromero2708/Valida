@@ -821,25 +821,25 @@ RULES_SET_7 = """
   <REGLAS_DE_EXTRACCION_ESTRUCTURADA>
   Estas reglas aplican al `structured_extraction_agent`.
 
-    - **Objetivo General:** Extraer y estructurar la informaci?n de **precisi?n intermedia** por ingrediente activo (API) en dos fases diferenciadas, siguiendo el modelo `Set7ExtractionModel`.
+    - **Objetivo General:** Extraer y estructurar la información de **precisión intermedia** por ingrediente activo (API) en dos fases diferenciadas, siguiendo el modelo `Set7ExtractionModel`.
 
   -----
 
-    - **Fase 1: Extracci?n de criterios del protocolo de validaci?n**
+    - **Fase 1: Extracción de criterios del protocolo de validación**
 
-        - **Fuente primaria:** Documento del **Protocolo de Validaci?n** disponible en vectorstore.
-        - **Objetivo espec?fico:** Identificar para cada API los l?mites de aceptaci?n y condiciones aplicables al estudio de precisi?n intermedia (n?mero de analistas, r?plicas, umbrales de %RSD y diferencias entre promedios).
-        - **Plan de acci?n:**
-          1.  Localiza tablas o listas bajo los t?tulos "Precisi?n intermedia", "Intermediate precision" o "Ruggedness".
-          2.  Extrae literalmente los criterios num?ricos y condiciones asociadas (ej.: `%RSD <= 2.0%`, `|diferencia promedio| <= 2.0%`, "dos analistas", "seis r?plicas").
+        - **Fuente primaria:** Documento del **Protocolo de Validación** disponible en vectorstore.
+        - **Objetivo específico:** Identificar para cada API los límites de aceptación y condiciones aplicables al estudio de precisión intermedia (número de analistas, réplicas, umbrales de %RSD y diferencias entre promedios).
+        - **Plan de acción:**
+          1.  Localiza tablas o listas bajo los títulos "Precisión intermedia", "Intermediate precision" o "Ruggedness".
+          2.  Extrae literalmente los criterios numéricos y condiciones asociadas (ej.: `%RSD <= 2.0%`, `|diferencia promedio| <= 2.0%`, "dos analistas", "seis réplicas").
           3.  Crea o actualiza un registro por API con el campo `criterio_precision_intermedia` conteniendo el texto completo del protocolo. Si el protocolo diferencia criterios por API, conserva cada literal por separado.
-        - **Salida esperada Fase 1 (ejemplo sint?tico):**
+        - **Salida esperada Fase 1 (ejemplo sintético):**
           ```json
           {
             "activos_precision_intermedia": [
               {
                 "nombre": "[API_PRINCIPAL]",
-                "criterio_precision_intermedia": "Aceptar si %RSD <= 2.0% y |diferencia promedio| <= 2.0% (dos analistas, seis r?plicas)."
+                "criterio_precision_intermedia": "Aceptar si %RSD <= 2.0% y |diferencia promedio| <= 2.0% (dos analistas, seis réplicas)."
               }
             ]
           }
@@ -847,25 +847,25 @@ RULES_SET_7 = """
 
   -----
 
-    - **Fase 2: Extracci?n de datos experimentales (hojas de trabajo / LIMS)**
+    - **Fase 2: Extracción de datos experimentales (hojas de trabajo / LIMS)**
 
-        - **Fuentes:** Reportes crudos del **LIMS** y hojas de trabajo anal?ticas que documenten la precisi?n intermedia.
-        - **Objetivo espec?fico:** Registrar las r?plicas individuales de cada analista, as? como los c?lculos de %RSD y diferencia entre promedios reportados, para cada API.
-        - **Plan de acci?n:**
-          1.  Identifica tablas con columnas duplicadas por analista (p. ej. `A1/A2`, `D1/D2`, `Analista 1/Analista 2`) y filas tipo "Soluci?n Muestra 1..6".
-          2.  Para cada API, agrega a `precision_intermedia` cada r?plica con los valores exactos de porcentaje por analista, respetando las etiquetas textuales de la hoja.
-          3.  Captura los valores consolidados que entregue el LIMS (`rsd_an1_an2`, `diferencia_promedio_an1_an2`). Si no existen, deja el campo en `null` y documenta en la trazabilidad interna que deber? calcularse en el razonamiento.
-          4.  Propaga el criterio recuperado en la Fase 1 hacia cada API. Si el LIMS incluye identificadores de corrida o notas relevantes, reg?stralos en la trazabilidad interna.
-        - **Normalizaci?n y control de calidad:**
+        - **Fuentes:** Reportes crudos del **LIMS** y hojas de trabajo analíticas que documenten la precisión intermedia.
+        - **Objetivo específico:** Registrar las réplicas individuales de cada analista, así como los cálculos de %RSD y diferencia entre promedios reportados, para cada API.
+        - **Plan de acción:**
+          1.  Identifica tablas con columnas duplicadas por analista (p. ej. `A1/A2`, `D1/D2`, `Analista 1/Analista 2`) y filas tipo "Solución Muestra 1..6".
+          2.  Para cada API, agrega a `precision_intermedia` cada réplica con los valores exactos de porcentaje por analista, respetando las etiquetas textuales de la hoja.
+          3.  Captura los valores consolidados que entregue el LIMS (`rsd_an1_an2`, `diferencia_promedio_an1_an2`). Si no existen, deja el campo en `null` y documenta en la trazabilidad interna que debe calcularse en el razonamiento.
+          4.  Propaga el criterio recuperado en la Fase 1 hacia cada API. Si el LIMS incluye identificadores de corrida o notas relevantes, registralos en la trazabilidad interna.
+        - **Normalización y control de calidad:**
           - Usa punto decimal y convierte todos los porcentajes a `float`.
-          - Conserva exactamente los nombres de r?plicas y APIs.
-          - No promedies ni elimines r?plicas salvo que est?n claramente vac?as; registra cualquier limpieza en las notas de trazabilidad.
+          - Conserva exactamente los nombres de réplicas y APIs.
+          - No promedies ni elimines réplicas salvo que estén claramente vacías; registra cualquier limpieza en las notas de trazabilidad.
         - **Trazabilidad obligatoria (registro interno, no en la salida):** `source_document`, `page_or_span`, `query_used`, `confidence`, `cleaning_notes`.
-        - **Control adicional:** Si existen varias corridas para la misma combinaci?n (API, analista, r?plica), prioriza la m?s reciente/completa y deja constancia del criterio de deduplicaci?n.
+        - **Control adicional:** Si existen varias corridas para la misma combinación (API, analista, réplica), prioriza la más reciente/completa y deja constancia del criterio de deduplicación.
 
   -----
 
-    - **Ejemplo de extracci?n completa (Set7ExtractionModel):**
+    - **Ejemplo de extracción completa (Set7ExtractionModel):**
       ```json
       {
         "activos_precision_intermedia": [
@@ -909,17 +909,17 @@ RULES_SET_7 = """
   <REGLAS_DE_RAZONAMIENTO>
   Estas reglas aplican al `reasoning_agent`.
 
-    - **Prop?sito:** Determinar, para cada API, si la precisi?n intermedia cumple los criterios del protocolo y preparar los datos requeridos por `Set7StructuredOutputSupervisor`.
+    - **Propósito:** Determinar, para cada API, si la precisión intermedia cumple los criterios del protocolo y preparar los datos requeridos por `Set7StructuredOutputSupervisor`.
     - **Herramientas restringidas:** No utilices `linealidad_tool`; esta herramienta es exclusiva de `RULES_SET_3`.
     - **Entradas:** Objeto JSON completo producido por el `structured_extraction_agent`.
     - **Pasos del razonamiento:**
-      1.  Verifica la consistencia de r?plicas y analistas. Si falta alg?n dato clave, reg?stralo y explica c?mo impacta el c?lculo.
-      2.  Calcula el promedio global por analista (`promedio_an1`, `promedio_an2`) usando todas las r?plicas disponibles para el API.
-      3.  Calcula `diferencia_promedio_an1_an2` si ven?a en `null`, tomando la diferencia absoluta de los promedios obtenidos.
-      4.  Calcula el `%RSD` combinado entre analistas cuando el LIMS no lo report?. Justifica el m?todo usado (p. ej. RSD del promedio de ambos analistas).
-      5.  Compara los valores calculados con el criterio literal del protocolo. Documenta expl?citamente los umbrales aplicados antes de decidir.
-      6.  Determina `conclusion` por API: "Cumple" solo si cada condici?n evaluada se encuentra dentro de los l?mites del protocolo; de lo contrario, "No Cumple".
-      7.  Prepara los promedios globales para replicarlos en el campo `promedio_analistas` de cada r?plica, manteniendo dos decimales.
+      1.  Verifica la consistencia de réplicas y analistas. Si falta algún dato clave, registralo y explica cómo impacta el cálculo.
+      2.  Calcula el promedio global por analista (`promedio_an1`, `promedio_an2`) usando todas las réplicas disponibles para el API.
+      3.  Calcula `diferencia_promedio_an1_an2` si venía en `null`, tomando la diferencia absoluta de los promedios obtenidos.
+      4.  Calcula el `%RSD` combinado entre analistas cuando el LIMS no lo reportó. Justifica el método usado (p. ej. RSD del promedio de ambos analistas).
+      5.  Compara los valores calculados con el criterio literal del protocolo. Documenta explícitamente los umbrales aplicados antes de decidir.
+      6.  Determina `conclusion` por API: "Cumple" solo si cada condición evaluada se encuentra dentro de los límites del protocolo; de lo contrario, "No Cumple".
+      7.  Prepara los promedios globales para replicarlos en el campo `promedio_analistas` de cada réplica, manteniendo dos decimales.
     - **Mini-ejemplo (orden recomendado):**
       - `[API_PRINCIPAL]`: promedio_an1=100.05; promedio_an2=100.05; diferencia=0.00%; RSD=0.58% vs criterio (%RSD <=2.0% y diferencia<=2.0%) -> Cumple.
       - `[API_SECUNDARIO]`: promedio_an1=101.18; promedio_an2=100.97; diferencia=0.21%; RSD=0.72% vs criterio (%RSD <=2.5% y diferencia<=2.0%) -> Cumple.
@@ -931,11 +931,11 @@ RULES_SET_7 = """
   Aplica al `supervisor_agent`.
 
     - **Modelo de salida obligatorio:** `Set7StructuredOutputSupervisor`.
-    - **Formato:** Emite un ?nico objeto JSON v?lido; ninguna frase adicional despu?s del razonamiento.
-    - **Integraci?n de datos:**
-      - Replica cada registro de `precision_intermedia` agregando `promedio_analistas` con un ?nico objeto `{ "promedio_an1": <valor>, "promedio_an2": <valor> }`.
+    - **Formato:** Emite un único objeto JSON válido; ninguna frase adicional después del razonamiento.
+    - **Integración de datos:**
+      - Replica cada registro de `precision_intermedia` agregando `promedio_analistas` con un único objeto `{ "promedio_an1": <valor>, "promedio_an2": <valor> }`.
       - Completa `rsd_an1_an2`, `diferencia_promedio_an1_an2` y `conclusion` utilizando los valores calculados por el razonamiento.
-      - Incluye `criterio_precision_intermedia` como texto literal por API y a?ade `referencia_precision_intermedia` con la referencia anal?tica pertinente al conjunto de datos.
+      - Incluye `criterio_precision_intermedia` como texto literal por API y añade `referencia_precision_intermedia` con la referencia analítica pertinente al conjunto de datos.
     - **Ejemplo de salida final del supervisor (tras documentar el razonamiento):**
       ```json
       {
@@ -1034,7 +1034,7 @@ RULES_SET_7 = """
         "referencia_precision_intermedia": "[ID_CORRIDA_PRECISION_INTERMEDIA]"
       }
       ```
-    - **Recordatorio estricto:** El razonamiento completo debe preceder al JSON final; incluye todos los c?lculos (promedios, diferencias, RSD, criterios) antes de presentar la salida estructurada.
+    - **Recordatorio estricto:** El razonamiento completo debe preceder al JSON final; incluye todos los cálculos (promedios, diferencias, RSD, criterios) antes de presentar la salida estructurada.
   </REGLAS_DE_SALIDA_SUPERVISOR>
 
 """
@@ -1045,19 +1045,19 @@ RULES_SET_8 = """
   <REGLAS_DE_EXTRACCION_ESTRUCTURADA>
   Estas reglas aplican al `structured_extraction_agent`.
 
-    - **Objetivo General:** Extraer y estructurar la informaci?n de **estabilidad de soluciones** (est?ndar y muestra) mediante un proceso en dos fases, alineado con el modelo `Set8ExtractionModel`.
+    - **Objetivo General:** Extraer y estructurar la información de **estabilidad de soluciones** (estándar y muestra) mediante un proceso en dos fases, alineado con el modelo `Set8ExtractionModel`.
 
   -----
 
-    - **Fase 1: Extracci?n de criterios del protocolo de validaci?n**
+    - **Fase 1: Extracción de criterios del protocolo de validación**
 
-        - **Fuente primaria:** Documento del **Protocolo de Validaci?n** en vectorstore.
-        - **Objetivo espec?fico:** Identificar los criterios de aceptaci?n, tiempos evaluados y condiciones de almacenamiento que aplican a cada soluci?n.
-        - **Plan de acci?n:**
+        - **Fuente primaria:** Documento del **Protocolo de Validación** en vectorstore.
+        - **Objetivo específico:** Identificar los criterios de aceptación, tiempos evaluados y condiciones de almacenamiento que aplican a cada solución.
+        - **Plan de acción:**
           1.  Localiza secciones tituladas "Estabilidad de soluciones", "Solution stability" o equivalentes.
-          2.  Extrae los l?mites de variaci?n permitida (ej.: `|%di| <= 2.0%` o `Promedio >= 98.0%`) y las condiciones experimentales (condici?n de almacenamiento, tiempos, r?plicas).
-          3.  Registra los criterios en el campo `criterio_aceptacion` que corresponda a cada combinaci?n de condici?n/tiempo; documenta tambi?n si el protocolo exige evaluar soluciones est?ndar y de muestra por separado.
-        - **Salida esperada Fase 1 (ejemplo sint?tico):**
+          2.  Extrae los límites de variación permitida (ej.: `|%di| <= 2.0%` o `Promedio >= 98.0%`) y las condiciones experimentales (condición de almacenamiento, tiempos, réplicas).
+          3.  Registra los criterios en el campo `criterio_aceptacion` que corresponda a cada combinación de condición/tiempo; documenta también si el protocolo exige evaluar soluciones estándar y de muestra por separado.
+        - **Salida esperada Fase 1 (ejemplo sintético):**
           ```json
           {
             "soluciones": [
@@ -1079,26 +1079,26 @@ RULES_SET_8 = """
 
   -----
 
-    - **Fase 2: Extracci?n de datos experimentales (hojas de trabajo / LIMS)**
+    - **Fase 2: Extracción de datos experimentales (hojas de trabajo / LIMS)**
 
-        - **Fuentes:** Reportes crudos del **LIMS** y hojas de trabajo anal?ticas asociadas a estabilidad de soluciones.
-        - **Objetivo espec?fico:** Capturar las r?plicas individuales de cada condici?n y tiempo, junto con los promedios y diferencias reportados para cada soluci?n est?ndar y de muestra.
-        - **Plan de acci?n:**
-          1.  Identifica tablas con encabezados como "Initial Sample Stability", "Sample Stability Time 1", "Condici?n 1/2", "Solucion Estandar R1..R3".
-          2.  Para cada soluci?n registrada, construye `data_estabilidad_solucion` con entradas por `tiempo_estabilidad` y `condicion_estabilidad`, agregando todas las r?plicas en `data_condicion`.
-          3.  Transcribe `promedio_areas` y `diferencia_promedios` tal como aparezcan (sin s?mbolo %). Si no est?n presentes, deja `null` y anota en la trazabilidad que se calcular?n en el razonamiento.
+        - **Fuentes:** Reportes crudos del **LIMS** y hojas de trabajo analíticas asociadas a estabilidad de soluciones.
+        - **Objetivo específico:** Capturar las réplicas individuales de cada condición y tiempo, junto con los promedios y diferencias reportados para cada solución estándar y de muestra.
+        - **Plan de acción:**
+          1.  Identifica tablas con encabezados como "Initial Sample Stability", "Sample Stability Time 1", "Condición 1/2", "Solucion Estandar R1..R3".
+          2.  Para cada solución registrada, construye `data_estabilidad_solucion` con entradas por `tiempo_estabilidad` y `condicion_estabilidad`, agregando todas las réplicas en `data_condicion`.
+          3.  Transcribe `promedio_areas` y `diferencia_promedios` tal como aparezcan (sin símbolo %). Si no están presentes, deja `null` y anota en la trazabilidad que se calcularán en el razonamiento.
           4.  Pobla `conclusion_estabilidad` con `[pendiente_validar]` hasta que el razonamiento determine el resultado final.
-          5.  Extrae la `referencia_analitica` (ej. identificador del reporte) para la ra?z del objeto y conserva una descripci?n general en `conclusion_estabilidad_muestra` como `[pendiente_validar]` hasta el razonamiento.
-        - **Normalizaci?n y control de calidad:**
+          5.  Extrae la `referencia_analitica` (ej. identificador del reporte) para la raíz del objeto y conserva una descripción general en `conclusion_estabilidad_muestra` como `[pendiente_validar]` hasta el razonamiento.
+        - **Normalización y control de calidad:**
           - Usa punto decimal; asegura que `replica` sea entero.
           - Respeta literalidad de los tiempos y condiciones.
-          - No mezcles datos de soluciones distintas; cada soluci?n mantiene su propio bloque.
+          - No mezcles datos de soluciones distintas; cada solución mantiene su propio bloque.
         - **Trazabilidad obligatoria (registro interno, no en la salida):** `source_document`, `page_or_span`, `query_used`, `confidence`, `cleaning_notes`.
-        - **Control adicional:** Si hay corridas repetidas, prioriza la m?s reciente/completa y documenta la decisi?n.
+        - **Control adicional:** Si hay corridas repetidas, prioriza la más reciente/completa y documenta la decisión.
 
   -----
 
-    - **Ejemplo de extracci?n completa (Set8ExtractionModel):**
+    - **Ejemplo de extracción completa (Set8ExtractionModel):**
       ```json
       {
         "soluciones": [
@@ -1189,20 +1189,20 @@ RULES_SET_8 = """
   <REGLAS_DE_RAZONAMIENTO>
   Estas reglas aplican al `reasoning_agent`.
 
-    - **Prop?sito:** Evaluar si cada soluci?n y condici?n mantiene la estabilidad dentro de los criterios del protocolo y preparar la salida para `Set8StructuredOutputSupervisor`.
-    - **Herramientas restringidas:** No utilices `linealidad_tool`; la herramienta est? prohibida en este conjunto.
+    - **Propósito:** Evaluar si cada solución y condición mantiene la estabilidad dentro de los criterios del protocolo y preparar la salida para `Set8StructuredOutputSupervisor`.
+    - **Herramientas restringidas:** No utilices `linealidad_tool`; la herramienta está prohibida en este conjunto.
     - **Entradas:** Objeto JSON del `structured_extraction_agent`.
     - **Pasos del razonamiento:**
-      1.  Identifica, por soluci?n, cu?l es el valor de referencia (tiempo inicial) para cada condici?n.
-      2.  Si `promedio_areas` o `diferencia_promedios` se dejaron en `null`, calc?lalos a partir de las r?plicas disponibles y documenta el procedimiento.
-      3.  Calcula el porcentaje de variaci?n respecto al tiempo inicial (ej.: `delta = 100 * (promedio_t - promedio_t0) / promedio_t0`).
-      4.  Compara cada variaci?n con el criterio literal registrado; deja expl?cito el umbral antes de decidir.
+      1.  Identifica, por solución, cuál es el valor de referencia (tiempo inicial) para cada condición.
+      2.  Si `promedio_areas` o `diferencia_promedios` se dejaron en `null`, calcúlalos a partir de las réplicas disponibles y documenta el procedimiento.
+      3.  Calcula el porcentaje de variación respecto al tiempo inicial (ej.: `delta = 100 * (promedio_t - promedio_t0) / promedio_t0`).
+      4.  Compara cada variación con el criterio literal registrado; deja explícito el umbral antes de decidir.
       5.  Asigna `conclusion_estabilidad` por entrada (`"Cumple"` / `"No Cumple"`) y justifica todo incumplimiento.
-      6.  Determina `conclusion_estabilidad_muestra` considerando el comportamiento de las soluciones de muestra; si alguna condici?n no cumple, marca `"No Cumple"`.
-      7.  Conserva en la narrativa cualquier supuesto o dato ausente y c?mo se manejar? en el reporte.
+      6.  Determina `conclusion_estabilidad_muestra` considerando el comportamiento de las soluciones de muestra; si alguna condición no cumple, marca `"No Cumple"`.
+      7.  Conserva en la narrativa cualquier supuesto o dato ausente y cómo se manejará en el reporte.
     - **Mini-ejemplo (orden recomendado):**
-      - `[Solucion Estandar] Condicion 1 Time 1`: delta=-0.27% vs l?mite 2.0% -> Cumple.
-      - `[Solucion Muestra] Condicion 1 Time 2`: delta=-0.86% vs l?mite 3.0% -> Cumple.
+      - `[Solucion Estandar] Condicion 1 Time 1`: delta=-0.27% vs límite 2.0% -> Cumple.
+      - `[Solucion Muestra] Condicion 1 Time 2`: delta=-0.86% vs límite 3.0% -> Cumple.
       - Resultado global muestras: todas las condiciones cumplen -> `conclusion_estabilidad_muestra = "Cumple"`.
   </REGLAS_DE_RAZONAMIENTO>
 
@@ -1212,10 +1212,10 @@ RULES_SET_8 = """
   Aplica al `supervisor_agent`.
 
     - **Modelo de salida obligatorio:** `Set8StructuredOutputSupervisor`.
-    - **Formato:** ?nico objeto JSON bien formado; sin texto adicional tras el razonamiento.
-    - **Integraci?n de datos:**
+    - **Formato:** único objeto JSON bien formado; sin texto adicional tras el razonamiento.
+    - **Integración de datos:**
       - Replica los bloques de `data_estabilidad_solucion`, reemplazando los campos calculados con los valores definitivos.
-      - Actualiza cada `conclusion_estabilidad` y `conclusion_estabilidad_muestra` seg?n el an?lisis.
+      - Actualiza cada `conclusion_estabilidad` y `conclusion_estabilidad_muestra` según el análisis.
       - Asegura que `referencia_analitica` permanezca presente y corresponda a la fuente utilizada.
     - **Ejemplo de salida final del supervisor:**
       ```json
@@ -1301,7 +1301,7 @@ RULES_SET_8 = """
         "conclusion_estabilidad_muestra": "Cumple"
       }
       ```
-    - **Recordatorio estricto:** Documenta en el razonamiento todos los c?lculos y comparaciones antes de mostrar la salida JSON final.
+    - **Recordatorio estricto:** Documenta en el razonamiento todos los cálculos y comparaciones antes de mostrar la salida JSON final.
   </REGLAS_DE_SALIDA_SUPERVISOR>
 
 """
@@ -1311,19 +1311,19 @@ RULES_SET_9 = """
   <REGLAS_DE_EXTRACCION_ESTRUCTURADA>
   Estas reglas aplican al `structured_extraction_agent`.
 
-    - **Objetivo General:** Extraer y estructurar la informaci?n de **estabilidad de soluciones de muestra** en dos fases, conforme al modelo `Set9ExtractionModel`.
+    - **Objetivo General:** Extraer y estructurar la información de **estabilidad de soluciones de muestra** en dos fases, conforme al modelo `Set9ExtractionModel`.
 
   -----
 
-    - **Fase 1: Extracci?n de criterios del protocolo de validaci?n**
+    - **Fase 1: Extracción de criterios del protocolo de validación**
 
-        - **Fuente primaria:** Documento del **Protocolo de Validaci?n** en vectorstore.
-        - **Objetivo espec?fico:** Identificar criterios, tiempos y condiciones aplicables a las soluciones de muestra.
-        - **Plan de acci?n:**
+        - **Fuente primaria:** Documento del **Protocolo de Validación** en vectorstore.
+        - **Objetivo específico:** Identificar criterios, tiempos y condiciones aplicables a las soluciones de muestra.
+        - **Plan de acción:**
           1.  Ubica secciones o tablas que describan la estabilidad de soluciones de muestra.
-          2.  Registra los l?mites de aceptaci?n (ej.: `|%di| <= 2.0%`, `promedio >= 98.0%`) y las condiciones espec?ficas (temperatura, luz, recipiente).
-          3.  Asocia cada criterio a la condici?n correspondiente de la soluci?n de muestra para poblar `criterio_aceptacion`.
-        - **Salida esperada Fase 1 (ejemplo sint?tico):**
+          2.  Registra los límites de aceptación (ej.: `|%di| <= 2.0%`, `promedio >= 98.0%`) y las condiciones específicas (temperatura, luz, recipiente).
+          3.  Asocia cada criterio a la condición correspondiente de la solución de muestra para poblar `criterio_aceptacion`.
+        - **Salida esperada Fase 1 (ejemplo sintético):**
           ```json
           {
             "soluciones": [
@@ -1344,26 +1344,26 @@ RULES_SET_9 = """
 
   -----
 
-    - **Fase 2: Extracci?n de datos experimentales (hojas de trabajo / LIMS)**
+    - **Fase 2: Extracción de datos experimentales (hojas de trabajo / LIMS)**
 
-        - **Fuentes:** Reportes crudos del **LIMS** y hojas de trabajo anal?ticas referentes a la estabilidad de la muestra.
-        - **Objetivo espec?fico:** Capturar las r?plicas individuales, promedios y diferencias reportados para cada combinaci?n soluci?n/condici?n/tiempo.
-        - **Plan de acci?n:**
-          1.  Identifica tablas con columnas de tiempo (Initial, Time 1, Time 2, etc.) y condiciones (Condici?n 1/2) que contengan r?plicas `R1..R3`.
-          2.  Para cada soluci?n, agrega entradas en `data_estabilidad_solucion` manteniendo literal los nombres de tiempos y condiciones.
-          3.  Transcribe `promedio_areas` y `diferencia_promedios`. Si faltan, deja `null` y registra en la trazabilidad que se calcular?n posteriormente.
+        - **Fuentes:** Reportes crudos del **LIMS** y hojas de trabajo analíticas referentes a la estabilidad de la muestra.
+        - **Objetivo específico:** Capturar las réplicas individuales, promedios y diferencias reportados para cada combinación solución/condición/tiempo.
+        - **Plan de acción:**
+          1.  Identifica tablas con columnas de tiempo (Initial, Time 1, Time 2, etc.) y condiciones (Condición 1/2) que contengan réplicas `R1..R3`.
+          2.  Para cada solución, agrega entradas en `data_estabilidad_solucion` manteniendo literal los nombres de tiempos y condiciones.
+          3.  Transcribe `promedio_areas` y `diferencia_promedios`. Si faltan, deja `null` y registra en la trazabilidad que se calcularán posteriormente.
           4.  Inicializa `conclusion_estabilidad` con `[pendiente_validar]`.
-          5.  Compila todas las referencias relevantes (ID de reporte, n?mero de corrida) en `referencia_analitica` (lista de strings).
-        - **Normalizaci?n y control de calidad:**
-          - Puntualiza las r?plicas con enteros consecutivos y ?reas en `float`.
-          - Mant?n separados los bloques por soluci?n.
-          - Documenta cualquier exclusi?n o dato faltante en la trazabilidad interna.
+          5.  Compila todas las referencias relevantes (ID de reporte, número de corrida) en `referencia_analitica` (lista de strings).
+        - **Normalización y control de calidad:**
+          - Puntualiza las réplicas con enteros consecutivos y áreas en `float`.
+          - Mantén separados los bloques por solución.
+          - Documenta cualquier exclusión o dato faltante en la trazabilidad interna.
         - **Trazabilidad obligatoria (registro interno, no en la salida):** `source_document`, `page_or_span`, `query_used`, `confidence`, `cleaning_notes`.
-        - **Control adicional:** Si hay corridas duplicadas, prioriza la m?s reciente/completa y deja constancia del criterio.
+        - **Control adicional:** Si hay corridas duplicadas, prioriza la más reciente/completa y deja constancia del criterio.
 
   -----
 
-    - **Ejemplo de extracci?n completa (Set9ExtractionModel):**
+    - **Ejemplo de extracción completa (Set9ExtractionModel):**
       ```json
       {
         "soluciones": [
@@ -1453,20 +1453,16 @@ RULES_SET_9 = """
   <REGLAS_DE_RAZONAMIENTO>
   Estas reglas aplican al `reasoning_agent`.
 
-    - **Prop?sito:** Verificar la estabilidad de cada soluci?n de muestra frente a los criterios del protocolo y preparar la salida conforme al modelo `Set9StructuredOutputSupervisor`.
-    - **Herramientas restringidas:** No utilices `linealidad_tool`; est? prohibida para este conjunto.
+    - **Propósito:** Verificar la estabilidad de cada solución de muestra frente a los criterios del protocolo y preparar la salida conforme al modelo `Set9StructuredOutputSupervisor`.
+    - **Herramientas restringidas:** No utilices `linealidad_tool`; está prohibida para este conjunto.
     - **Entradas:** Objeto JSON generado por el `structured_extraction_agent`.
     - **Pasos del razonamiento:**
-      1.  Para cada soluci?n, identifica el valor de referencia (tiempo inicial) por condici?n.
-      2.  Calcula `promedio_areas` y `diferencia_promedios` si se dejaron en `null`, explicando el m?todo empleado.
-      3.  Obt?n el porcentaje de variaci?n respecto al tiempo inicial y comp?ralo con el criterio literal (`criterio_aceptacion`).
-      4.  Define `conclusion_estabilidad` para cada entrada: "Cumple" ?nicamente si la variaci?n est? dentro del umbral; de lo contrario, "No Cumple".
-      5.  Documenta cualquier desviaci?n, dato faltante o l?mite inferido antes de fijar la conclusi?n.
-      6.  Resume en la narrativa el estado global de la soluci?n (todas cumplen / alguna falla) para facilitar la supervisi?n.
-    - **Mini-ejemplo (orden recomendado):**
-      - `[Solucion Muestra Lote A] Condicion 1 Time 1`: delta=-0.52% vs l?mite 2.0% -> Cumple.
-      - `[Solucion Muestra Lote A] Condicion 2 Time 2`: delta=-1.54% vs l?mite 2.5% -> Cumple.
-      - `[Solucion Muestra Lote B] Condicion 2 Time 1`: delta=-1.40% vs l?mite 2.5% -> Cumple (se aproxima al l?mite, resaltar en la narrativa).
+      1.  Para cada solución, identifica el valor de referencia (tiempo inicial) por condición.
+      2.  Calcula `promedio_areas` y `diferencia_promedios` si se dejaron en `null`, explicando el método empleado.
+      3.  Obtén el porcentaje de variación respecto al tiempo inicial y compáralo con el criterio literal (`criterio_aceptacion`).
+      4.  Define `conclusion_estabilidad` para cada entrada: "Cumple" únicamente si la variación esté dentro del umbral; de lo contrario, "No Cumple".
+      5.  Documenta cualquier desviación, dato faltante o límite inferido antes de fijar la conclusión.
+      6.  Resume en la narrativa el estado global de la solución (todas cumplen / alguna falla) para facilitar la supervisión.
   </REGLAS_DE_RAZONAMIENTO>
 
   <br>
@@ -1475,11 +1471,11 @@ RULES_SET_9 = """
   Aplica al `supervisor_agent`.
 
     - **Modelo de salida obligatorio:** `Set9StructuredOutputSupervisor`.
-    - **Formato:** ?nico objeto JSON bien formado sin texto extra tras el razonamiento.
-    - **Integraci?n de datos:**
+    - **Formato:** Un solo objeto JSON bien formado sin texto extra tras el razonamiento.
+    - **Integración de datos:**
       - Replica los bloques de `data_estabilidad_solucion` con los valores finales y conclusiones.
-      - Mant?n la lista `referencia_analitica` con todas las referencias relevantes.
-      - No a?adas campos nuevos; reporta ?nicamente los definidos en el modelo.
+      - Mantén la lista `referencia_analitica` con todas las referencias relevantes.
+      - No añadas campos nuevos; reporta únicamente los definidos en el modelo.
     - **Ejemplo de salida final del supervisor:**
       ```json
       {
@@ -1563,7 +1559,7 @@ RULES_SET_9 = """
         "referencia_analitica": ["[HTA-MUESTRA-001]", "[PLAN-ENSAYO-REF]"]
       }
       ```
-    - **Recordatorio estricto:** El razonamiento debe documentar c?lculos y criterios antes del JSON definitivo.
+    - **Recordatorio estricto:** El razonamiento debe documentar cálculos y criterios antes del JSON definitivo.
   </REGLAS_DE_SALIDA_SUPERVISOR>
 
 """
@@ -1574,19 +1570,19 @@ RULES_SET_10 = """
   <REGLAS_DE_EXTRACCION_ESTRUCTURADA>
   Estas reglas aplican al `structured_extraction_agent`.
 
-    - **Objetivo General:** Extraer y estructurar la informaci?n de **estabilidad de la fase m?vil** por API en dos fases diferenciadas, siguiendo el modelo `Set10ExtractionModel`.
+    - **Objetivo General:** Extraer y estructurar la información de **estabilidad de la fase móvil** por API en dos fases diferenciadas, siguiendo el modelo `Set10ExtractionModel`.
 
   -----
 
-    - **Fase 1: Extracci?n de criterios del protocolo de validaci?n**
+    - **Fase 1: Extracción de criterios del protocolo de validación**
 
-        - **Fuente primaria:** Secci?n de **Estabilidad de la fase m?vil** del Protocolo de Validaci?n.
-        - **Objetivo espec?fico:** Identificar l?mites aceptables para las m?tricas controladas (?reas del sistema, tiempo de retenci?n, USP tailing, resoluci?n, exactitud) y las condiciones evaluadas por tiempo.
-        - **Plan de acci?n:**
-          1.  Ubica tablas o listas con factores como "Tiempo inicial", "Tiempo 1", "Tiempo 2" y los par?metros asociados.
-          2.  Extrae los umbrales individuales (ej.: `%RSD <= 2.0%`, `|Delta Rt| <= 2.0%`, `USP tailing <= 2.0`, `Resoluci?n >= 2.0`) y cualquier instrucci?n sobre r?plicas.
-          3.  Registra la literalidad en `criterio_aceptacion` para cada combinaci?n API/tiempo descrita en el protocolo.
-        - **Salida esperada Fase 1 (ejemplo sint?tico):**
+        - **Fuente primaria:** Sección de **Estabilidad de la fase móvil** del Protocolo de Validación.
+        - **Objetivo específico:** Identificar límites aceptables para las métricas controladas (áreas del sistema, tiempo de retención, USP tailing, resolución, exactitud) y las condiciones evaluadas por tiempo.
+        - **Plan de acción:**
+          1.  Ubica tablas o listas con factores como "Tiempo inicial", "Tiempo 1", "Tiempo 2" y los parámetros asociados.
+          2.  Extrae los umbrales individuales (ej.: `%RSD <= 2.0%`, `|Delta Rt| <= 2.0%`, `USP tailing <= 2.0`, `Resolución >= 2.0`) y cualquier instrucción sobre réplicas.
+          3.  Registra la literalidad en `criterio_aceptacion` para cada combinación API/tiempo descrita en el protocolo.
+        - **Salida esperada Fase 1 (ejemplo sintético):**
           ```json
           {
             "activos_fase_movil": [
@@ -1606,26 +1602,26 @@ RULES_SET_10 = """
 
   -----
 
-    - **Fase 2: Extracci?n de datos experimentales (hojas de trabajo / LIMS)**
+    - **Fase 2: Extracción de datos experimentales (hojas de trabajo / LIMS)**
 
-        - **Fuentes:** Hojas de trabajo anal?ticas y reportes crudos del **LIMS** relacionados con la estabilidad de la fase m?vil.
-        - **Objetivo espec?fico:** Registrar las r?plicas y estad?sticas reportadas para cada tiempo evaluado y API.
-        - **Plan de acci?n:**
-          1.  Identifica tablas con encabezados "Estabilidad Fase Movil Tiempo ..." y columnas para r?plicas (1..n) con ?reas, tiempo de retenci?n, USP tailing, resoluci?n y exactitud.
-          2.  Para cada API y tiempo, agrega un bloque en `data_fase_movil_tiempos` incorporando las r?plicas en `data_fase_movil_tiempo`.
-          3.  Transcribe los promedios (`promedio_*`) y `rsd_areas_system` exactamente como aparecen. Si el reporte no los provee, deja el campo en `null` y an?talo en la trazabilidad para c?lculo posterior.
-          4.  Mant?n `conclusion_areas_system`, `conclusion_tiempo_retencion` y `conclusion_usp_tailing` como `[pendiente_validar]` hasta que el razonamiento los resuelva.
-          5.  Extrae la `referencia_estabilidad_fase_movil` (c?digo de corrida o identificador de reporte) para la ra?z del objeto.
-        - **Normalizaci?n y control de calidad:**
+        - **Fuentes:** Hojas de trabajo analíticas y reportes crudos del **LIMS** relacionados con la estabilidad de la fase móvil.
+        - **Objetivo específico:** Registrar las réplicas y estadísticas reportadas para cada tiempo evaluado y API.
+        - **Plan de acción:**
+          1.  Identifica tablas con encabezados "Estabilidad Fase Movil Tiempo ..." y columnas para réplicas (1..n) con áreas, tiempo de retención, USP tailing, resolución y exactitud.
+          2.  Para cada API y tiempo, agrega un bloque en `data_fase_movil_tiempos` incorporando las réplicas en `data_fase_movil_tiempo`.
+          3.  Transcribe los promedios (`promedio_*`) y `rsd_areas_system` exactamente como aparecen. Si el reporte no los provee, deja el campo en `null` y anótalo en la trazabilidad para cálculo posterior.
+          4.  Mantén `conclusion_areas_system`, `conclusion_tiempo_retencion` y `conclusion_usp_tailing` como `[pendiente_validar]` hasta que el razonamiento los resuelva.
+          5.  Extrae la `referencia_estabilidad_fase_movil` (código de corrida o identificador de reporte) para la raíz del objeto.
+        - **Normalización y control de calidad:**
           - Usa punto decimal; `replica` debe ser entero.
           - Respeta los nombres de tiempos y APIs tal como aparecen.
-          - Documenta cualquier exclusi?n de r?plicas o limpieza en las notas de trazabilidad.
+          - Documenta cualquier exclusión de réplicas o limpieza en las notas de trazabilidad.
         - **Trazabilidad obligatoria (registro interno, no en la salida):** `source_document`, `page_or_span`, `query_used`, `confidence`, `cleaning_notes`.
-        - **Control adicional:** Prioriza corridas m?s recientes/completas cuando existan duplicados y deja evidencia de la decisi?n.
+        - **Control adicional:** Prioriza corridas más recientes/completas cuando existan duplicados y deja evidencia de la decisión.
 
   -----
 
-    - **Ejemplo de extracci?n completa (Set10ExtractionModel):**
+    - **Ejemplo de extracción completa (Set10ExtractionModel):**
       ```json
       {
         "activos_fase_movil": [
@@ -1718,20 +1714,20 @@ RULES_SET_10 = """
   <REGLAS_DE_RAZONAMIENTO>
   Estas reglas aplican al `reasoning_agent`.
 
-    - **Prop?sito:** Evaluar la estabilidad de la fase m?vil por API frente a los criterios del protocolo y preparar la salida `Set10StructuredOutputSupervisor`.
-    - **Herramientas restringidas:** No utilices `linealidad_tool`; est? expresamente prohibida aqu?.
+    - **Propósito:** Evaluar la estabilidad de la fase móvil por API frente a los criterios del protocolo y preparar la salida `Set10StructuredOutputSupervisor`.
+    - **Herramientas restringidas:** No utilices `linealidad_tool`; está expresamente prohibida aquí.
     - **Entradas:** Objeto JSON emitido por el `structured_extraction_agent`.
     - **Pasos del razonamiento:**
       1.  Identifica, para cada API, el tiempo de referencia (usualmente "Tiempo inicial") para comparar variaciones.
-      2.  Completa cualquier estad?stico faltante (`promedio_*`, `rsd_areas_system`) a partir de los datos de r?plica; documenta el m?todo de c?lculo.
-      3.  Calcula el % de variaci?n de `tiempo_retencion` y `usp_tailing` respecto al tiempo inicial; registra el resultado previo a comparar.
-      4.  Eval?a `rsd_areas_system`, las variaciones de tiempo y USP tailing, y cualquier otro par?metro requerido (resoluci?n, exactitud) contra el criterio literal.
+      2.  Completa cualquier estadístico faltante (`promedio_*`, `rsd_areas_system`) a partir de los datos de réplica; documenta el método de cálculo.
+      3.  Calcula el % de variación de `tiempo_retencion` y `usp_tailing` respecto al tiempo inicial; registra el resultado previo a comparar.
+      4.  Evalúa `rsd_areas_system`, las variaciones de tiempo y USP tailing, y cualquier otro parámetro requerido (resolución, exactitud) contra el criterio literal.
       5.  Define `conclusion_areas_system`, `conclusion_tiempo_retencion` y `conclusion_usp_tailing` para cada bloque (`"Cumple"` / `"No Cumple"`). Explica todo incumplimiento y su magnitud.
-      6.  Confirma que `criterio_aceptacion` se mantenga ?ntegro y que la referencia utilizada est? registrada para la salida final.
-      7.  Resume en la narrativa cualquier riesgo o dato lim?trofe para informar al supervisor.
+      6.  Confirma que `criterio_aceptacion` se mantenga íntegro y que la referencia utilizada esté registrada para la salida final.
+      7.  Resume en la narrativa cualquier riesgo o dato limítrofe para informar al supervisor.
     - **Mini-ejemplo (orden recomendado):**
       - `[API_1] Tiempo 1`: rsd_areas=1.05% (<=2.0%), delta Rt=0.32% (<=2.0%), USP tailing=1.28 (<=2.0) -> todas las conclusiones = "Cumple".
-      - `[API_2] Tiempo 2`: rsd_areas=1.20% (<=2.0%), delta Rt=0.39% (<=2.0%), USP tailing=1.23 (<=2.0), resoluci?n=2.18 (>=2.0) -> Cumple.
+      - `[API_2] Tiempo 2`: rsd_areas=1.20% (<=2.0%), delta Rt=0.39% (<=2.0%), USP tailing=1.23 (<=2.0), resolución=2.18 (>=2.0) -> Cumple.
   </REGLAS_DE_RAZONAMIENTO>
 
   <br>
@@ -1740,10 +1736,10 @@ RULES_SET_10 = """
   Aplica al `supervisor_agent`.
 
     - **Modelo de salida obligatorio:** `Set10StructuredOutputSupervisor`.
-    - **Formato:** ?nico objeto JSON bien formado; no a?adir texto tras el razonamiento.
-    - **Integraci?n de datos:**
+    - **Formato:** Un solo objeto JSON bien formado; no agregar texto tras el razonamiento.
+    - **Integración de datos:**
       - Replica los bloques de `data_fase_movil_tiempos` incorporando los valores calculados y las conclusiones finales.
-      - Mant?n `criterio_aceptacion` literal y `referencia_estabilidad_fase_movil` en la ra?z.
+      - Mantén `criterio_aceptacion` literal y `referencia_estabilidad_fase_movil` en la raíz.
       - No agregues campos adicionales; respeta el modelo.
     - **Ejemplo de salida final del supervisor:**
       ```json
@@ -1831,35 +1827,36 @@ RULES_SET_10 = """
         "referencia_estabilidad_fase_movil": "[HTA_FASE_MOVIL]"
       }
       ```
-    - **Recordatorio estricto:** Justifica en el razonamiento todos los c?lculos y comparaciones antes de emitir el JSON final.
+    - **Recordatorio estricto:** Justifica en el razonamiento todos los cálculos y comparaciones antes de emitir el JSON final.
   </REGLAS_DE_SALIDA_SUPERVISOR>
 
 """
 
 
-RULES_SET_11 = """
+RULES_SET_11 = """
+
   <REGLAS_DE_EXTRACCION_ESTRUCTURADA>
   Estas reglas aplican al `structured_extraction_agent`.
 
-    - **Objetivo General:** Extraer y estructurar la informaci?n de **robustez** por API en dos fases, conforme al modelo `Set11ExtractionModel`.
+    - **Objetivo General:** Extraer y estructurar la información de **robustez** por API en dos fases, conforme al modelo `Set11ExtractionModel`.
 
   -----
 
-    - **Fase 1: Extracci?n de criterios y factores del protocolo**
+    - **Fase 1: Extracción de criterios y factores del protocolo**
 
-        - **Fuente primaria:** Documento del **Protocolo de Validaci?n** (tabla de condiciones de robustez).
-        - **Objetivo espec?fico:** Registrar los factores modificados, sus niveles nominales/ajustados y el criterio de aceptaci?n global.
-        - **Plan de acci?n:**
+        - **Fuente primaria:** Documento del **Protocolo de Validación** (tabla de condiciones de robustez).
+        - **Objetivo específico:** Registrar los factores modificados, sus niveles nominales/ajustados y el criterio de aceptación global.
+        - **Plan de acción:**
           1.  Ubica la tabla de "Condiciones de robustez" o equivalente.
-          2.  Extrae para cada experimento los valores objetivo (temperatura, flujo, volumen de inyecci?n, composici?n de fase m?vil, etc.) y puebla `experimento_robustez`.
-          3.  Transcribe el criterio literal (ej.: `|%di| <= 2.0%`, `No debe cambiar el orden de eluci?n`) y almac?nalo en `criterio_robustez` para cada API.
-        - **Salida esperada Fase 1 (ejemplo sint?tico):**
+          2.  Extrae para cada experimento los valores objetivo (temperatura, flujo, volumen de inyección, composición de fase móvil, etc.) y puebla `experimento_robustez`.
+          3.  Transcribe el criterio literal (ej.: `|%di| <= 2.0%`, `No debe cambiar el orden de elución`) y almacénalo en `criterio_robustez` para cada API.
+        - **Salida esperada Fase 1 (ejemplo sintético):**
           ```json
           {
             "activos_robustez": [
               {
                 "nombre": "[API_1]",
-                "criterio_robustez": "Aceptar si |%di| <= 2.0% para cada condici?n evaluada."
+                "criterio_robustez": "Aceptar si |%di| <= 2.0% para cada condición evaluada."
               }
             ],
             "referencia_robustez": "[ID_PROTOCOLO]",
@@ -1871,25 +1868,25 @@ RULES_SET_11 = """
 
   -----
 
-    - **Fase 2: Extracci?n de datos experimentales (reportes anal?ticos / LIMS)**
+    - **Fase 2: Extracción de datos experimentales (reportes analíticos / LIMS)**
 
-        - **Fuentes:** Reportes anal?ticos finales y/o LIMS que contengan secciones "Robustness Flow/Temperature/Injection Volume/Mobile Phase".
-        - **Objetivo espec?fico:** Capturar las r?plicas individuales, los promedios por condici?n y las diferencias porcentuales respecto a la condici?n nominal para cada API.
-        - **Plan de acci?n:**
-          1.  Identifica bloques que agrupen r?plicas por experimento y condici?n (Nominal, Bajo, Alto, etc.).
-          2.  Registra cada r?plica en la lista `robustez`, conservando el texto literal del experimento (ej.: "Robustness Flow - Bajo").
-          3.  Transcribe `promedio_experimento` y `diferencia_porcentaje` si el reporte los provee; si faltan, deja `null` y anota en la trazabilidad que se calcular?n en el razonamiento.
-          4.  Marca `conclusion_robustez` como `[pendiente_validar]` hasta que se eval?e en el razonamiento.
-          5.  Asegura que la `referencia_robustez` y los factores de `experimento_robustez` est?n presentes en la ra?z del objeto.
-        - **Normalizaci?n y control de calidad:**
-          - Elimina s?mbolos de porcentaje; usa punto decimal.
+        - **Fuentes:** Reportes analíticos finales y/o LIMS que contengan secciones "Robustness Flow/Temperature/Injection Volume/Mobile Phase".
+        - **Objetivo específico:** Capturar las réplicas individuales, los promedios por condición y las diferencias porcentuales respecto a la condición nominal para cada API.
+        - **Plan de acción:**
+          1.  Identifica bloques que agrupen réplicas por experimento y condición (Nominal, Bajo, Alto, etc.).
+          2.  Registra cada réplica en la lista `robustez`, conservando el texto literal del experimento (ej.: "Robustness Flow - Bajo").
+          3.  Transcribe `promedio_experimento` y `diferencia_porcentaje` si el reporte los provee; si faltan, deja `null` y anota en la trazabilidad que se calcularán en el razonamiento.
+          4.  Marca `conclusion_robustez` como `[pendiente_validar]` hasta que se evalúe en el razonamiento.
+          5.  Asegura que la `referencia_robustez` y los factores de `experimento_robustez` estén presentes en la raíz del objeto.
+        - **Normalización y control de calidad:**
+          - Elimina símbolos de porcentaje; usa punto decimal.
           - `replica` debe ser entero correlativo.
-          - Si se detectan m?ltiples corridas para el mismo API/condici?n, prioriza la m?s completa y documenta el criterio.
+          - Si se detectan múltiples corridas para el mismo API/condición, prioriza la más completa y documenta el criterio.
         - **Trazabilidad obligatoria (registro interno, no en la salida):** `source_document`, `page_or_span`, `query_used`, `confidence`, `cleaning_notes`.
 
   -----
 
-    - **Ejemplo de extracci?n completa (Set11ExtractionModel):**
+    - **Ejemplo de extracción completa (Set11ExtractionModel):**
       ```json
       {
         "activos_robustez": [
@@ -1917,7 +1914,7 @@ RULES_SET_11 = """
               { "experimento": "Robustness Mobile Phase - Variante B", "replica": 1, "valores_aproximados": 100.2, "promedio_experimento": 100.2, "diferencia_porcentaje": 0.50 }
             ],
             "conclusion_robustez": "[pendiente_validar]",
-            "criterio_robustez": "Aceptar si |%di| <= 2.5% para cada condici?n de robustez."
+            "criterio_robustez": "Aceptar si |%di| <= 2.5% para cada condición de robustez."
           }
         ],
         "referencia_robustez": "[HTA_ROBUSTEZ]",
@@ -1935,21 +1932,21 @@ RULES_SET_11 = """
   <REGLAS_DE_RAZONAMIENTO>
   Estas reglas aplican al `reasoning_agent`.
 
-    - **Prop?sito:** Evaluar si cada API cumple los criterios de robustez del protocolo comparando las condiciones modificadas contra la condici?n nominal y preparar la salida para `Set11StructuredOutputSupervisor`.
-    - **Herramientas restringidas:** No utilices `linealidad_tool`; est? prohibida en este conjunto.
+    - **Propósito:** Evaluar si cada API cumple los criterios de robustez del protocolo comparando las condiciones modificadas contra la condición nominal y preparar la salida para `Set11StructuredOutputSupervisor`.
+    - **Herramientas restringidas:** No utilices `linealidad_tool`; está prohibida en este conjunto.
     - **Entradas:** Objeto JSON producido por el `structured_extraction_agent`.
     - **Pasos del razonamiento:**
-      1.  Agrupa las r?plicas por API y experimento, identificando claramente la condici?n nominal.
-      2.  Calcula `promedio_experimento` y `diferencia_porcentaje` si se dejaron en `null`, documentando el m?todo.
-      3.  Para cada condici?n distinta de la nominal, calcula `%di = 100 * (promedio_condicion - promedio_nominal) / promedio_nominal` y registra el resultado antes de compararlo.
-      4.  Compara cada `%di` con el criterio literal (`criterio_robustez`). Si el criterio incluye otras verificaciones (ej. orden de eluci?n), deja evidencia textual del chequeo.
-      5.  Determina `conclusion_robustez` por API: "Cumple" ?nicamente si todas las condiciones evaluadas satisfacen los l?mites; de lo contrario, "No Cumple".
-      6.  Resume en la narrativa los valores clave (promedio nominal, %di por condici?n, umbral aplicado) antes de emitir la conclusi?n.
-      7.  Se?ala cualquier dato faltante o supuesto que pueda afectar la interpretaci?n.
+      1.  Agrupa las réplicas por API y experimento, identificando claramente la condición nominal.
+      2.  Calcula `promedio_experimento` y `diferencia_porcentaje` si se dejaron en `null`, documentando el método.
+      3.  Para cada condición distinta de la nominal, calcula `%di = 100 * (promedio_condicion - promedio_nominal) / promedio_nominal` y registra el resultado antes de compararlo.
+      4.  Compara cada `%di` con el criterio literal (`criterio_robustez`). Si el criterio incluye otras verificaciones (ej. orden de elución), deja evidencia textual del chequeo.
+      5.  Determina `conclusion_robustez` por API: "Cumple" únicamente si todas las condiciones evaluadas satisfacen los límites; de lo contrario, "No Cumple".
+      6.  Resume en la narrativa los valores clave (promedio nominal, %di por condición, umbral aplicado) antes de emitir la conclusión.
+      7.  Señala cualquier dato faltante o supuesto que pueda afectar la interpretación.
     - **Mini-ejemplo (orden recomendado):**
       - `[API_1] Flow Bajo`: promedio_nominal=100.1; promedio_bajo=99.6; %di=-0.50% (<=2.0%) -> Cumple.
       - `[API_1] Flow Alto`: %di=+0.60% (<=2.0%) -> Cumple.
-      - `[API_2] Mobile Phase Variante B`: %di=+0.50% (<=2.5%) -> Cumple. Conclusi?n global API_2 = "Cumple".
+      - `[API_2] Mobile Phase Variante B`: %di=+0.50% (<=2.5%) -> Cumple. Conclusión global API_2 = "Cumple".
   </REGLAS_DE_RAZONAMIENTO>
 
   <br>
@@ -1958,12 +1955,12 @@ RULES_SET_11 = """
   Aplica al `supervisor_agent`.
 
     - **Modelo de salida obligatorio:** `Set11StructuredOutputSupervisor`.
-    - **Formato:** ?nico objeto JSON bien formado; no se permite texto adicional tras el razonamiento.
-    - **Integraci?n de datos:**
-      - Copia las r?plicas de `robustez` incorporando los valores calculados definitivos.
-      - Actualiza `conclusion_robustez` y `criterio_robustez` por API seg?n el an?lisis.
+    - **Formato:** único objeto JSON bien formado; no se permite texto adicional tras el razonamiento.
+    - **Integración de datos:**
+      - Copia las réplicas de `robustez` incorporando los valores calculados definitivos.
+      - Actualiza `conclusion_robustez` y `criterio_robustez` por API según el análisis.
       - Convierte `experimento_robustez` a `experimentos_robustez` conservando los factores del protocolo.
-      - Mant?n `referencia_robustez` literal.
+      - Mantén `referencia_robustez` literal.
     - **Ejemplo de salida final del supervisor:**
       ```json
       {
@@ -1992,7 +1989,7 @@ RULES_SET_11 = """
               { "experimento": "Robustness Mobile Phase - Variante B", "replica": 1, "valores_aproximados": 100.2, "promedio_experimento": 100.2, "diferencia_porcentaje": 0.50 }
             ],
             "conclusion_robustez": "Cumple",
-            "criterio_robustez": "Aceptar si |%di| <= 2.5% para cada condici?n de robustez."
+            "criterio_robustez": "Aceptar si |%di| <= 2.5% para cada condición de robustez."
           }
         ],
         "referencia_robustez": "[HTA_ROBUSTEZ]",
@@ -2003,6 +2000,7 @@ RULES_SET_11 = """
         ]
       }
       ```
-    - **Recordatorio estricto:** El razonamiento debe documentar c?lculos, umbrales y conclusiones antes de presentar el JSON final.
-  </REGLAS_DE_SALIDA_SUPERVISOR>
+    - **Recordatorio estricto:** El razonamiento debe documentar cálculos, umbrales y conclusiones antes de presentar el JSON final.
+  </REGLAS_DE_SALIDA_SUPERVISOR>
+
 """
