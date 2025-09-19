@@ -29,6 +29,9 @@ from typing import Any, Dict, List, Optional, Type
 from pathlib import Path
 
 import numpy as np
+# Configurar matplotlib para usar backend sin GUI antes de importar pyplot
+import matplotlib
+matplotlib.use('Agg')  # Backend sin GUI, seguro para hilos secundarios
 import matplotlib.pyplot as plt
 from pydantic import BaseModel, Field, validator
 from langchain_core.callbacks import (
