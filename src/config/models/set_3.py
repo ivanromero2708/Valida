@@ -42,6 +42,21 @@ class ParametroLinealidadExtraccion(BaseModel):
     criterio_linealidad: str = Field(..., description="Criterios de aceptacion para linealidad linealidad")
 
 
+class ParametroLinealidadStrOutput(BaseModel):
+    nombre: str = Field(..., description="Nombre del ingrediente activo con la data de validación de linealidad")
+    linealidad_sistema: List[LinealidadSistemaExtraccion] = Field(..., description="Datos de linealidad del sistema")
+    rsd_factor: float = Field(..., description="RSD de los Factores de Respuesta (Reportado como RSD Response Factor)")
+    pendiente: float = Field(..., description="Pendiente de la curva (b) (Reportado como Slope)")
+    intercepto: float = Field(..., description="Intercepto (a) (Reportado como Intercept)")
+    r: float = Field(..., description="Coeficiente de correlación (r) (Reportado como Correlation coefficient (r))")
+    r2: float = Field(..., description="Coeficiente de Determinación (r2) (Reportado como Determination coefficient (r2))")
+    porcentaje_intercepto: float = Field(..., description="Intercepto como porcentaje de 0 al 100% (Reportado como Intercepto as percentage of Y at 100%)")
+    cumple_global: Literal["Cumple", "No Cumple"] = Field(..., description="Cumple con el criterio global")
+    criterio_linealidad: str = Field(..., description="Criterios de aceptacion para linealidad linealidad")
+    regresion_png_path: str = Field(..., description="Ruta del archivo PNG del gráfico de regresión")
+    residuales_png_path: str = Field(..., description="Ruta del archivo PNG del gráfico de residuales")
+
+
 #Modelos de validación de datos
 
 
@@ -57,5 +72,6 @@ class Set3RenderingModel(BaseModel):
     
 class Set3StructuredOutputSupervisor(BaseModel):
     """Modelo de validación de datos Set 3"""
-    activos_linealidad: List[ParametroLinealidad] = Field(..., description="Lista de diccionarios que contiene toda la información de validación del parámetro de linealidad para un API específico. Si hay varios ingredientes activos en el producto, hay varios elementos de activos_linealidad. Incluye los resultados de linealidad, RSD de los Factores de Respuesta, Pendiente de la curva (b), Intercepto (a), Coeficiente de correlación (r), Coeficiente de Determinación (r2), Intercepto como porcentaje de y ̂ al 100%, Criterio de aceptación , y Conclusión por cada Ingrediente activo")
+    activos_linealidad: List[ParametroLinealidadStrOutput] = Field(..., description="Lista de diccionarios que contiene toda la información de validación del parámetro de linealidad para un API específico. Si hay varios ingredientes activos en el producto, hay varios elementos de activos_linealidad. Incluye los resultados de linealidad, RSD de los Factores de Respuesta, Pendiente de la curva (b), Intercepto (a), Coeficiente de correlación (r), Coeficiente de Determinación (r2), Intercepto como porcentaje de y ̂ al 100%, Criterio de aceptación , y Conclusión por cada Ingrediente activo")
     referencia_linealidad: str = Field(..., description="Código del documento donde se encuentra consignados los valores brutos de esta tabla. Puede ser un reporte LIMS, una hoja de trabajo o una bitácora")
+    

@@ -130,9 +130,9 @@ class Configuration(BaseModel):
     )
     
     reasoning_tools: List[Literal[
-        "",
+        "linearidad_tool",
     ]] = Field(
-        default=[""],
+        default=["linearidad_tool"],
         description="Las herramientas a usar para el agente.",
         json_schema_extra={"langgraph_nodes": ["reasoning_agent"]},
     )

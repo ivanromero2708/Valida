@@ -296,20 +296,37 @@ RULES_SET_3 = """
   `<REGLAS_DE_RAZONAMIENTO>`
   Estas reglas aplican al `reasoning_agent`.
 
-    - **Objetivo Principal:** Comparar sistemáticamente cada parámetro de regresión extraído contra su criterio de aceptación correspondiente para emitir una conclusión global sobre la linealidad del método.
+    - **Objetivo Principal:** Comparar sistemáticamente cada parámetro de regresión extraído contra su criterio de aceptación correspondiente para emitir una conclusión global sobre la linealidad del método, y generar las gráficas de regresión y residuales correspondientes.
 
     - **Entradas:** El objeto JSON completo poblado por el `structured_extraction_agent`.
 
     - **Pasos del Razonamiento:**
 
-      1.  **Iterar por Criterio:** Para cada parámetro en la lista `criterio_linealidad`, busca el valor experimental correspondiente (ej: si `parametro` es "Coeficiente de correlación (r)", busca el valor de `r`).
-      2.  **Documentar Comparación:** Realiza y documenta la comparación numérica de forma explícita.
+      1.  **Generar Gráficas de Linealidad:** ANTES de realizar cualquier comparación, usa la herramienta `linealidad_tool` para generar las gráficas de regresión y residuales:
+            - Extrae los datos de `linealidad_sistema` de cada activo
+            - Para cada activo, llama a `linealidad_tool` con los parámetros:
+              - `nombre_activo`: nombre del API
+              - `datos_linealidad`: lista de puntos con concentracion y area_pico
+              - `criterios_aceptacion`: criterios extraídos del protocolo
+            - **IMPORTANTE:** La herramienta generará automáticamente las gráficas y retornará las rutas absolutas en `regresion_png_path` y `residuales_png_path`
+            - Documenta las rutas generadas para cada activo
+
+      2.  **Iterar por Criterio:** Para cada parámetro en la lista `criterio_linealidad`, busca el valor experimental correspondiente (ej: si `parametro` es "Coeficiente de correlación (r)", busca el valor de `r`).
+
+      3.  **Documentar Comparación:** Realiza y documenta la comparación numérica de forma explícita.
             - **Ejemplo 1:** *Verificación (r): Valor obtenido `r = 0.9999`. Criterio `≥ 0.995`. Comparación: `0.9999 ≥ 0.995` es VERDADERO. → Cumple.*
             - **Ejemplo 2:** *Verificación (RSD): Valor obtenido `rsd_factor = 1.5%`. Criterio `≤ 2.0%`. Comparación: `1.5 ≤ 2.0` es VERDADERO. → Cumple.*
-      3.  **Conclusión Global:** Emite una conclusión para `cumple_global`.
+
+      4.  **Conclusión Global:** Emite una conclusión para `cumple_global`.
             - Si **TODOS** los parámetros individuales cumplen su criterio → **"Cumple"**.
             - Si **AL MENOS UNO** de los parámetros no cumple su criterio → **"No Cumple"**.
-      4.  **Justificación Final:** Proporciona un resumen que justifique la conclusión global, mencionando qué parámetros cumplieron o no.
+
+      5.  **Justificación Final:** Proporciona un resumen que justifique la conclusión global, mencionando qué parámetros cumplieron o no.
+
+      6.  **Entregar Rutas de Gráficas al Supervisor:** Asegúrate de documentar y entregar al supervisor las rutas de las gráficas generadas:
+            - `regresion_png_path`: ruta absoluta de la gráfica de regresión
+            - `residuales_png_path`: ruta absoluta de la gráfica de residuales
+            - Estas rutas deben incluirse en la salida estructurada final
 
   `</REGLAS_DE_RAZONAMIENTO>`
 
@@ -322,7 +339,9 @@ RULES_SET_3 = """
 
     - **Condición:** Genera la salida **solo después** de que el `reasoning_agent` haya documentado su análisis completo.
 
-    - **Integración de Datos:** El JSON final debe contener los datos experimentales (`linealidad_sistema`, `r`, `pendiente`, etc.), los criterios (`criterio_linealidad`) y la conclusión final validada (`cumple_global`).
+    - **Integración de Datos:** El JSON final debe contener los datos experimentales (`linealidad_sistema`, `r`, `pendiente`, etc.), los criterios (`criterio_linealidad`), la conclusión final validada (`cumple_global`) y **OBLIGATORIAMENTE** las rutas de las gráficas generadas (`regresion_png_path`, `residuales_png_path`).
+
+    - **IMPORTANTE:** El supervisor debe incluir las rutas de las gráficas que fueron generadas por el `reasoning_agent` usando la herramienta `linealidad_tool`.
 
     - **Ejemplo de Salida del Supervisor (Caso "Cumple" con réplicas):**
 
@@ -345,10 +364,12 @@ RULES_SET_3 = """
             "r2": 0.9998,
             "porcentaje_intercepto": 1.2,
             "cumple_global": "Cumple",
-            "criterio_linealidad": "Coeficiente de correlación (r) criterio": "≥ 0.995"
+            "criterio_linealidad": "Coeficiente de correlación (r) criterio": "≥ 0.995",
+            "regresion_png_path": "C:/Users/Ivan/OneDrive - Grupo Procaps/Portafolio NTF/16 - I&D 4.0/12. Informes de validación/Valida/src/images/linealidad_regresion_12345678-1234-5678-9abc-123456789abc.png",
+            "residuales_png_path": "C:/Users/Ivan/OneDrive - Grupo Procaps/Portafolio NTF/16 - I&D 4.0/12. Informes de validación/Valida/src/images/linealidad_residuales_12345678-1234-5678-9abc-123456789abc.png"
           }
         ],
-        "referencia_linealidad": ["[HT001XXXXXX]"]
+        "referencia_linealidad": ["[HT001XXXXXX]"],        
       }
       ```
   `</REGLAS_DE_SALIDA_SUPERVISOR>`

@@ -17,10 +17,13 @@ from langsmith import traceable
 from src.graph.state import ValidaState
 
 try:
-    from docxtpl import DocxTemplate
+    from docxtpl import DocxTemplate, InlineImage
+    from docx.shared import Mm
     from jinja2.exceptions import UndefinedError
 except ImportError:
     DocxTemplate = None
+    InlineImage = None
+    Mm = None
     UndefinedError = None
     logging.warning("docxtpl not installed. DOCX rendering will not be available.")
 
@@ -104,6 +107,76 @@ class RenderValidationReport:
                 else:
                     # Si no se pudo extraer, abortamos para no ciclar
                     raise
+
+    def _process_activos_images(self, doc: DocxTemplate, context: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Procesa las imágenes de linealidad para cada activo en el contexto.
+        Convierte las rutas de archivos PNG en objetos InlineImage para docxtpl.
+        """
+        if InlineImage is None or Mm is None:
+            logger.warning("InlineImage o Mm no disponibles. Las imágenes no se procesarán.")
+            return context
+        
+        # Buscar activos_linealidad en el contexto
+        activos_linealidad = context.get("activos_linealidad", [])
+        if not activos_linealidad:
+            logger.info("No se encontraron activos_linealidad en el contexto.")
+            return context
+        
+        processed_activos = []
+        
+        for i, activo in enumerate(activos_linealidad):
+            if not isinstance(activo, dict):
+                logger.warning(f"Activo {i+1} no es un diccionario, se omite.")
+                processed_activos.append(activo)
+                continue
+            
+            activo_copy = dict(activo)  # Crear copia para no modificar el original
+            nombre_activo = activo_copy.get("nombre", f"Activo_{i+1}")
+            
+            # Procesar imagen de regresión
+            regresion_path = activo_copy.get("regresion_png_path", "")
+            if regresion_path and Path(regresion_path).exists():
+                try:
+                    activo_copy["regresion_png_path"] = InlineImage(
+                        doc, 
+                        image_descriptor=regresion_path, 
+                        width=Mm(120), 
+                        height=Mm(80)
+                    )
+                    logger.info(f"Imagen de regresión agregada para {nombre_activo}: {regresion_path}")
+                except Exception as e:
+                    logger.warning(f"Error al agregar imagen de regresión para {nombre_activo} ({regresion_path}): {e}")
+                    activo_copy["regresion_png_path"] = ""
+            else:
+                logger.warning(f"Imagen de regresión no encontrada para {nombre_activo}: {regresion_path}")
+                activo_copy["regresion_png_path"] = ""
+            
+            # Procesar imagen de residuales
+            residuales_path = activo_copy.get("residuales_png_path", "")
+            if residuales_path and Path(residuales_path).exists():
+                try:
+                    activo_copy["residuales_png_path"] = InlineImage(
+                        doc, 
+                        image_descriptor=residuales_path, 
+                        width=Mm(120), 
+                        height=Mm(80)
+                    )
+                    logger.info(f"Imagen de residuales agregada para {nombre_activo}: {residuales_path}")
+                except Exception as e:
+                    logger.warning(f"Error al agregar imagen de residuales para {nombre_activo} ({residuales_path}): {e}")
+                    activo_copy["residuales_png_path"] = ""
+            else:
+                logger.warning(f"Imagen de residuales no encontrada para {nombre_activo}: {residuales_path}")
+                activo_copy["residuales_png_path"] = ""
+            
+            processed_activos.append(activo_copy)
+        
+        # Actualizar el contexto con los activos procesados
+        context["activos_linealidad"] = processed_activos
+        logger.info(f"Procesadas imágenes para {len(processed_activos)} activos.")
+        
+        return context
 
     # ---------- Agregación de contexto ----------
     @traceable
@@ -198,6 +271,7 @@ class RenderValidationReport:
 
         # 4) Combinar y limpiar texto
         final_context = self._merge_contexts(basic_context, tags_map)
+        
         for key, value in list(final_context.items()):
             if isinstance(value, str):
                 final_context[key] = self._clean_text(value)
@@ -222,6 +296,10 @@ class RenderValidationReport:
         # 6) Renderizar y guardar
         try:
             doc = DocxTemplate(str(tpl_path))
+            
+            # 5) Procesar imágenes de linealidad para cada activo
+            final_context = self._process_activos_images(doc, final_context)
+            
             # Intento robusto ante variables faltantes
             if UndefinedError is not None:
                 self._render_with_fallback_missing(doc, final_context, max_retries=50)
