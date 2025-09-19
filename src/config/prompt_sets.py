@@ -249,43 +249,67 @@ RULES_SET_3 = """
     - **Fase 2: Extracción de Datos de Ejecución desde el Reporte LIMS**
 
         - **Fuente Primaria:** Reporte de datos crudos del **LIMS** o la **Hoja de Trabajo Analítica**.
-        - **Objetivo Específico:** Extraer la curva de calibración completa (todos los niveles con **todas sus réplicas**) y los parámetros de regresión calculados por el software.
+        - **Objetivo Específico:** Extraer la curva de calibración completa (todos los niveles con **todas sus réplicas**) y los parámetros de regresión calculados por el software **PARA CADA ACTIVO INDIVIDUAL**.
+        - **CRÍTICO - PROCESAMIENTO MULTI-ACTIVO:** 
+          - **DEBES procesar TODOS los vectorstores de reportes LIMS disponibles en la lista de documentos**
+          - **DEBES extraer datos para CADA activo encontrado en CADA vectorstore por separado**
+          - **DEBES consolidar TODOS los activos en una sola lista `activos_linealidad`**
+          - **DEBES incluir TODAS las referencias en la lista `referencia_linealidad`**
         - **Plan de Acción:**
-          1.  **Extrae la curva de calibración completa.** Busca la tabla principal de datos de linealidad. Debe contener columnas como "Nivel", "Concentración", "Réplica", "Área de Pico", y "Factor de Respuesta". **Es crucial que extraigas una entrada por cada inyección/réplica individual**, no un promedio por nivel.
-          2.  **Extrae los parámetros de regresión.** Usualmente, debajo de la tabla de datos, el software reporta los resultados del ajuste lineal. Busca y extrae los valores numéricos para `pendiente`, `intercepto`, `r` (coeficiente de correlación), `r2` (coeficiente de determinación).
-          3.  **Extrae los cálculos de resumen.** Busca valores calculados adicionales como el `rsd_factor` (RSD de los factores de respuesta) y el `porcentaje_intercepto`.
-          4.  **Extrae la referencia.** Identifica el código de la corrida o de la hoja de trabajo (ej. "HT-...") y asígnalo a `referencia_linealidad`.
+          1.  **Procesa CADA vectorstore de reporte LIMS individualmente.** Para cada vectorstore que contenga "REPORTE_LINEALIDAD" en su nombre:
+             a. **Identifica el activo del reporte.** Busca en el título del documento términos como "VALORACIÓN", "LINEARITY RESULTS" seguidos del nombre del activo.
+             b. **Extrae el nombre del activo.** Captura el nombre exacto del ingrediente activo desde el título o encabezado del reporte.
+          2.  **Para CADA activo identificado:**
+             a. **Extrae la curva de calibración completa.** Busca la tabla principal de datos de linealidad. Debe contener columnas como "Level", "Concentration", "Response", y "Response Factor". **Es crucial que extraigas una entrada por cada inyección/réplica individual**, no un promedio por nivel.
+             b. **Extrae los parámetros de regresión.** Busca en las secciones de estadísticas los valores numéricos para `Slope` (pendiente), `Intercept` (intercepto), `Correlation Coefficient (r)`, `Determination Coefficient (r2)`.
+             c. **Extrae los cálculos de resumen.** Busca valores como `RSD Response Factor` y `Intercept as percentage of Y at 100%`.
+             d. **Extrae la referencia específica.** Identifica el código de referencia único del reporte (ej. "HT001/25-XXXXX ID-VAL").
+          3.  **Consolida en estructura final.** Crea un elemento en `activos_linealidad` por cada activo procesado y agrega todas las referencias a `referencia_linealidad`.
+        
+        - **VALIDACIÓN OBLIGATORIA:**
+          - **Verifica que el número de elementos en `activos_linealidad` coincida con el número de vectorstores de reportes LIMS procesados**
+          - **Si falta algún activo, revisa los vectorstores nuevamente con búsquedas más amplias**
 
     - **Ejemplo de Extracción Completa (Pre-Razonamiento):**
-      *NOTA: Este ejemplo ahora muestra múltiples réplicas por nivel, como solicitaste.*
+      *NOTA: Este ejemplo muestra múltiples activos genéricos con múltiples réplicas por nivel. DEBES extraer TODOS los activos encontrados en los vectorstores.*
 
       ```json
       {
         "activos_linealidad": [
           {
-            "nombre": "[NOMBRE_DEL_API_1]",
+            "nombre": "[NOMBRE_ACTIVO_1_EXTRAIDO_DEL_REPORTE]",
             "linealidad_sistema": [
-              { "nivel": "I (50%)", "replica": 1, "concentracion": 0.06, "area_pico": 150100 },
-              { "nivel": "I (50%)", "replica": 2, "concentracion": 0.06, "area_pico": 149900 },
-              { "nivel": "II (75%)", "replica": 1, "concentracion": 0.09, "area_pico": 225300 },
-              { "nivel": "II (75%)", "replica": 2, "concentracion": 0.09, "area_pico": 224700 },
-              { "nivel": "III (100%)", "replica": 1, "concentracion": 0.12, "area_pico": 300500 },
-              { "nivel": "III (100%)", "replica": 2, "concentracion": 0.12, "area_pico": 299500 },
-              { "nivel": "IV (125%)", "replica": 1, "concentracion": 0.15, "area_pico": 375600 },
-              { "nivel": "IV (125%)", "replica": 2, "concentracion": 0.15, "area_pico": 374400 },
-              { "nivel": "V (150%)", "replica": 1, "concentracion": 0.18, "area_pico": 450800 },
-              { "nivel": "V (150%)", "replica": 2, "concentracion": 0.18, "area_pico": 449200 }
+              { "nivel": "[NIVEL_EXTRAIDO]", "replica": 1, "concentracion": [VALOR_EXTRAIDO], "area_pico": [VALOR_EXTRAIDO] },
+              { "nivel": "[NIVEL_EXTRAIDO]", "replica": 2, "concentracion": [VALOR_EXTRAIDO], "area_pico": [VALOR_EXTRAIDO] },
+              { "nivel": "[NIVEL_EXTRAIDO]", "replica": 3, "concentracion": [VALOR_EXTRAIDO], "area_pico": [VALOR_EXTRAIDO] }
+              // ... TODAS las réplicas de TODOS los niveles
             ],
-            "rsd_factor": 1.5,
-            "pendiente": 2500000,
-            "intercepto": 1000,
-            "r": 0.9999,
-            "r2": 0.9998,
-            "porcentaje_intercepto": 1.2,
-            "criterio_linealidad": "[CRITERIO_LINEALIDAD_API_1]"
+            "rsd_factor": [VALOR_EXTRAIDO_RSD],
+            "pendiente": [VALOR_EXTRAIDO_SLOPE],
+            "intercepto": [VALOR_EXTRAIDO_INTERCEPT],
+            "r": [VALOR_EXTRAIDO_CORRELATION],
+            "r2": [VALOR_EXTRAIDO_DETERMINATION],
+            "porcentaje_intercepto": [VALOR_EXTRAIDO_PERCENTAGE],
+            "criterio_linealidad": "[CRITERIO_EXTRAIDO_DEL_PROTOCOLO]"
+          },
+          {
+            "nombre": "[NOMBRE_ACTIVO_2_EXTRAIDO_DEL_REPORTE]",
+            "linealidad_sistema": [
+              { "nivel": "[NIVEL_EXTRAIDO]", "replica": 1, "concentracion": [VALOR_EXTRAIDO], "area_pico": [VALOR_EXTRAIDO] },
+              { "nivel": "[NIVEL_EXTRAIDO]", "replica": 2, "concentracion": [VALOR_EXTRAIDO], "area_pico": [VALOR_EXTRAIDO] }
+              // ... TODAS las réplicas de TODOS los niveles para este activo
+            ],
+            "rsd_factor": [VALOR_EXTRAIDO_RSD],
+            "pendiente": [VALOR_EXTRAIDO_SLOPE],
+            "intercepto": [VALOR_EXTRAIDO_INTERCEPT],
+            "r": [VALOR_EXTRAIDO_CORRELATION],
+            "r2": [VALOR_EXTRAIDO_DETERMINATION],
+            "porcentaje_intercepto": [VALOR_EXTRAIDO_PERCENTAGE],
+            "criterio_linealidad": "[CRITERIO_EXTRAIDO_DEL_PROTOCOLO]"
           }
+          // ... TANTOS ELEMENTOS COMO ACTIVOS ENCUENTRES EN LOS VECTORSTORES
         ],
-        "referencia_linealidad": ["[HT001XXXXXX]"]
+        "referencia_linealidad": ["[REFERENCIA_ACTIVO_1]", "[REFERENCIA_ACTIVO_2]", "[REFERENCIA_ACTIVO_N]"]
       }
       ```
 
@@ -365,8 +389,8 @@ RULES_SET_3 = """
             "porcentaje_intercepto": 1.2,
             "cumple_global": "Cumple",
             "criterio_linealidad": "Coeficiente de correlación (r) criterio": "≥ 0.995",
-            "regresion_png_path": "C:/Users/Ivan/OneDrive - Grupo Procaps/Portafolio NTF/16 - I&D 4.0/12. Informes de validación/Valida/src/images/linealidad_regresion_12345678-1234-5678-9abc-123456789abc.png",
-            "residuales_png_path": "C:/Users/Ivan/OneDrive - Grupo Procaps/Portafolio NTF/16 - I&D 4.0/12. Informes de validación/Valida/src/images/linealidad_residuales_12345678-1234-5678-9abc-123456789abc.png"
+            "regresion_png_path": "RUTA A LA IMAGEN DE GRAFICO DE REGRESION",
+            "residuales_png_path": "RUTA A LA IMAGEN DE GRAFICO DE RESIDUALES"
           }
         ],
         "referencia_linealidad": ["[HT001XXXXXX]"],        
@@ -644,28 +668,25 @@ RULES_SET_6 = """
   `<REGLAS_DE_EXTRACCION_ESTRUCTURADA>`
   Estas reglas aplican al `structured_extraction_agent`.
 
-    - **Objetivo General:** Extraer el criterio de aceptación para la **precisión del método** desde el protocolo de validación y los datos experimentales (valoraciones individuales) desde los reportes LIMS, estructurando la información según el modelo `Set6ExtractionModel`.
+    - **Objetivo General:** Extraer los criterios de aceptación para la **precisión intermedia** desde el protocolo de validación y los dos conjuntos de datos experimentales desde los reportes LIMS, estructurando la información según el modelo `Set7ExtractionModel`.
 
   -----
 
-    - **Fase 1: Extracción del Criterio de Aceptación desde el Protocolo**
+    - **Fase 1: Extracción de Criterios de Aceptación desde el Protocolo**
 
         - **Fuente Primaria:** Documento del **Protocolo de Validación**.
-        - **Objetivo Específico:** Identificar y extraer el criterio de aceptación para la Desviación Estándar Relativa (RSD).
+        - **Objetivo Específico:** Identificar y extraer los criterios de aceptación para la precisión intermedia. Estos suelen incluir un criterio para el RSD global y un criterio para la comparación de medias (prueba t).
         - **Plan de Acción:**
-          1.  **Enfócate en el protocolo.** Realiza búsquedas específicas usando términos como "Precisión del método", "Repetibilidad", "Method Precision", "Criterio de Aceptación", y "%RSD".
-          2.  **Busca el umbral de RSD%.** El criterio se expresa típicamente como un límite máximo. Por ejemplo: "El %RSD de las seis preparaciones no debe ser mayor a 2.0%". Extrae este texto.
-          3.  **Puebla el campo de criterio.** Asigna el texto extraído al campo `criterio_precision_metodo`.
+          1.  **Enfócate en el protocolo.** Realiza búsquedas específicas usando términos como "Precisión intermedia", "Intermediate Precision", "Comparación de medias", "Prueba t de Student", "RSD global".
+          2.  **Busca los criterios.** Localiza el texto que define los límites aceptables. Por ejemplo: "El RSD global de las 12 determinaciones debe ser ≤ 3.0%" y "Las medias de los dos conjuntos de datos no deben ser estadísticamente diferentes (prueba t, α=0.05)".
+          3.  **Puebla el campo de criterio.** Extrae y asigna estos textos al campo `criterio_precision_intermedia`.
         - **Salida de Fase 1 (Ejemplo):**
           ```json
           {
-            "activos_precision_metodo": [
+            "activos_precision_intermedia": [
               {
-                "nombre": "[api_1_nombre]",
-                "criterio_precision_metodo": "El %RSD no debe ser mayor a 2.0%",
-                "precision_metodo": [],
-                "rsd_precision_metodo": null,
-                "conclusion_precision_metodo": "[pendiente_datos]"
+                "nombre": "[nombre_ingrediente_activo]",
+                "criterio_precision_intermedia": "RSD global de 12 réplicas ≤ 3.0%; Las medias no deben ser estadísticamente diferentes (t-test, 95% confianza)."
               }
             ]
           }
@@ -673,70 +694,84 @@ RULES_SET_6 = """
 
   -----
 
-    - **Fase 2: Extracción de Datos de Ejecución desde el Reporte LIMS**
+    - **Fase 2: Extracción de los Dos Conjuntos de Datos desde Reportes LIMS**
 
-        - **Fuente Primaria:** Reporte de datos crudos del **LIMS** o la **Hoja de Trabajo Analítica**.
-        - **Objetivo Específico:** Extraer la lista completa de valoraciones (% de activo) para todas las réplicas y el RSD% si el software ya lo ha calculado.
+        - **Fuente Primaria:** Dos reportes de datos crudos del **LIMS** o Hojas de Trabajo Analíticas, cada uno representando un conjunto de condiciones (ej. Analista 1/Día 1 y Analista 2/Día 2).
+        - **Objetivo Específico:** Extraer los dos conjuntos completos de valoraciones (% de activo) que conforman el estudio de precisión intermedia.
+        - **CRÍTICO - Procesamiento de Múltiples Reportes:**
+            - **DEBES** identificar y procesar los dos reportes LIMS que contienen los datos para la comparación.
+            - **DEBES** asignar los datos de un reporte al `conjunto_1` y los del otro al `conjunto_2`.
+            - **DEBES** capturar las referencias de ambos reportes.
         - **Plan de Acción:**
-          1.  **Busca la tabla de resultados.** Identifica la tabla correspondiente a "Precisión del Método" o "Repetibilidad". Debe contener columnas como "Réplica", "Muestra N°" y "Valoración %" o "Resultado".
-          2.  **Extrae todas las réplicas.** Captura cada resultado individual en la lista `precision_metodo`. Es crucial no omitir ninguna réplica.
-          3.  **Busca el RSD% pre-calculado.** Revisa si al final de la tabla o en una sección de resumen, el reporte ya incluye un valor para "RSD%" o "% C.V.". Si existe, extráelo y asígnalo a `rsd_precision_metodo`. Si no, déjalo como `null`.
-          4.  **Extrae la referencia.** Localiza el identificador del análisis (ej. "RUN-...") y asígnalo a `referencia_precision_metodo`.
-        - **Normalización de Datos:**
-            - `replica`: Mantener como texto original.
-            - `porcentaje_activo`: Convertir a tipo flotante (`float`), unificando comas a puntos decimales.
-
-  -----
-
-    - **Ejemplo de Extracción Completa (Pre-Razonamiento):**
-      ```json
-      {
-        "activos_precision_metodo": [
+          1.  **Identifica los dos reportes.** Busca reportes de precisión que se diferencien por una variable clave (analista, fecha, equipo, etc.).
+          2.  **Procesa el Primer Reporte.** Extrae la tabla de resultados (columnas "Réplica", "Resultado %") y asigna la lista completa de datos a `conjunto_1`. Extrae su ID de referencia.
+          3.  **Procesa el Segundo Reporte.** Extrae la tabla de resultados de la misma manera y asigna la lista completa de datos a `conjunto_2`. Extrae su ID de referencia.
+        - **Ejemplo de Extracción Completa (Pre-Razonamiento):**
+          ```json
           {
-            "nombre": "[nombre_ingrediente_activo]",
-            "precision_metodo": [
-              { "replica": "1", "porcentaje_activo": 99.8 },
-              { "replica": "2", "porcentaje_activo": 100.3 },
-              { "replica": "3", "porcentaje_activo": 100.1 },
-              { "replica": "4", "porcentaje_activo": 99.7 },
-              { "replica": "5", "porcentaje_activo": 100.0 },
-              { "replica": "6", "porcentaje_activo": 99.9 }
+            "activos_precision_intermedia": [
+              {
+                "nombre": "[nombre_ingrediente_activo_1]",
+                "precision_metodo": [
+                  { "replica": "1", "porcentaje_activo": 99.8 },
+                  { "replica": "2", "porcentaje_activo": 100.3 },
+                  { "replica": "3", "porcentaje_activo": 100.1 },
+                  { "replica": "4", "porcentaje_activo": 99.7 },
+                  { "replica": "5", "porcentaje_activo": 100.0 },
+                  { "replica": "6", "porcentaje_activo": 99.9 }
+                ],                
+                "criterio_precision_intermedia": "RSD global de 12 réplicas ≤ 3.0%; Las medias no deben ser estadísticamente diferentes (t-test, 95% confianza)."
+              },{
+                "nombre": "[nombre_ingrediente_activo_2]",
+                "precision_metodo": [
+                  { "replica": "1", "porcentaje_activo": 100.5 },
+                  { "replica": "2", "porcentaje_activo": 100.8 },
+                  { "replica": "3", "porcentaje_activo": 99.9 },
+                  { "replica": "4", "porcentaje_activo": 101.0 },
+                  { "replica": "5", "porcentaje_activo": 100.2 },
+                  { "replica": "6", "porcentaje_activo": 100.7 }
+                ],
+                "criterio_precision_intermedia": "RSD global de 12 réplicas ≤ 3.0%; Las medias no deben ser estadísticamente diferentes (t-test, 95% confianza)."
+              }
             ],
-            "conclusion_precision_metodo": "[pendiente_validar]",
-            "rsd_precision_metodo": null, // El LIMS no lo reportó, se calculará después
-            "criterio_precision_metodo": "El %RSD no debe ser mayor a 2.0%"
+            "referencia_precision_intermedia": "[ref_conjunto_1]", "[ref_conjunto_2]"
           }
-        ],
-        "referencia_precision_metodo": "[lims_run_o_ref_analitica]"
-      }
-      ```
+          ```
 
   `</REGLAS_DE_EXTRACCION_ESTRUCTURADA>`
 
   <br>
 
   `<REGLAS_DE_RAZONAMIENTO>`
-  Estas reglas aplican al `reasoning_agent`.
+  Estas reglas aplican al `reasoning_agent`. **NO utilizarás `linealidad_tool` ni ninguna otra herramienta de graficado.**
 
-    - **Objetivo Principal:** Validar los datos, calcular el RSD% (si es necesario) y compararlo contra el criterio de aceptación para determinar si el método es preciso.
+    - **Objetivo Principal:** Realizar un análisis estadístico para comparar las medias de los dos conjuntos de datos (Prueba t de Student) y evaluar el RSD global contra los criterios del protocolo.
 
     - **Entradas:** El objeto JSON completo del `structured_extraction_agent`.
 
     - **Pasos del Razonamiento (por cada API):**
 
-      1.  **Verificar Datos de Entrada:** Confirma que la lista `precision_metodo` contiene datos válidos. Anota el número de réplicas (`N`).
-      2.  **Calcular RSD% (si es necesario):**
-            - **SI** el campo `rsd_precision_metodo` es `null`:
-                - Calcula el promedio de `porcentaje_activo`.
-                - Calcula la desviación estándar (σ, n-1) de `porcentaje_activo`.
-                - Calcula el RSD% con la fórmula: `RSD% = (desviación_estándar / promedio) * 100`.
-                - Documenta los cálculos intermedios (N, promedio, desv. est.) y el resultado.
-            - **SI** `rsd_precision_metodo` ya fue extraído, úsalo directamente, anotando que es el valor reportado por el LIMS.
-      3.  **Comparar con Criterio:** Extrae el umbral numérico del `criterio_precision_metodo` (ej: 2.0). Compara el RSD% final contra este umbral.
-      4.  **Determinar Conclusión:**
-            - Si `RSD% ≤ Umbral_Criterio` → la conclusión es **"Cumple"**.
-            - Si `RSD% > Umbral_Criterio` → la conclusión es **"No Cumple"**.
-      5.  **Justificación Final:** Escribe un resumen conciso. Ejemplo: *"Se analizaron N=6 réplicas. El RSD% calculado fue de 0.22%, el cual es menor o igual al criterio de aceptación de ≤ 2.0%. Por lo tanto, el método cumple."*
+      1.  **Cálculos Estadísticos por Conjunto:**
+            - Para `conjunto_1`: Documenta N₁, promedio₁, desv. est₁ y RSD₁%.
+            - Para `conjunto_2`: Documenta N₂, promedio₂, desv. est₂ y RSD₂%.
+      2.  **Cálculos Estadísticos Globales:**
+            - Combina todos los datos de `conjunto_1` y `conjunto_2`.
+            - Documenta N\_total, y el RSD\_global%.
+      3.  **Ejecutar Prueba t de Student para Comparar Medias:**
+            - **Hipótesis Nula (H₀):** Las medias de los dos conjuntos son iguales (μ₁ = μ₂).
+            - **Cálculos Intermedios (Documentar cada paso):**
+                - Varianza ponderada (`Sp²`): `Sp² = [((N₁-1)*s₁²) + ((N₂-1)*s₂²)] / (N₁ + N₂ - 2)`
+                - Desviación estándar ponderada (`Sp`): `Sp = sqrt(Sp²)`
+                - Valor t calculado (`t_calculado`): `t_calculado = |promedio₁ - promedio₂| / (Sp * sqrt(1/N₁ + 1/N₂))`
+            - **Obtener Valor t Crítico (`t_critico`):**
+                - Grados de libertad (`gl`): `gl = N₁ + N₂ - 2`.
+                - Nivel de significancia (`α`): 0.05 (para 95% de confianza).
+                - Busca el valor `t_critico` de dos colas en una tabla t de Student para los `gl` y `α` calculados.
+      4.  **Evaluar Criterios y Concluir:**
+            - **Evaluación de Medias:** Compara `t_calculado` vs `t_critico`. Si `t_calculado ≤ t_critico`, las medias **NO son** estadísticamente diferentes. → **Cumple**.
+            - **Evaluación de Precisión Global:** Compara `RSD_global%` vs el criterio del protocolo (ej. ≤ 3.0%). → **Cumple/No Cumple**.
+            - **Conclusión Final (`conclusion_precision_intermedia`):** El resultado es **"Cumple"** solo si **ambas** evaluaciones (medias y RSD global) cumplen. Si una falla, el resultado es **"No Cumple"**.
+      5.  **Justificación Final:** Escribe un resumen claro. Ejemplo: *"La prueba t de Student (t\_calc=X.XX ≤ t\_crit=Y.YY) demuestra que las medias no son estadísticamente diferentes. El RSD global (Z.ZZ%) cumple con el criterio de ≤ 3.0%. Por lo tanto, el método cumple con la precisión intermedia."*
 
   `</REGLAS_DE_RAZONAMIENTO>`
 
@@ -745,33 +780,36 @@ RULES_SET_6 = """
   `<REGLAS_DE_SALIDA_SUPERVISOR>`
   Estas reglas aplican al `supervisor` para generar la salida final.
 
-    - **Modelo de Salida:** Un único objeto JSON bien formado que siga la estructura `Set6StructuredOutputSupervisor`. No incluyas texto fuera del JSON.
+    - **Modelo de Salida:** Un único objeto JSON bien formado que siga la estructura `Set7StructuredOutputSupervisor`.
 
-    - **Condición:** Genera la salida **solo después** de que el `reasoning_agent` haya completado y documentado su análisis.
+    - **Condición:** Generar la salida solo después de que el `reasoning_agent` haya documentado su análisis estadístico completo.
 
-    - **Integración de Datos:** El JSON final debe contener los datos crudos (`precision_metodo`), el `criterio_precision_metodo`, el RSD% final (calculado o extraído), y la `conclusion_precision_metodo` determinada por el razonamiento.
+    - **Integración de Datos:** El JSON final debe incluir los datos crudos, los resultados del análisis estadístico (`comparacion_conjuntos`), la conclusión final y los criterios.
 
     - **Ejemplo de Salida del Supervisor (Caso "Cumple"):**
 
       ```json
       {
-        "activos_precision_metodo": [
+        "activos_precision_intermedia": [
           {
             "nombre": "[nombre_ingrediente_activo]",
-            "precision_metodo": [
-              { "replica": "1", "porcentaje_activo": 99.8 },
-              { "replica": "2", "porcentaje_activo": 100.3 },
-              { "replica": "3", "porcentaje_activo": 100.1 },
-              { "replica": "4", "porcentaje_activo": 99.7 },
-              { "replica": "5", "porcentaje_activo": 100.0 },
-              { "replica": "6", "porcentaje_activo": 99.9 }
+            "conjunto_1": [
+              { "replica": "1", "porcentaje_activo": 99.8 } // ... y las demás réplicas
             ],
-            "conclusion_precision_metodo": "Cumple",
-            "rsd_precision_metodo": 0.22,
-            "criterio_precision_metodo": "El %RSD no debe ser mayor a 2.0%"
+            "conjunto_2": [
+              { "replica": "1", "porcentaje_activo": 100.5 } // ... y las demás réplicas
+            ],
+            "comparacion_conjuntos": {
+              "rsd_global": 0.45,
+              "t_calculado": 1.85,
+              "t_critico": 2.228,
+              "conclusion_medias": "Estadísticamente Iguales"
+            },
+            "conclusion_precision_intermedia": "Cumple",
+            "criterio_precision_intermedia": "RSD global de 12 réplicas ≤ 3.0%; Las medias no deben ser estadísticamente diferentes (t-test, 95% confianza)."
           }
         ],
-        "referencia_precision_metodo": "[lims_run_o_ref_analitica]"
+        "referencia_precision_intermedia": ["[ref_conjunto_1]", "[ref_conjunto_2]"]
       }
       ```
 
@@ -947,24 +985,659 @@ RULES_SET_7 = """
 
   — RESTRICCIÓN CRÍTICA (repetir siempre): RAZONAMIENTO → LUEGO SALIDA. Cualquier cálculo o inferencia debe documentarse antes de la salida final.
   </REGLAS_DE_SALIDA_ESTRUCTURADA>
-"""
+  """
+
 
 RULES_SET_8 = """
+  <REGLAS_DE_EXTRACCION_ESTRUCTURADA>
+  Estas reglas aplican al structured_extraction_agent.
 
+  - Objetivo: Extraer y estructurar la **estabilidad de soluciones** (estándar y muestra) desde reportes LIMS y protocolo, conforme a `Set8ExtractionModel`.
 
+  - Plan iterativo (varios ciclos sobre el vectorstore):
+    1) Descubrimiento de soluciones: buscar tablas por patrón de tiempos (“Initial Sample Stability”, “Sample Stability Time 1..n”) y réplicas (“Solucion Estandar/Muestra R1..R3”) separadas por **Condición 1** y **Condición 2**.
+    2) Extracción por solución (subciclo por cada solución encontrada):
+      • Construir `data_estabilidad_solucion` como lista de entradas por (tiempo_estabilidad, condición_estabilidad).  
+      • Para cada entrada:
+        - `data_condicion` ← lista de {replica:int, area:float} recolectada de las réplicas R1..R3.  
+        - `promedio_areas` ← si el LIMS lo reporta (“Promedio Solucion ...”), guardarlo; si falta, dejar "[pendiente_calcular]".  
+        - `diferencia_promedios` ← si el LIMS lo reporta como “%di ...”, guardarlo; si falta, "[pendiente_calcular]".  
+        - `criterio_aceptacion` ← extraer del Protocolo (umbral de variación permisible vs. tiempo inicial; registrar literal).  
+        - `conclusion_estabilidad` ← inicializar "[pendiente_validar]".
+    3) Trazabilidad obligatoria (ledger interno, no en la salida): source_document (LIMS/Protocolo), page_or_span, query_used, confidence, cleaning_notes.
+    4) Normalización mínima:
+      • Decimales coma→punto; áreas y promedios como float.  
+      • Tiempos con literal exacto del LIMS.  
+      • `replica` entero ≥1; eliminar filas incompletas (sin área) con motivo documentado.
+    5) Deduplificación: si hay múltiples corridas, unificar por (solución, tiempo, condición, réplica, run_id) conservando la más completa/reciente.
+    6) Relleno de huecos: tras los ciclos, los campos faltantes permanecen con "[pendiente_calcular]" o "[pendiente_validar]" y se deja constancia en trazabilidad.
+
+  - Ejemplo de extracción estructurada (Set8ExtractionModel con placeholders):
+  {
+    "soluciones": [
+      {
+        "solucion": "[Solucion Estandar X]",
+        "data_estabilidad_solucion": [
+          {
+            "condicion_estabilidad": "Condicion 1",
+            "tiempo_estabilidad": "Initial Sample Stability",
+            "promedio_areas": 250000.0,
+            "diferencia_promedios": 0.0,
+            "criterio_aceptacion": "[|%di| <= 2.0% vs tiempo inicial]",
+            "conclusion_estabilidad": "[pendiente_validar]",
+            "data_condicion": [
+              { "replica": 1, "area": 249800.0 },
+              { "replica": 2, "area": 250100.0 },
+              { "replica": 3, "area": 250100.0 }
+            ]
+          },
+          {
+            "condicion_estabilidad": "Condicion 2",
+            "tiempo_estabilidad": "Initial Sample Stability",
+            "promedio_areas": 249900.0,
+            "diferencia_promedios": 0.0,
+            "criterio_aceptacion": "[|%di| <= 2.0% vs tiempo inicial]",
+            "conclusion_estabilidad": "[pendiente_validar]",
+            "data_condicion": [
+              { "replica": 1, "area": 249700.0 },
+              { "replica": 2, "area": 250000.0 },
+              { "replica": 3, "area": 250000.0 }
+            ]
+          },
+          {
+            "condicion_estabilidad": "Condicion 1",
+            "tiempo_estabilidad": "Sample Stability Time 1",
+            "promedio_areas": "[pendiente_calcular]",
+            "diferencia_promedios": "[pendiente_calcular]",
+            "criterio_aceptacion": "[|%di| <= 2.0% vs tiempo inicial]",
+            "conclusion_estabilidad": "[pendiente_validar]",
+            "data_condicion": [
+              { "replica": 1, "area": 249300.0 },
+              { "replica": 2, "area": 249900.0 },
+              { "replica": 3, "area": 249800.0 }
+            ]
+          }
+        ]
+      },
+      {
+        "solucion": "[Solucion Muestra Y]",
+        "data_estabilidad_solucion": [
+          {
+            "condicion_estabilidad": "Condicion 1",
+            "tiempo_estabilidad": "Initial Sample Stability",
+            "promedio_areas": 310000.0,
+            "diferencia_promedios": 0.0,
+            "criterio_aceptacion": "[|%di| <= 2.0% vs tiempo inicial]",
+            "conclusion_estabilidad": "[pendiente_validar]",
+            "data_condicion": [
+              { "replica": 1, "area": 309600.0 },
+              { "replica": 2, "area": 310100.0 },
+              { "replica": 3, "area": 310300.0 }
+            ]
+          }
+        ]
+      }
+    ],
+    "referencia_analitica": ["[HT00XXXXXX]", "[METODO-REF-YY]"],
+    "conclusion_estabilidad_muestra": "[pendiente_validar]"
+  }
+  </REGLAS_DE_EXTRACCION_ESTRUCTURADA>
+
+  <REGLAS_DE_RAZONAMIENTO>
+  Estas reglas aplican al reasoning_agent.
+
+  - RESTRICCIÓN CLAVE: Documentar el razonamiento **antes** de cualquier conclusión o salida.
+
+  - Pasos por solución (explicitar cálculos e inferencias):
+    1) Agrupar por (tiempo_estabilidad, condición) y verificar N réplicas válidas (≥3 usualmente); listar las áreas usadas.
+    2) Cálculos intermedios:
+      • Si `promedio_areas` = "[pendiente_calcular]": promedio = mean(áreas).  
+      • Para cada (tiempo, condición), calcular %di respecto al **promedio del tiempo inicial de la misma condición**:  
+        %di = 100 * abs(promedio_t - promedio_t0) / promedio_t0.  
+        Guardar como `diferencia_promedios` si venía "[pendiente_calcular]".
+    3) Comparación con criterio:
+      • Extraer umbral desde `criterio_aceptacion` (ej. “|%di| <= 2.0%”).  
+      • Para cada (tiempo, condición): si |%di| ≤ umbral → “Cumple”; si no → “No Cumple”. Rellenar `conclusion_estabilidad`.
+    4) Conclusión global de la muestra:
+      • `conclusion_estabilidad_muestra` = "Cumple" si **todas** las entradas de esa solución cumplen; de lo contrario "No Cumple".  
+      • Si el set requiere una sola conclusión global para todas las soluciones, usar AND lógico entre soluciones y dejar nota del criterio aplicado.
+    5) Documentar: valores de t0, promedios por tiempo, %di por condición y umbral aplicado.
+
+  - Mini-ejemplo de razonamiento (orden correcto):
+    • Condición 1 (t0): promedio_t0 = 250000.0  
+    • Condición 1 (t1): promedio_t1 = 249667.0 → %di = 100*|249667-250000|/250000 = 0.133%  
+    • Umbral = 2.0% → Cumple en t1; todas las entradas cumplen → conclusión solución = “Cumple”.  
+    • Todas las soluciones cumplen → `conclusion_estabilidad_muestra` = “Cumple”.
+  </REGLAS_DE_RAZONAMIENTO>
+
+  <REGLAS_DE_SALIDA_ESTRUCTURADA>
+  Estas reglas aplican al supervisor.
+
+  - Modelo de salida: `Set8StructuredOutputSupervisor` en JSON bien formado. **Emitir solo el JSON final**, después de documentar el razonamiento.
+  - Integración:
+    • Completar `promedio_areas` y `diferencia_promedios` si fueron calculados.  
+    • Fijar `conclusion_estabilidad` por (tiempo, condición).  
+    • Determinar `conclusion_estabilidad_muestra` (global).  
+    • Mantener `referencia_analitica`.
+
+  - Ejemplo A (caso global “Cumple”) — Orden: 1) razonamiento → 2) salida
+  Razonamiento (resumen): Para [Solucion Estandar X], C1: t0=250000.0; t1=249667.0 → %di=0.133% (≤2.0%). C2: t0=249900.0; t1=249733.3 → %di=0.067% (≤2.0%). Para [Solucion Muestra Y], C1: t0=310000.0; t1=309700.0 → %di=0.097% (≤2.0%). Todas cumplen → conclusión global “Cumple”.
+
+  {
+    "soluciones": [
+      {
+        "solucion": "[Solucion Estandar X]",
+        "data_estabilidad_solucion": [
+          {
+            "condicion_estabilidad": "Condicion 1",
+            "tiempo_estabilidad": "Initial Sample Stability",
+            "promedio_areas": 250000.0,
+            "diferencia_promedios": 0.0,
+            "criterio_aceptacion": "[|%di| <= 2.0% vs tiempo inicial]",
+            "conclusion_estabilidad": "Cumple",
+            "data_condicion": [
+              { "replica": 1, "area": 249800.0 },
+              { "replica": 2, "area": 250100.0 },
+              { "replica": 3, "area": 250100.0 }
+            ]
+          },
+          {
+            "condicion_estabilidad": "Condicion 1",
+            "tiempo_estabilidad": "Sample Stability Time 1",
+            "promedio_areas": 249667.0,
+            "diferencia_promedios": 0.133,
+            "criterio_aceptacion": "[|%di| <= 2.0% vs tiempo inicial]",
+            "conclusion_estabilidad": "Cumple",
+            "data_condicion": [
+              { "replica": 1, "area": 249300.0 },
+              { "replica": 2, "area": 249900.0 },
+              { "replica": 3, "area": 249800.0 }
+            ]
+          }
+        ]
+      },
+      {
+        "solucion": "[Solucion Muestra Y]",
+        "data_estabilidad_solucion": [
+          {
+            "condicion_estabilidad": "Condicion 1",
+            "tiempo_estabilidad": "Initial Sample Stability",
+            "promedio_areas": 310000.0,
+            "diferencia_promedios": 0.0,
+            "criterio_aceptacion": "[|%di| <= 2.0% vs tiempo inicial]",
+            "conclusion_estabilidad": "Cumple",
+            "data_condicion": [
+              { "replica": 1, "area": 309600.0 },
+              { "replica": 2, "area": 310100.0 },
+              { "replica": 3, "area": 310300.0 }
+            ]
+          },
+          {
+            "condicion_estabilidad": "Condicion 1",
+            "tiempo_estabilidad": "Sample Stability Time 1",
+            "promedio_areas": 309700.0,
+            "diferencia_promedios": 0.097,
+            "criterio_aceptacion": "[|%di| <= 2.0% vs tiempo inicial]",
+            "conclusion_estabilidad": "Cumple",
+            "data_condicion": [
+              { "replica": 1, "area": 309500.0 },
+              { "replica": 2, "area": 309800.0 },
+              { "replica": 3, "area": 309800.0 }
+            ]
+          }
+        ]
+      }
+    ],
+    "referencia_analitica": ["[HT00XXXXXX]", "[METODO-REF-YY]"],
+    "conclusion_estabilidad_muestra": "Cumple"
+  }
+
+  - Ejemplo B (caso con incumplimiento, opcional para pruebas) — Razonamiento (resumen): C2 t2 %di=2.7% (>2.0%) → “No Cumple” para esa entrada; al existir alguna entrada “No Cumple”, la conclusión global de la solución (o del lote completo si así se define) es “No Cumple”.
+
+  — RESTRICCIÓN CRÍTICA (repetir siempre): **RAZONAMIENTO → LUEGO SALIDA**. Cualquier cálculo o inferencia (promedios, %di, reglas por condición/tiempo) debe documentarse antes de la salida final.
+  </REGLAS_DE_SALIDA_ESTRUCTURADA>
 """
 
 RULES_SET_9 = """
+  <REGLAS_DE_EXTRACCION_ESTRUCTURADA>
+  Estas reglas aplican al structured_extraction_agent.
 
+  - Objetivo: Extraer y estructurar datos de **estabilidad de soluciones de MUESTRA** desde reportes LIMS y protocolo, conforme a `Set9ExtractionModel`.
 
+  - Plan iterativo (varios ciclos sobre el vectorstore):
+    1) Descubrir soluciones de muestra: buscar tablas con tiempos (“Initial Sample Stability”, “Sample Stability Time 1..n”), réplicas (“Solucion Muestra R1..R3”) y **Condición 1/2**.
+    2) Extracción por solución (subciclo por cada solución de muestra):
+      • Construir `data_estabilidad_solucion` con entradas por (tiempo_estabilidad, condicion_estabilidad).  
+      • Para cada entrada:
+        - `data_condicion` ← lista de {replica:int, area:float} recolectada de R1..R3.  
+        - `promedio_areas` ← si el LIMS lo reporta (p.ej. “Promedio Solucion Muestra Tiempo …”), guardarlo; si falta, usar "[pendiente_calcular]".  
+        - `diferencia_promedios` ( %di ) ← si el LIMS lo reporta (“%di …”), guardarlo; si falta, "[pendiente_calcular]".  
+        - `criterio_aceptacion` ← literal del Protocolo (umbral de variación vs. t0, p.ej. "|%di| <= 2.0%").  
+        - `conclusion_estabilidad` ← inicializar "[pendiente_validar]".
+    3) Trazabilidad obligatoria (interna): source_document (LIMS/Protocolo), page/span, query_used, confidence, cleaning_notes.
+    4) Normalización mínima:
+      • Decimales coma→punto; áreas/promedios como float.  
+      • Mantener textos exactos para tiempos; `replica` entero ≥1.  
+      • Eliminar filas sin área, anotando motivo.
+    5) Deduplificar corridas: unificar por (solución, tiempo, condición, réplica, run_id) priorizando la más completa/reciente.
+    6) Relleno de huecos: si tras los ciclos faltan campos, conservar "[pendiente_calcular]" o "[pendiente_validar]" y registrar en trazabilidad.
+
+  - Ejemplo de extracción estructurada (Set9ExtractionModel con placeholders):
+  {
+    "soluciones": [
+      {
+        "solucion": "[Solucion Muestra A]",
+        "data_estabilidad_solucion": [
+          {
+            "condicion_estabilidad": "Condicion 1",
+            "tiempo_estabilidad": "Initial Sample Stability",
+            "promedio_areas": 305000.0,
+            "diferencia_promedios": 0.0,
+            "criterio_aceptacion": "[|%di| <= 2.0% vs tiempo inicial]",
+            "conclusion_estabilidad": "[pendiente_validar]",
+            "data_condicion": [
+              { "replica": 1, "area": 304700.0 },
+              { "replica": 2, "area": 305200.0 },
+              { "replica": 3, "area": 305100.0 }
+            ]
+          },
+          {
+            "condicion_estabilidad": "Condicion 1",
+            "tiempo_estabilidad": "Sample Stability Time 1",
+            "promedio_areas": "[pendiente_calcular]",
+            "diferencia_promedios": "[pendiente_calcular]",
+            "criterio_aceptacion": "[|%di| <= 2.0% vs tiempo inicial]",
+            "conclusion_estabilidad": "[pendiente_validar]",
+            "data_condicion": [
+              { "replica": 1, "area": 304600.0 },
+              { "replica": 2, "area": 304900.0 },
+              { "replica": 3, "area": 305000.0 }
+            ]
+          }
+        ]
+      },
+      {
+        "solucion": "[Solucion Muestra B]",
+        "data_estabilidad_solucion": [
+          {
+            "condicion_estabilidad": "Condicion 2",
+            "tiempo_estabilidad": "Initial Sample Stability",
+            "promedio_areas": 298500.0,
+            "diferencia_promedios": 0.0,
+            "criterio_aceptacion": "[|%di| <= 2.0% vs tiempo inicial]",
+            "conclusion_estabilidad": "[pendiente_validar]",
+            "data_condicion": [
+              { "replica": 1, "area": 298300.0 },
+              { "replica": 2, "area": 298600.0 },
+              { "replica": 3, "area": 298600.0 }
+            ]
+          }
+        ]
+      }
+    ],
+    "referencia_analitica": ["[HT00XXXXXX]", "[METODO-REF-YY]"]
+  }
+  </REGLAS_DE_EXTRACCION_ESTRUCTURADA>
+
+  <REGLAS_DE_RAZONAMIENTO>
+  Estas reglas aplican al reasoning_agent.
+
+  - RESTRICCIÓN CRÍTICA: **El razonamiento SIEMPRE debe preceder a la conclusión/salida** y documentar cálculos/interferencias.
+
+  - Pasos por solución de muestra (explicitar cálculos):
+    1) Agrupar por (tiempo_estabilidad, condicion_estabilidad) y validar N réplicas (≥3); listar áreas usadas.
+    2) Cálculos intermedios:
+      • Si `promedio_areas` == "[pendiente_calcular]": promedio = mean(áreas).  
+      • Para cada (tiempo, condición), calcular %di contra el **promedio del tiempo inicial de la MISMA condición**:  
+        %di = 100 * abs(prom_t - prom_t0) / prom_t0.  
+        Si `diferencia_promedios` está "[pendiente_calcular]", asignar el %di calculado.
+    3) Comparación con criterio:
+      • Parsear umbral desde `criterio_aceptacion` (p.ej. 2.0%).  
+      • Si |%di| ≤ umbral → `conclusion_estabilidad` = "Cumple"; si no → "No Cumple".
+    4) Documentar explícitamente: t0, promedios por tiempo, %di y umbral aplicado por condición.
+
+  - Mini-ejemplo de razonamiento (orden correcto):
+    • Condición 1 (t0): prom_t0 = 305000.0  
+    • Condición 1 (t1): prom_t1 = 304833.3 → %di = 100*|304833.3-305000|/305000 = 0.055%  
+    • Umbral = 2.0% → Cumple → fijar `conclusion_estabilidad`="Cumple".
+  </REGLAS_DE_RAZONAMIENTO>
+
+  <REGLAS_DE_SALIDA_ESTRUCTURADA>
+  Estas reglas aplican al supervisor.
+
+  - Modelo de salida: `Set9StructuredOutputSupervisor`. **Emitir SOLO el JSON final** tras documentar el razonamiento.
+  - Integración:
+    • Completar `promedio_areas` y `diferencia_promedios` si fueron calculados.  
+    • Establecer `conclusion_estabilidad` por cada (tiempo, condición).  
+    • Mantener `referencia_analitica`.
+
+  - Ejemplo de salida del supervisor — Orden: 1) razonamiento (resumen) → 2) JSON final
+  Razonamiento (resumen): Para [Solucion Muestra A] C1: t0=305000.0; t1=304833.3 → %di=0.055% (≤2.0%) ⇒ Cumple. Para [Solucion Muestra B] C2: t0=298500.0 (sin otros tiempos) ⇒ por defecto Cumple en t0.
+
+  {
+    "soluciones": [
+      {
+        "solucion": "[Solucion Muestra A]",
+        "data_estabilidad_solucion": [
+          {
+            "condicion_estabilidad": "Condicion 1",
+            "tiempo_estabilidad": "Initial Sample Stability",
+            "promedio_areas": 305000.0,
+            "diferencia_promedios": 0.0,
+            "criterio_aceptacion": "[|%di| <= 2.0% vs tiempo inicial]",
+            "conclusion_estabilidad": "Cumple",
+            "data_condicion": [
+              { "replica": 1, "area": 304700.0 },
+              { "replica": 2, "area": 305200.0 },
+              { "replica": 3, "area": 305100.0 }
+            ]
+          },
+          {
+            "condicion_estabilidad": "Condicion 1",
+            "tiempo_estabilidad": "Sample Stability Time 1",
+            "promedio_areas": 304833.3,
+            "diferencia_promedios": 0.055,
+            "criterio_aceptacion": "[|%di| <= 2.0% vs tiempo inicial]",
+            "conclusion_estabilidad": "Cumple",
+            "data_condicion": [
+              { "replica": 1, "area": 304600.0 },
+              { "replica": 2, "area": 304900.0 },
+              { "replica": 3, "area": 305000.0 }
+            ]
+          }
+        ]
+      },
+      {
+        "solucion": "[Solucion Muestra B]",
+        "data_estabilidad_solucion": [
+          {
+            "condicion_estabilidad": "Condicion 2",
+            "tiempo_estabilidad": "Initial Sample Stability",
+            "promedio_areas": 298500.0,
+            "diferencia_promedios": 0.0,
+            "criterio_aceptacion": "[|%di| <= 2.0% vs tiempo inicial]",
+            "conclusion_estabilidad": "Cumple",
+            "data_condicion": [
+              { "replica": 1, "area": 298300.0 },
+              { "replica": 2, "area": 298600.0 },
+              { "replica": 3, "area": 298600.0 }
+            ]
+          }
+        ]
+      }
+    ],
+    "referencia_analitica": ["[HT00XXXXXX]", "[METODO-REF-YY]"]
+  }
+
+  — Recordatorio estricto: **RAZONAMIENTO → LUEGO SALIDA**. Cualquier cálculo (promedios, %di, parsing del umbral) debe consignarse antes del JSON final.
+  </REGLAS_DE_SALIDA_ESTRUCTURADA>
 """
+
 
 RULES_SET_10 = """
+  <REGLAS_DE_EXTRACCION_ESTRUCTURADA>
+  Aplica al structured_extraction_agent.
 
+  - Objetivo: Extraer y estructurar datos de **estabilidad de la fase móvil** por ingrediente activo (API) desde hojas de trabajo/protocolos LIMS, siguiendo `Set10ExtractionModel`.
 
+  - Plan iterativo (varios ciclos sobre el vectorstore):
+    1) Identificar APIs: buscar en “DESARROLLO DEL PROCEDIMIENTO” y tablas de “Estabilidad Fase Movil Tiempo inicial/1/2…”.
+    2) Por API y por tiempo (tiempo inicial, 1, 2…):
+      • Recolectar réplicas (N°→`replica`) con: Area→`areas_system`, Tiempo de retención→`tiempo_retencion`, USP tailing→`usp_tailing`, Resolución→`resolucion`, Exactitud→`exactitud`.
+      • Extraer si existen los agregados del tiempo: `promedio_areas_system`, `promedio_tiempo_retencion`, `promedio_usp_tailing`, `promedio_resolucion`, `rsd_areas_system`.
+      • Extraer `criterio_aceptacion` literal (ej.: “RSD ≤ 2.0%; ΔRt ≤ 2.0% vs t0; USP tailing ≤ 2.0”).
+      • Inicializar conclusiones: `conclusion_areas_system`, `conclusion_tiempo_retencion`, `conclusion_usp_tailing` = "[pendiente_validar]".
+    3) Trazabilidad mínima (interna): source_document (LIMS/Protocolo), página/span, query usada, notas de limpieza (coma→punto, unidades removidas).
+    4) Normalización:
+      • Números a float; `replica` entero ≥1; conservar texto exacto de `tiempo`.
+      • Omitir filas sin área o métricas clave, anotando motivo en trazabilidad.
+    5) Dedupe: unificar por (api, tiempo, replica) priorizando corrida más completa/reciente.
+    6) Huecos: si faltan agregados, usar "[pendiente_calcular]" y registrar.
+
+  - Ejemplo de extracción (placeholders válidos):
+  {
+    "activos_fase_movil": [
+      {
+        "nombre": "[API_1]",
+        "data_fase_movil_tiempos": [
+          {
+            "tiempo": "Estabilidad Fase Movil Tiempo inicial",
+            "promedio_areas_system": 520000.0,
+            "promedio_tiempo_retencion": 6.20,
+            "promedio_usp_tailing": 1.25,
+            "promedio_resolucion": 2.10,
+            "rsd_areas_system": 0.85,
+            "criterio_aceptacion": "[RSD ≤ 2.0%; ΔRt ≤ 2.0% vs t0; USP tailing ≤ 2.0]",
+            "conclusion_areas_system": "[pendiente_validar]",
+            "conclusion_tiempo_retencion": "[pendiente_validar]",
+            "conclusion_usp_tailing": "[pendiente_validar]",
+            "data_fase_movil_tiempo": [
+              { "replica": 1, "areas_system": 519500.0, "tiempo_retencion": 6.18, "usp_tailing": 1.24, "resolucion": 2.08, "exactitud": 99.7 },
+              { "replica": 2, "areas_system": 520300.0, "tiempo_retencion": 6.21, "usp_tailing": 1.26, "resolucion": 2.12, "exactitud": 100.1 },
+              { "replica": 3, "areas_system": 520200.0, "tiempo_retencion": 6.21, "usp_tailing": 1.25, "resolucion": 2.10, "exactitud": 100.0 }
+            ]
+          },
+          {
+            "tiempo": "Estabilidad Fase Movil Tiempo 1",
+            "promedio_areas_system": "[pendiente_calcular]",
+            "promedio_tiempo_retencion": "[pendiente_calcular]",
+            "promedio_usp_tailing": "[pendiente_calcular]",
+            "promedio_resolucion": "[pendiente_calcular]",
+            "rsd_areas_system": "[pendiente_calcular]",
+            "criterio_aceptacion": "[RSD ≤ 2.0%; ΔRt ≤ 2.0% vs t0; USP tailing ≤ 2.0]",
+            "conclusion_areas_system": "[pendiente_validar]",
+            "conclusion_tiempo_retencion": "[pendiente_validar]",
+            "conclusion_usp_tailing": "[pendiente_validar]",
+            "data_fase_movil_tiempo": [
+              { "replica": 1, "areas_system": 520400.0, "tiempo_retencion": 6.19, "usp_tailing": 1.27, "resolucion": 2.05, "exactitud": 99.8 },
+              { "replica": 2, "areas_system": 520600.0, "tiempo_retencion": 6.20, "usp_tailing": 1.26, "resolucion": 2.09, "exactitud": 100.0 },
+              { "replica": 3, "areas_system": 520300.0, "tiempo_retencion": 6.20, "usp_tailing": 1.25, "resolucion": 2.07, "exactitud": 99.9 }
+            ]
+          }
+        ]
+      }
+    ],
+    "referencia_estabilidad_fase_movil": "[HT00XXXXXX/REF]"
+  }
+  </REGLAS_DE_EXTRACCION_ESTRUCTURADA>
+
+  <REGLAS_DE_RAZONAMIENTO>
+  Aplica al reasoning_agent. **El razonamiento SIEMPRE precede a la conclusión/salida. Documentar cálculos/interferencias.**
+
+  - Cálculos intermedios por API y por tiempo:
+    1) Si algún promedio o `rsd_areas_system` = "[pendiente_calcular]":
+      • promedio = mean(valores).  
+      • rsd% = 100 * std_muestral(valores) / mean(valores).
+      • promedio_tiempo_retencion/promedio_usp_tailing/promedio_resolucion: media de sus réplicas.
+    2) Definir baseline t0: métricas del “Tiempo inicial”.
+      • ΔRt% (tiempo t) = 100 * |prom_rt_t - prom_rt_t0| / prom_rt_t0.
+    3) Parsear `criterio_aceptacion`:
+      • Extraer límites numéricos: e.g., rsd_max, drt_max, tailing_max.  
+      • Si faltan en documentos, usar defaults cautelares marcando `criterio_inferido=true`: rsd_max=2.0, drt_max=2.0, tailing_max=2.0.
+    4) Verificación individual (explicar breve):
+      • Áreas del sistema: rsd% ≤ rsd_max → “Cumple”, si no “No Cumple”.  
+      • Tiempo de retención: ΔRt% ≤ drt_max → “Cumple”, si no “No Cumple”.  
+      • USP tailing: promedio_usp_tailing ≤ tailing_max → “Cumple”, si no “No Cumple”.
+    5) Registrar explícitamente: valores usados (t0, promedios, rsd, ΔRt%, límites) antes de fijar las conclusiones.
+
+  - Mini-ejemplo (orden correcto):
+    • t0: prom_areas=520000.0, rsd=0.85%; prom_rt=6.20; prom_tail=1.25.  
+    • t1: prom_areas=520433.3, rsd=0.31%; prom_rt=6.20 → ΔRt%=0.00%; prom_tail=1.26.  
+    • Criterio: RSD≤2.0; ΔRt%≤2.0; tailing≤2.0 ⇒ todo Cumple.
+  </REGLAS_DE_RAZONAMIENTO>
+
+  <REGLAS_DE_SALIDA_ESTRUCTURADA>
+  Aplica al supervisor.
+
+  - Modelo de salida: `Set10StructuredOutputSupervisor`.  
+  - Integración:
+    • Rellenar promedios/RSD calculados; fijar `conclusion_areas_system`, `conclusion_tiempo_retencion`, `conclusion_usp_tailing`.  
+    • Mantener `referencia_estabilidad_fase_movil`.  
+    • **La salida final debe ser SOLO JSON bien formado** (el razonamiento queda documentado antes).
+
+  - Ejemplo (resumen de razonamiento → luego JSON final):
+  Razonamiento (resumen): [API_1] t0: rsd=0.85% (≤2.0) Cumple; t1: rsd=0.31% (≤2.0) Cumple. ΔRt%(t1 vs t0)=0.00% (≤2.0) Cumple. USP tailing promedio t1=1.26 (≤2.0) Cumple.
+
+  {
+    "activos_fase_movil": [
+      {
+        "nombre": "[API_1]",
+        "data_fase_movil_tiempos": [
+          {
+            "tiempo": "Estabilidad Fase Movil Tiempo inicial",
+            "promedio_areas_system": 520000.0,
+            "promedio_tiempo_retencion": 6.20,
+            "promedio_usp_tailing": 1.25,
+            "promedio_resolucion": 2.10,
+            "rsd_areas_system": 0.85,
+            "criterio_aceptacion": "[RSD ≤ 2.0%; ΔRt ≤ 2.0% vs t0; USP tailing ≤ 2.0]",
+            "conclusion_areas_system": "Cumple",
+            "conclusion_tiempo_retencion": "Cumple",
+            "conclusion_usp_tailing": "Cumple",
+            "data_fase_movil_tiempo": [
+              { "replica": 1, "areas_system": 519500.0, "tiempo_retencion": 6.18, "usp_tailing": 1.24, "resolucion": 2.08, "exactitud": 99.7 },
+              { "replica": 2, "areas_system": 520300.0, "tiempo_retencion": 6.21, "usp_tailing": 1.26, "resolucion": 2.12, "exactitud": 100.1 },
+              { "replica": 3, "areas_system": 520200.0, "tiempo_retencion": 6.21, "usp_tailing": 1.25, "resolucion": 2.10, "exactitud": 100.0 }
+            ]
+          },
+          {
+            "tiempo": "Estabilidad Fase Movil Tiempo 1",
+            "promedio_areas_system": 520433.3,
+            "promedio_tiempo_retencion": 6.20,
+            "promedio_usp_tailing": 1.26,
+            "promedio_resolucion": 2.07,
+            "rsd_areas_system": 0.31,
+            "criterio_aceptacion": "[RSD ≤ 2.0%; ΔRt ≤ 2.0% vs t0; USP tailing ≤ 2.0]",
+            "conclusion_areas_system": "Cumple",
+            "conclusion_tiempo_retencion": "Cumple",
+            "conclusion_usp_tailing": "Cumple",
+            "data_fase_movil_tiempo": [
+              { "replica": 1, "areas_system": 520400.0, "tiempo_retencion": 6.19, "usp_tailing": 1.27, "resolucion": 2.05, "exactitud": 99.8 },
+              { "replica": 2, "areas_system": 520600.0, "tiempo_retencion": 6.20, "usp_tailing": 1.26, "resolucion": 2.09, "exactitud": 100.0 },
+              { "replica": 3, "areas_system": 520300.0, "tiempo_retencion": 6.20, "usp_tailing": 1.25, "resolucion": 2.07, "exactitud": 99.9 }
+            ]
+          }
+        ]
+      }
+    ],
+    "referencia_estabilidad_fase_movil": "[HT00XXXXXX/REF]"
+  }
+
+  — Recordatorio estricto: **RAZONAMIENTO → LUEGO SALIDA**. Cualquier cálculo (promedios, RSD, ΔRt%, parsing de umbrales) DEBE constar antes del JSON final.
+  </REGLAS_DE_SALIDA_ESTRUCTURADA>
 """
+
 
 RULES_SET_11 = """
+  <REGLAS_DE_EXTRACCION_ESTRUCTURADA>
+  Aplica al structured_extraction_agent.
 
+  - Objetivo: Extraer y estructurar datos de **robustez** por ingrediente activo (API) desde Protocolo/RA/LIMS, siguiendo `Set11ExtractionModel`.
 
-"""
+  - Plan iterativo (varios ciclos sobre el/los vectorstore):
+    1) Protocolo de validación → Tabla “Condiciones de robustez”: poblar `experimento_robustez` como `DataFactoresExperimentos`
+      • Campos: nombre_experimento, temperatura, flujo, volumen_inyeccion, fase_movil.
+    2) Reporte LIMS / Reporte Analítico → Bloques “Robustness Flow/Temperature/Injection volume/Mobile phase”
+      • Por condición (Nominal, Baja, Alta, …) y réplica (1..n) crear `DataRobustezStrOutput`:
+        - experimento (texto exacto; ej. "Robustness Flow – Bajo"),
+        - replica (int ≥1),
+        - valores_aproximados (%, sin símbolo),
+        - promedio_experimento = valor reportado o "[pendiente_calcular]",
+        - diferencia_porcentaje = %di vs condición nominal o "[pendiente_calcular]".
+    3) Referencias/criterios:
+      • `referencia_robustez` (p. ej., "<USP <capítulo>> / SOP-[ID]").
+      • `criterio_robustez` (lista de `criterios`; si el doc da límites, tomarlos literal).
+    4) Normalización:
+      • Punto decimal ".", quitar "%", trim/colapso de espacios; conservar mayúsculas/tildes.
+    5) Trazabilidad mínima (interna): source_document, sección/página, query, notas de limpieza.
+    6) Dedupe por (API, experimento, réplica) priorizando corridas más completas/recientes.
+    7) Huecos: si faltan promedios/%di → marcar "[pendiente_calcular]" y resolver en RAZONAMIENTO.
+
+  - Ejemplo de extracción (placeholders válidos):
+  {
+    "activos_robustez": [
+      {
+        "nombre": "[API_1]",
+        "robustez": [
+          { "experimento": "Robustness Flow – Nominal", "replica": 1, "valores_aproximados": 100.2, "promedio_experimento": 100.1, "diferencia_porcentaje": 0.0 },
+          { "experimento": "Robustness Flow – Nominal", "replica": 2, "valores_aproximados": 100.0, "promedio_experimento": 100.1, "diferencia_porcentaje": 0.0 },
+          { "experimento": "Robustness Flow – Bajo",    "replica": 1, "valores_aproximados": 99.6,  "promedio_experimento": "[pendiente_calcular]", "diferencia_porcentaje": "[pendiente_calcular]" },
+          { "experimento": "Robustness Flow – Alto",    "replica": 1, "valores_aproximados": 100.7, "promedio_experimento": "[pendiente_calcular]", "diferencia_porcentaje": "[pendiente_calcular]" },
+          { "experimento": "Robustness Temperature – Nominal", "replica": 1, "valores_aproximados": 100.3, "promedio_experimento": 100.3, "diferencia_porcentaje": 0.0 }
+        ],
+        "conclusion_robustez": "[por_definir_en_razonamiento]",
+        "criterio_robustez": ["[CRITERIO_RANGO_%DI]", "[CRITERIO_ADICIONAL]"]
+      }
+    ],
+    "referencia_robustez": "[REFERENCIA_ANALITICA_ROBUSTEZ]",
+    "experimento_robustez": [
+      { "nombre_experimento": "Flow",      "temperatura": 30.0, "flujo": 1.00, "volumen_inyeccion": 10.0, "fase_movil": "Buffer pH [x]:ACN [y]" },
+      { "nombre_experimento": "Flow-Bajo", "temperatura": 30.0, "flujo": 0.90, "volumen_inyeccion": 10.0, "fase_movil": "Buffer pH [x]:ACN [y]" },
+      { "nombre_experimento": "Flow-Alto", "temperatura": 30.0, "flujo": 1.10, "volumen_inyeccion": 10.0, "fase_movil": "Buffer pH [x]:ACN [y]" }
+    ]
+  }
+  </REGLAS_DE_EXTRACCION_ESTRUCTURADA>
+
+  <REGLAS_DE_RAZONAMIENTO>
+  Aplica al reasoning_agent. **El razonamiento SIEMPRE precede a la conclusión/salida. Documentar cálculos/inferencias.**
+
+  - Pasos intermedios por API y por factor:
+    1) Agrupar por experimento-condición (Nominal/Bajo/Alto…). Si `promedio_experimento="[pendiente_calcular]"`, calcular:
+      • promedio_experimento = mean(valores_aproximados de esa condición).
+    2) Identificar baseline nominal del mismo factor:
+      • promedio_nominal = promedio_experimento de condición Nominal.
+      • %di = 100 * (promedio_experimento - promedio_nominal) / promedio_nominal.
+    3) Parsear `criterio_robustez`:
+      • Extraer umbral |%di| ≤ [UMBRAL_%]; si no existe en documentos, usar default cautelar 2.0 y anotar `criterio_inferido=true`.
+    4) Verificación por condición (explicar breve):
+      • Si |%di| ≤ umbral → “Cumple”, si no → “No Cumple”.
+    5) Conclusión por API:
+      • "Cumple" si todas las condiciones evaluadas cumplen; de lo contrario "No Cumple".
+    6) Registrar explícitamente valores usados (prom_nominal, promedios, %di, umbral) antes de fijar la conclusión.
+
+  - Mini-ejemplo (orden correcto):
+    • Flow–Nominal: promedio=100.1.  
+    • Flow–Bajo: promedio=99.6 → %di=-0.50%.  
+    • Flow–Alto: promedio=100.7 → %di=+0.60%.  
+    • Umbral |%di| ≤ 2.0% ⇒ todas “Cumple” → API “[API_1]” = “Cumple”.
+  </REGLAS_DE_RAZONAMIENTO>
+
+  <REGLAS_DE_SALIDA_ESTRUCTURADA>
+  Aplica al supervisor.
+
+  - Modelo de salida: `Set11StructuredOutputSupervisor`.  
+  - Integración:
+    • Reemplazar todos los "[pendiente_calcular]" por valores numéricos calculados.  
+    • Establecer `conclusion_robustez` = "Cumple" | "No Cumple".  
+    • Mantener `referencia_robustez` y mapear `experimento_robustez` → `experimentos_robustez`.  
+  - **La salida final debe ser SOLO JSON bien formado** (el razonamiento va antes).
+
+  - Ejemplo (resumen muy breve del razonamiento → luego JSON final):
+  Razonamiento (resumen): [API_1] Flow: %di_bajo=-0.50%; %di_alto=+0.60% (≤2.0%) ⇒ Cumple.
+
+  {
+    "activos_robustez": [
+      {
+        "nombre": "[API_1]",
+        "robustez": [
+          { "experimento": "Robustness Flow – Nominal", "replica": 1, "valores_aproximados": 100.2, "promedio_experimento": 100.1, "diferencia_porcentaje": 0.0 },
+          { "experimento": "Robustness Flow – Nominal", "replica": 2, "valores_aproximados": 100.0, "promedio_experimento": 100.1, "diferencia_porcentaje": 0.0 },
+          { "experimento": "Robustness Flow – Bajo",    "replica": 1, "valores_aproximados": 99.6,  "promedio_experimento": 99.6, "diferencia_porcentaje": -0.50 },
+          { "experimento": "Robustness Flow – Alto",    "replica": 1, "valores_aproximados": 100.7, "promedio_experimento": 100.7, "diferencia_porcentaje": 0.60 },
+          { "experimento": "Robustness Temperature – Nominal", "replica": 1, "valores_aproximados": 100.3, "promedio_experimento": 100.3, "diferencia_porcentaje": 0.0 }
+        ],
+        "conclusion_robustez": "Cumple",
+        "criterio_robustez": ["|%di| ≤ 2.0%"]
+      }
+    ],
+    "referencia_robustez": "[REFERENCIA_ANALITICA_ROBUSTEZ]",
+    "experimentos_robustez": [
+      { "nombre_experimento": "Flow",      "temperatura": 30.0, "flujo": 1.00, "volumen_inyeccion": 10.0, "fase_movil": "Buffer pH [x]:ACN [y]" },
+      { "nombre_experimento": "Flow-Bajo", "temperatura": 30.0, "flujo": 0.90, "volumen_inyeccion": 10.0, "fase_movil": "Buffer pH [x]:ACN [y]" },
+      { "nombre_experimento": "Flow-Alto", "temperatura": 30.0, "flujo": 1.10, "volumen_inyeccion": 10.0, "fase_movil": "Buffer pH [x]:ACN [y]" }
+    ]
+  }
+
+  — Recordatorio estricto: **RAZONAMIENTO → LUEGO SALIDA**. Cualquier cálculo (promedios, %di, parsing de umbrales) DEBE constar antes del JSON final.
+  </REGLAS_DE_SALIDA_ESTRUCTURADA>
+  """

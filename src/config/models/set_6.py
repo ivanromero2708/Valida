@@ -15,7 +15,7 @@ class ActivoPrecisionMetodoStrOutput(BaseModel):
     precision_metodo: List[DatosPrecisionMetodoStrOutput] = Field(..., min_length=1, description="Datos de los porcentajes obtenidos de las replicas evaluadas en el parametro de precision del metodo")
     conclusion_precision_metodo: str = Field(..., description="Cumple o No cumple con el criterio global")
     rsd_precision_metodo: float = Field(..., description="RSD de los porcentajes obtenidos de las replicas evaluadas en el parametro de precision del metodo")
-    criterio_precision_metodo: List[criterios] = Field(..., description="Criterios de aceptacion para precision del metodo")
+    criterio_precision_metodo: str = Field(..., description="Criterios de aceptacion para precision del metodo")
 
 class DatosPrecisionMetodoStrExt(BaseModel):
     replica: str = Field(..., description="replica de la solucion evaluada en el parametro de precision del metodo")
@@ -27,7 +27,7 @@ class ActivoPrecisionMetodoStrExt(BaseModel):
     precision_metodo: List[DatosPrecisionMetodoStrExt] = Field(..., min_length=1, description="Datos de los porcentajes obtenidos de las replicas evaluadas en el parametro de precision del metodo")
     conclusion_precision_metodo: str = Field(..., description="Cumple o No cumple con el criterio global")
     rsd_precision_metodo: float = Field(..., description="RSD de los porcentajes obtenidos de las replicas evaluadas en el parametro de precision del metodo")
-    criterio_precision_metodo: List[criterios] = Field(..., description="Criterios de aceptacion para precision del metodo")
+    criterio_precision_metodo: str = Field(..., description="Criterios de aceptacion para precision del metodo")
 
 
 class Set6ExtractionModel(BaseModel):
