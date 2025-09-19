@@ -377,8 +377,6 @@ RULES_SET_4 = """
               {
                 "nombre": "[api_1_nombre]",
                 "criterio_exactitud": "El % de recuperación debe estar entre 98.0% y 102.0%",
-                "exactitud_metodo": [], // Aún no extraído
-                "conclusion_exactitud": "[pendiente_datos]"
               }
             ]
           }
@@ -401,6 +399,7 @@ RULES_SET_4 = """
   -----
 
     - **Ejemplo de Extracción Completa (Pre-Razonamiento):**
+    **OJO, EN EL EJEMPLO APENAS APARECE UNA RÉPLICA POR CADA NIVEL, PERO ESTO ES SÓLO A MODO DE EJEMPLO.. NECESITO QUE EXTRAIGAS TODA LA DATA, ES DECIR, TODAS LAS REPLICAS POR CADA NIVEL**
       ```json
       {
         "activos_exactitud": [
@@ -430,7 +429,7 @@ RULES_SET_4 = """
   `<REGLAS_DE_RAZONAMIENTO>`
   Estas reglas aplican al `reasoning_agent`.
 
-    - **Objetivo Principal:** Calcular el promedio de recuperación para cada nivel, comparar estos promedios contra el criterio de aceptación y determinar si el método es exacto.
+    - **Objetivo Principal:** Verificar si el porcentaje de recuperación promedio por cada nivel se encuentra dentro del criterio encontrado en el protocolo de validación.
 
     - **Entradas:** El objeto JSON completo del `structured_extraction_agent`.
 
@@ -448,6 +447,7 @@ RULES_SET_4 = """
             - Si **TODOS** los niveles cumplen el criterio → `conclusion_exactitud` es **"Cumple"**.
             - Si **AL MENOS UN** nivel no cumple → `conclusion_exactitud` es **"No Cumple"**.
       4.  **Justificación Final:** Redacta un resumen que explique la conclusión global, basado en los resultados de cada nivel.
+      5.  Reporta si se cumple el criterio de exactitud del protocolo
 
   `</REGLAS_DE_RAZONAMIENTO>`
 
@@ -470,9 +470,15 @@ RULES_SET_4 = """
           {
             "nombre": "[api_1_nombre]",
             "exactitud_metodo": [
-              { "nivel": "Level I", "recuperacion": 99.77 },
-              { "nivel": "Level II", "recuperacion": 100.83 },
-              { "nivel": "Level III", "recuperacion": 98.90 }
+              { "nivel": "Level I", "recuperacion": 99.2, "recuperacion_promedio": 99.2" },
+              { "nivel": "Level I", "recuperacion": 100.3, "recuperacion_promedio": 99.2 },
+              { "nivel": "Level I", "recuperacion": 99.8, "recuperacion_promedio": 99.2 },
+              { "nivel": "Level II", "recuperacion": 100.1, "recuperacion_promedio": 100.1 },
+              { "nivel": "Level II", "recuperacion": 101.5, "recuperacion_promedio": 100.1 },
+              { "nivel": "Level II", "recuperacion": 100.9, "recuperacion_promedio": 100.1 },
+              { "nivel": "Level III", "recuperacion": 98.7, "recuperacion_promedio": 98.7 },
+              { "nivel": "Level III", "recuperacion": 99.1, "recuperacion_promedio": 98.7 },
+              { "nivel": "Level III", "recuperacion": 98.9, "recuperacion_promedio": 98.7 }
             ],
             "conclusion_exactitud": "Cumple",
             "criterio_exactitud": "El % de recuperación debe estar entre 98.0% y 102.0%"
@@ -481,14 +487,7 @@ RULES_SET_4 = """
         "referencia_exactitud": "[lims_run_o_ref_analitica]"
       }
       ```
-
   `</REGLAS_DE_SALIDA_SUPERVISOR>`
-
-  ### **Ventajas de esta Estructura** 🚀
-
-    * **Claridad de Misión:** El agente sabe exactamente qué buscar y en qué documento en cada fase.
-    * **Menos Errores:** Se reduce la posibilidad de que el agente mezcle datos o aplique incorrectamente un criterio.
-    * **Proceso Lógico:** Imita cómo un analista humano trabajaría: primero, consulta la regla (protocolo); luego, revisa los datos (LIMS).
 """
 
 RULES_SET_5 = """
@@ -621,166 +620,141 @@ RULES_SET_5 = """
 """
 
 RULES_SET_6 = """
-  <REGLAS_DE_EXTRACCION_ESTRUCTURADA>
-  Estas reglas aplican al structured_extraction_agent.
+  `<REGLAS_DE_EXTRACCION_ESTRUCTURADA>`
+  Estas reglas aplican al `structured_extraction_agent`.
 
-  - Objetivo: Extraer información de **precisión del método** por API desde reportes LIMS (porcentajes por réplica y RSD%) y protocolo (criterios) y estructurarla según `Set6ExtractionModel` (lista de `ActivoPrecisionMetodoStrExt`).
+    - **Objetivo General:** Extraer el criterio de aceptación para la **precisión del método** desde el protocolo de validación y los datos experimentales (valoraciones individuales) desde los reportes LIMS, estructurando la información según el modelo `Set6ExtractionModel`.
 
-  - Plan iterativo (varios ciclos sobre el vectorstore):
-    1) Descubrimiento: localizar tablas con columnas "N°" (réplica) y "Results" (porcentaje), asociadas a la prueba de precisión del método.
-    2) Extracción por API (subciclo por API):
-      • `precision_metodo` ← lista de {replica, porcentaje_activo} desde LIMS.  
-      • `rsd_precision_metodo` ← tomar del LIMS si aparece como "RSD%"; si falta, dejar "[pendiente_validar]" (se calculará en razonamiento).  
-      • `criterio_precision_metodo` ← extraer del Protocolo (tabla de criterios; registrar el umbral de RSD%).  
-      • `conclusion_precision_metodo` ← inicializar en "[pendiente_validar]".
-    3) Trazabilidad obligatoria (ledger interno, no en la salida): source_document (LIMS/Protocolo), page_or_span, query_used, confidence, cleaning_notes.
-    4) Normalización mínima:
-      • Convertir coma→punto; `porcentaje_activo` en rango 0–200.  
-      • Conservar literal de `replica` tal como en el documento.
-    5) Deduplificación: si hay múltiples corridas, unificar por (api, replica, run_id), conservando la más completa/reciente; anotar motivo.
-    6) Relleno de huecos: si tras los ciclos persisten faltantes, marcar "[pendiente_validar]" y documentar causa en trazabilidad.
+  -----
 
-  - Ejemplo de extracción estructurada (Set6ExtractionModel con placeholders):
-  {
-    "activos_precision_metodo": [
-      {
-        "nombre": "[api_1_nombre]",
-        "precision_metodo": [
-          { "replica": "1", "porcentaje_activo": 99.8 },
-          { "replica": "2", "porcentaje_activo": 100.3 },
-          { "replica": "3", "porcentaje_activo": 100.1 },
-          { "replica": "4", "porcentaje_activo": 99.7 },
-          { "replica": "5", "porcentaje_activo": 100.0 },
-          { "replica": "6", "porcentaje_activo": 99.9 }
-        ],
-        "conclusion_precision_metodo": "[pendiente_validar]",
-        "rsd_precision_metodo": "[pendiente_validar]",
-        "criterio_precision_metodo": [
+    - **Fase 1: Extracción del Criterio de Aceptación desde el Protocolo**
+
+        - **Fuente Primaria:** Documento del **Protocolo de Validación**.
+        - **Objetivo Específico:** Identificar y extraer el criterio de aceptación para la Desviación Estándar Relativa (RSD).
+        - **Plan de Acción:**
+          1.  **Enfócate en el protocolo.** Realiza búsquedas específicas usando términos como "Precisión del método", "Repetibilidad", "Method Precision", "Criterio de Aceptación", y "%RSD".
+          2.  **Busca el umbral de RSD%.** El criterio se expresa típicamente como un límite máximo. Por ejemplo: "El %RSD de las seis preparaciones no debe ser mayor a 2.0%". Extrae este texto.
+          3.  **Puebla el campo de criterio.** Asigna el texto extraído al campo `criterio_precision_metodo`.
+        - **Salida de Fase 1 (Ejemplo):**
+          ```json
           {
-            "criterio_selectividad": "[na]",
-            "criterio_linealidad": "[na]",
-            "criterio_exactitud": "[na]",
-            "criterio_precision_sistema": "[na]",
-            "criterio_precision_metodo": "[umbral_rsd: <= 2.0%]",
-            "criterio_precision_intermedia": "[na]",
-            "criterio_rango": "[na]",
-            "criterio_estabilidad_soluciones": "[na]",
-            "criterio_estabilidad_fase_movil": "[na]",
-            "criterio_robustez": "[na]"
+            "activos_precision_metodo": [
+              {
+                "nombre": "[api_1_nombre]",
+                "criterio_precision_metodo": "El %RSD no debe ser mayor a 2.0%",
+                "precision_metodo": [],
+                "rsd_precision_metodo": null,
+                "conclusion_precision_metodo": "[pendiente_datos]"
+              }
+            ]
           }
-        ]
-      }
-    ]
-  }
-  </REGLAS_DE_EXTRACCION_ESTRUCTURADA>
+          ```
 
-  <REGLAS_DE_RAZONAMIENTO>
-  Estas reglas aplican al reasoning_agent.
+  -----
 
-  - REGLA PRINCIPAL: El razonamiento documentado **SIEMPRE** precede a cualquier verificación, clasificación o salida final. Registrar cálculos e inferencias.
+    - **Fase 2: Extracción de Datos de Ejecución desde el Reporte LIMS**
 
-  - Pasos mínimos por API (documentar explícitamente):
-    1) Verificar datos crudos: listar las réplicas válidas y sus porcentajes usados; excluir filas inválidas con motivo.
-    2) Cálculos intermedios:
-      • promedio = mean(porcentajes)  
-      • desv_est = std(porcentajes, n-1)  
-      • rsd_calculado = 100 * (desv_est / promedio)  
-      (Usar rsd_calculado si `rsd_precision_metodo` no viene del LIMS). Registrar N, promedio, desv_est, RSD%.
-    3) Comparación con criterio: contrastar RSD% contra `criterio_precision_metodo` (p. ej., ≤ 2.0%). Si el protocolo exige N mínimo (p. ej., 6), verificar y documentar.
-    4) Conclusión global:
-      • `conclusion_precision_metodo` = "Cumple" si RSD% ≤ umbral (y N cumple si aplica); de lo contrario "No Cumple".  
-      • Justificación breve con números y umbrales aplicados.
+        - **Fuente Primaria:** Reporte de datos crudos del **LIMS** o la **Hoja de Trabajo Analítica**.
+        - **Objetivo Específico:** Extraer la lista completa de valoraciones (% de activo) para todas las réplicas y el RSD% si el software ya lo ha calculado.
+        - **Plan de Acción:**
+          1.  **Busca la tabla de resultados.** Identifica la tabla correspondiente a "Precisión del Método" o "Repetibilidad". Debe contener columnas como "Réplica", "Muestra N°" y "Valoración %" o "Resultado".
+          2.  **Extrae todas las réplicas.** Captura cada resultado individual en la lista `precision_metodo`. Es crucial no omitir ninguna réplica.
+          3.  **Busca el RSD% pre-calculado.** Revisa si al final de la tabla o en una sección de resumen, el reporte ya incluye un valor para "RSD%" o "% C.V.". Si existe, extráelo y asígnalo a `rsd_precision_metodo`. Si no, déjalo como `null`.
+          4.  **Extrae la referencia.** Localiza el identificador del análisis (ej. "RUN-...") y asígnalo a `referencia_precision_metodo`.
+        - **Normalización de Datos:**
+            - `replica`: Mantener como texto original.
+            - `porcentaje_activo`: Convertir a tipo flotante (`float`), unificando comas a puntos decimales.
 
-  - Mini-ejemplo de razonamiento (orden correcto):
-    • Réplicas válidas = 6; valores = [99.8, 100.3, 100.1, 99.7, 100.0, 99.9]  
-    • promedio = 99.97 ; desv_est = 0.22 ; RSD% = 0.22%  
-    • Criterio: RSD% ≤ 2.0% y N≥6 → Cumple  
-    • Conclusión API [api_1_nombre] = "Cumple".
-  </REGLAS_DE_RAZONAMIENTO>
+  -----
 
-  <REGLAS_DE_SALIDA_ESTRUCTURADA>
-  Estas reglas aplican al supervisor.
-
-  - Modelo de salida: `Set6StructuredOutputSupervisor` en **JSON bien formado**. **Solo** el JSON final (sin texto extra).
-  - Condición: emitir salida únicamente después de que el razonamiento esté documentado.
-  - Integración: copiar `precision_metodo` depurada; fijar `rsd_precision_metodo` final (del LIMS o calculado); establecer `conclusion_precision_metodo`; incluir `criterio_precision_metodo` y `referencia_precision_metodo`.
-
-  - Ejemplo A (caso "Cumple") — Orden: 1) razonamiento → 2) salida
-  Razonamiento (resumen): N=6; promedio=99.97; desv_est=0.22; RSD%=0.22; umbral ≤2.0% ⇒ Cumple.
-
-  Salida final (JSON):
-  {
-    "activos_precision_metodo": [
+    - **Ejemplo de Extracción Completa (Pre-Razonamiento):**
+      ```json
       {
-        "nombre": "[api_1_nombre]",
-        "precision_metodo": [
-          { "replica": "1", "porcentaje_activo": 99.8 },
-          { "replica": "2", "porcentaje_activo": 100.3 },
-          { "replica": "3", "porcentaje_activo": 100.1 },
-          { "replica": "4", "porcentaje_activo": 99.7 },
-          { "replica": "5", "porcentaje_activo": 100.0 },
-          { "replica": "6", "porcentaje_activo": 99.9 }
-        ],
-        "conclusion_precision_metodo": "Cumple",
-        "rsd_precision_metodo": 0.22,
-        "criterio_precision_metodo": [
+        "activos_precision_metodo": [
           {
-            "criterio_selectividad": "[na]",
-            "criterio_linealidad": "[na]",
-            "criterio_exactitud": "[na]",
-            "criterio_precision_sistema": "[na]",
-            "criterio_precision_metodo": "[umbral_rsd: <= 2.0%]",
-            "criterio_precision_intermedia": "[na]",
-            "criterio_rango": "[na]",
-            "criterio_estabilidad_soluciones": "[na]",
-            "criterio_estabilidad_fase_movil": "[na]",
-            "criterio_robustez": "[na]"
+            "nombre": "[nombre_ingrediente_activo]",
+            "precision_metodo": [
+              { "replica": "1", "porcentaje_activo": 99.8 },
+              { "replica": "2", "porcentaje_activo": 100.3 },
+              { "replica": "3", "porcentaje_activo": 100.1 },
+              { "replica": "4", "porcentaje_activo": 99.7 },
+              { "replica": "5", "porcentaje_activo": 100.0 },
+              { "replica": "6", "porcentaje_activo": 99.9 }
+            ],
+            "conclusion_precision_metodo": "[pendiente_validar]",
+            "rsd_precision_metodo": null, // El LIMS no lo reportó, se calculará después
+            "criterio_precision_metodo": "El %RSD no debe ser mayor a 2.0%"
           }
-        ]
+        ],
+        "referencia_precision_metodo": "[lims_run_o_ref_analitica]"
       }
-    ],
-    "referencia_precision_metodo": "[lims_run_o_ref_analitica]"
-  }
+      ```
 
-  - Ejemplo B (caso "No Cumple") — Orden: 1) razonamiento → 2) salida
-  Razonamiento (resumen): N=6; promedio=100.2; desv_est=3.1; RSD%=3.09; umbral ≤2.0% ⇒ No Cumple.
+  `</REGLAS_DE_EXTRACCION_ESTRUCTURADA>`
 
-  Salida final (JSON):
-  {
-    "activos_precision_metodo": [
+  <br>
+
+  `<REGLAS_DE_RAZONAMIENTO>`
+  Estas reglas aplican al `reasoning_agent`.
+
+    - **Objetivo Principal:** Validar los datos, calcular el RSD% (si es necesario) y compararlo contra el criterio de aceptación para determinar si el método es preciso.
+
+    - **Entradas:** El objeto JSON completo del `structured_extraction_agent`.
+
+    - **Pasos del Razonamiento (por cada API):**
+
+      1.  **Verificar Datos de Entrada:** Confirma que la lista `precision_metodo` contiene datos válidos. Anota el número de réplicas (`N`).
+      2.  **Calcular RSD% (si es necesario):**
+            - **SI** el campo `rsd_precision_metodo` es `null`:
+                - Calcula el promedio de `porcentaje_activo`.
+                - Calcula la desviación estándar (σ, n-1) de `porcentaje_activo`.
+                - Calcula el RSD% con la fórmula: `RSD% = (desviación_estándar / promedio) * 100`.
+                - Documenta los cálculos intermedios (N, promedio, desv. est.) y el resultado.
+            - **SI** `rsd_precision_metodo` ya fue extraído, úsalo directamente, anotando que es el valor reportado por el LIMS.
+      3.  **Comparar con Criterio:** Extrae el umbral numérico del `criterio_precision_metodo` (ej: 2.0). Compara el RSD% final contra este umbral.
+      4.  **Determinar Conclusión:**
+            - Si `RSD% ≤ Umbral_Criterio` → la conclusión es **"Cumple"**.
+            - Si `RSD% > Umbral_Criterio` → la conclusión es **"No Cumple"**.
+      5.  **Justificación Final:** Escribe un resumen conciso. Ejemplo: *"Se analizaron N=6 réplicas. El RSD% calculado fue de 0.22%, el cual es menor o igual al criterio de aceptación de ≤ 2.0%. Por lo tanto, el método cumple."*
+
+  `</REGLAS_DE_RAZONAMIENTO>`
+
+  <br>
+
+  `<REGLAS_DE_SALIDA_SUPERVISOR>`
+  Estas reglas aplican al `supervisor` para generar la salida final.
+
+    - **Modelo de Salida:** Un único objeto JSON bien formado que siga la estructura `Set6StructuredOutputSupervisor`. No incluyas texto fuera del JSON.
+
+    - **Condición:** Genera la salida **solo después** de que el `reasoning_agent` haya completado y documentado su análisis.
+
+    - **Integración de Datos:** El JSON final debe contener los datos crudos (`precision_metodo`), el `criterio_precision_metodo`, el RSD% final (calculado o extraído), y la `conclusion_precision_metodo` determinada por el razonamiento.
+
+    - **Ejemplo de Salida del Supervisor (Caso "Cumple"):**
+
+      ```json
       {
-        "nombre": "[api_2_nombre]",
-        "precision_metodo": [
-          { "replica": "1", "porcentaje_activo": 104.0 },
-          { "replica": "2", "porcentaje_activo": 96.5 },
-          { "replica": "3", "porcentaje_activo": 102.0 },
-          { "replica": "4", "porcentaje_activo": 97.8 },
-          { "replica": "5", "porcentaje_activo": 101.6 },
-          { "replica": "6", "porcentaje_activo": 99.1 }
-        ],
-        "conclusion_precision_metodo": "No Cumple",
-        "rsd_precision_metodo": 3.09,
-        "criterio_precision_metodo": [
+        "activos_precision_metodo": [
           {
-            "criterio_selectividad": "[na]",
-            "criterio_linealidad": "[na]",
-            "criterio_exactitud": "[na]",
-            "criterio_precision_sistema": "[na]",
-            "criterio_precision_metodo": "[umbral_rsd: <= 2.0%]",
-            "criterio_precision_intermedia": "[na]",
-            "criterio_rango": "[na]",
-            "criterio_estabilidad_soluciones": "[na]",
-            "criterio_estabilidad_fase_movil": "[na]",
-            "criterio_robustez": "[na]"
+            "nombre": "[nombre_ingrediente_activo]",
+            "precision_metodo": [
+              { "replica": "1", "porcentaje_activo": 99.8 },
+              { "replica": "2", "porcentaje_activo": 100.3 },
+              { "replica": "3", "porcentaje_activo": 100.1 },
+              { "replica": "4", "porcentaje_activo": 99.7 },
+              { "replica": "5", "porcentaje_activo": 100.0 },
+              { "replica": "6", "porcentaje_activo": 99.9 }
+            ],
+            "conclusion_precision_metodo": "Cumple",
+            "rsd_precision_metodo": 0.22,
+            "criterio_precision_metodo": "El %RSD no debe ser mayor a 2.0%"
           }
-        ]
+        ],
+        "referencia_precision_metodo": "[lims_run_o_ref_analitica]"
       }
-    ],
-    "referencia_precision_metodo": "[lims_run_o_ref_analitica]"
-  }
+      ```
 
-  — RESTRICCIÓN CRÍTICA (repetida): **RAZONAMIENTO → LUEGO SALIDA**. Cualquier cálculo o inferencia debe documentarse antes de la salida final.
-  </REGLAS_DE_SALIDA_ESTRUCTURADA>
+  `</REGLAS_DE_SALIDA_SUPERVISOR>`
 """
 
 RULES_SET_7 = """

@@ -102,10 +102,9 @@ TEMPLATE_SETS_TRIAL = {
         "doc_path_list": [
             "dir_protocolo",
             "dir_reporte_lims_precision_metodo",
-            "dirs_hoja_trabajo_preparacion_precision_metodo",
-            "dirs_hoja_trabajo_reporte_precision_metodo",
-            "dirs_bitacoras_preparacion_precision_metodo",
-            "dirs_bitacoras_reporte_precision_metodo",
+            "dirs_hoja_trabajo_precision_metodo",
+            "dirs_bitacoras_precision_metodo",
+            "dirs_soportes_cromatograficos_precision_metodo",
         ],
         "data_extraction_model": Set6ExtractionModel,
         "structured_output_supervisor": Set6StructuredOutputSupervisor,
@@ -115,10 +114,9 @@ TEMPLATE_SETS_TRIAL = {
         "human_message_prompt": RULES_SET_7,
         "doc_path_list": [
             "dir_reporte_lims_precision_intermedia",
-            "dirs_hoja_trabajo_preparacion_precision_intermedia",
-            "dirs_hoja_trabajo_reporte_precision_intermedia",
-            "dirs_bitacoras_preparacion_precision_intermedia",
-            "dirs_bitacoras_reporte_precision_intermedia",
+            "dirs_hoja_trabajo_precision_intermedia",
+            "dirs_bitacoras_precision_intermedia",
+            "dirs_soportes_cromatograficos_precision_intermedia",
         ],
         "data_extraction_model": Set7ExtractionModel,
         "structured_output_supervisor": Set7StructuredOutputSupervisor,
@@ -128,10 +126,9 @@ TEMPLATE_SETS_TRIAL = {
         "human_message_prompt": RULES_SET_8,
         "doc_path_list": [
             "dir_reporte_lims_estabilidad_solucion_estandar",
-            "dirs_hoja_trabajo_preparacion_estabilidad_solucion_estandar",
-            "dirs_hoja_trabajo_reporte_estabilidad_solucion_estandar",
-            "dirs_bitacoras_preparacion_estabilidad_solucion_estandar",
-            "dirs_bitacoras_reporte_estabilidad_solucion_estandar",
+            "dirs_hoja_trabajo_estabilidad_solucion_estandar",
+            "dirs_bitacoras_estabilidad_solucion_estandar",
+            "dirs_soportes_cromatograficos_estabilidad_solucion_estandar",
         ],
         "data_extraction_model": Set8ExtractionModel,
         "structured_output_supervisor": Set8StructuredOutputSupervisor,
@@ -141,10 +138,9 @@ TEMPLATE_SETS_TRIAL = {
         "human_message_prompt": RULES_SET_9,
         "doc_path_list": [
             "dir_reporte_lims_estabilidad_solucion_muestra",
-            "dirs_hoja_trabajo_preparacion_estabilidad_solucion_muestra",
-            "dirs_hoja_trabajo_reporte_estabilidad_solucion_muestra",
-            "dirs_bitacoras_preparacion_estabilidad_solucion_muestra",
-            "dirs_bitacoras_reporte_estabilidad_solucion_muestra",
+            "dirs_hoja_trabajo_estabilidad_solucion_muestra",
+            "dirs_bitacoras_estabilidad_solucion_muestra",
+            "dirs_soportes_cromatograficos_estabilidad_solucion_muestra",
         ],
         "data_extraction_model": Set9ExtractionModel,
         "structured_output_supervisor": Set9StructuredOutputSupervisor,
@@ -154,10 +150,9 @@ TEMPLATE_SETS_TRIAL = {
         "human_message_prompt": RULES_SET_10,
         "doc_path_list": [
             "dir_reporte_lims_estabilidad_solucion_fase_movil",
-            "dirs_hoja_trabajo_preparacion_estabilidad_solucion_fase_movil",
-            "dirs_hoja_trabajo_reporte_estabilidad_solucion_fase_movil",
-            "dirs_bitacoras_preparacion_estabilidad_solucion_fase_movil",
-            "dirs_bitacoras_reporte_estabilidad_solucion_fase_movil",
+            "dirs_hoja_trabajo_estabilidad_solucion_fase_movil",
+            "dirs_bitacoras_estabilidad_solucion_fase_movil",
+            "dirs_soportes_cromatograficos_estabilidad_solucion_fase_movil",
         ],
         "data_extraction_model": Set10ExtractionModel,
         "structured_output_supervisor": Set10StructuredOutputSupervisor,
@@ -167,10 +162,9 @@ TEMPLATE_SETS_TRIAL = {
         "human_message_prompt": RULES_SET_11,
         "doc_path_list": [
             "dir_reporte_lims_robustez",
-            "dirs_hoja_trabajo_preparacion_robustez",
-            "dirs_hoja_trabajo_reporte_robustez",
-            "dirs_bitacoras_preparacion_robustez",
-            "dirs_bitacoras_reporte_robustez",
+            "dirs_hoja_trabajo_robustez",
+            "dirs_bitacoras_robustez",
+            "dirs_soportes_cromatograficos_robustez",
         ],
         "data_extraction_model": Set11ExtractionModel,
         "structured_output_supervisor": Set11StructuredOutputSupervisor,
@@ -179,5 +173,5 @@ TEMPLATE_SETS_TRIAL = {
 }
 
 TEMPLATE_SETS = {
-    "Set 4": TEMPLATE_SETS_TRIAL["Set 4"]
+    "Set 6": TEMPLATE_SETS_TRIAL["Set 6"]
 }

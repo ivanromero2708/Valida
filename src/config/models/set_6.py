@@ -8,25 +8,25 @@ from src.config.models.set_1 import criterios
 
 class DatosPrecisionMetodoStrOutput(BaseModel):
     replica: str = Field(..., description="replica de la solucion evaluada en el parametro de precision del metodo")
-    porcentaje_activo: float = Field(..., ge=0, le=200, description="Porcentaje obtenido del activo evaluado en el parametro de precision del metodo")
+    porcentaje_activo: float = Field(..., description="Porcentaje obtenido del activo evaluado en el parametro de precision del metodo")
    
 class ActivoPrecisionMetodoStrOutput(BaseModel):
     nombre: str = Field(..., description="Nombre del ingrediente activo")
     precision_metodo: List[DatosPrecisionMetodoStrOutput] = Field(..., min_length=1, description="Datos de los porcentajes obtenidos de las replicas evaluadas en el parametro de precision del metodo")
     conclusion_precision_metodo: str = Field(..., description="Cumple o No cumple con el criterio global")
-    rsd_precision_metodo: float = Field(..., ge=0, le=200, description="RSD de los porcentajes obtenidos de las replicas evaluadas en el parametro de precision del metodo")
+    rsd_precision_metodo: float = Field(..., description="RSD de los porcentajes obtenidos de las replicas evaluadas en el parametro de precision del metodo")
     criterio_precision_metodo: List[criterios] = Field(..., description="Criterios de aceptacion para precision del metodo")
 
 class DatosPrecisionMetodoStrExt(BaseModel):
     replica: str = Field(..., description="replica de la solucion evaluada en el parametro de precision del metodo")
-    porcentaje_activo: float = Field(..., ge=0, le=200, description="Porcentaje obtenido del activo evaluado en el parametro de precision del metodo")
+    porcentaje_activo: float = Field(..., description="Porcentaje obtenido del activo evaluado en el parametro de precision del metodo")
 
 
 class ActivoPrecisionMetodoStrExt(BaseModel):
     nombre: str = Field(..., description="Nombre del ingrediente activo")
     precision_metodo: List[DatosPrecisionMetodoStrExt] = Field(..., min_length=1, description="Datos de los porcentajes obtenidos de las replicas evaluadas en el parametro de precision del metodo")
     conclusion_precision_metodo: str = Field(..., description="Cumple o No cumple con el criterio global")
-    rsd_precision_metodo: float = Field(..., ge=0, le=200, description="RSD de los porcentajes obtenidos de las replicas evaluadas en el parametro de precision del metodo")
+    rsd_precision_metodo: float = Field(..., description="RSD de los porcentajes obtenidos de las replicas evaluadas en el parametro de precision del metodo")
     criterio_precision_metodo: List[criterios] = Field(..., description="Criterios de aceptacion para precision del metodo")
 
 
