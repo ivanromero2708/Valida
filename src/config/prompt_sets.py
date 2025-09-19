@@ -817,29 +817,29 @@ RULES_SET_6 = """
 """
 
 RULES_SET_7 = """
-
   <REGLAS_DE_EXTRACCION_ESTRUCTURADA>
   Estas reglas aplican al `structured_extraction_agent`.
 
-    - **Objetivo General:** Extraer y estructurar la información de **precisión intermedia** por ingrediente activo (API) en dos fases diferenciadas, siguiendo el modelo `Set7ExtractionModel`.
+    - **Objetivo General:** Extraer y estructurar la informacion de **precision intermedia** por ingrediente activo (API) en dos fases diferenciadas, siguiendo el modelo `Set7ExtractionModel`.
 
   -----
 
-    - **Fase 1: Extracción de criterios del protocolo de validación**
+    - **Fase 1: Extraccion de criterios del protocolo de validacion**
 
-        - **Fuente primaria:** Documento del **Protocolo de Validación** disponible en vectorstore.
-        - **Objetivo específico:** Identificar para cada API los límites de aceptación y condiciones aplicables al estudio de precisión intermedia (número de analistas, réplicas, umbrales de %RSD y diferencias entre promedios).
-        - **Plan de acción:**
-          1.  Localiza tablas o listas bajo los títulos "Precisión intermedia", "Intermediate precision" o "Ruggedness".
-          2.  Extrae literalmente los criterios numéricos y condiciones asociadas (ej.: `%RSD <= 2.0%`, `|diferencia promedio| <= 2.0%`, "dos analistas", "seis réplicas").
-          3.  Crea o actualiza un registro por API con el campo `criterio_precision_intermedia` conteniendo el texto completo del protocolo. Si el protocolo diferencia criterios por API, conserva cada literal por separado.
-        - **Salida esperada Fase 1 (ejemplo sintético):**
+        - **Fuente primaria:** Vectorstore .parquet del **Protocolo de Validacion** disponible en vectorstore.
+        - **Objetivo especifico:** Identificar para cada API los limites de aceptacion y condiciones aplicables al estudio de precision intermedia (numero de analistas, replicas, umbrales de %RSD y diferencias entre promedios).
+        - **Plan de accion:**
+          1.  Localiza tablas o listas bajo los titulos "Precision intermedia", "Intermediate precision" o "Ruggedness".
+          2.  Extrae literalmente los criterios numericos y condiciones asociadas (ej.: `%RSD <= 2.0%`, `|diferencia promedio| <= 2.0%`, "dos analistas", "seis replicas").
+          3.  Si alguna consulta devuelve "Vectorstore is empty" o la ruta del parquet no coincide con `<LISTA_DOCS>` (por ejemplo, falta "- Grupo Procaps"), corrige la ruta antes de concluir que el criterio no existe y reintenta la busqueda.
+          4.  No utilices marcadores de posicion (`[pendiente...]`, `No disponible`) en `criterio_precision_intermedia`; si tras reintentos documentados no hay informacion, registra el problema en `issues` y no emitas ese API.
+        - **Salida esperada Fase 1 (ejemplo sintetico):**
           ```json
           {
             "activos_precision_intermedia": [
               {
                 "nombre": "[API_PRINCIPAL]",
-                "criterio_precision_intermedia": "Aceptar si %RSD <= 2.0% y |diferencia promedio| <= 2.0% (dos analistas, seis réplicas)."
+                "criterio_precision_intermedia": "Aceptar si %RSD <= 2.0% y |diferencia promedio| <= 2.0% (dos analistas, seis replicas)."
               }
             ]
           }
@@ -847,25 +847,26 @@ RULES_SET_7 = """
 
   -----
 
-    - **Fase 2: Extracción de datos experimentales (hojas de trabajo / LIMS)**
+    - **Fase 2: Extraccion de datos experimentales (hojas de trabajo / LIMS)**
 
-        - **Fuentes:** Reportes crudos del **LIMS** y hojas de trabajo analíticas que documenten la precisión intermedia.
-        - **Objetivo específico:** Registrar las réplicas individuales de cada analista, así como los cálculos de %RSD y diferencia entre promedios reportados, para cada API.
-        - **Plan de acción:**
-          1.  Identifica tablas con columnas duplicadas por analista (p. ej. `A1/A2`, `D1/D2`, `Analista 1/Analista 2`) y filas tipo "Solución Muestra 1..6".
-          2.  Para cada API, agrega a `precision_intermedia` cada réplica con los valores exactos de porcentaje por analista, respetando las etiquetas textuales de la hoja.
-          3.  Captura los valores consolidados que entregue el LIMS (`rsd_an1_an2`, `diferencia_promedio_an1_an2`). Si no existen, deja el campo en `null` y documenta en la trazabilidad interna que debe calcularse en el razonamiento.
-          4.  Propaga el criterio recuperado en la Fase 1 hacia cada API. Si el LIMS incluye identificadores de corrida o notas relevantes, registralos en la trazabilidad interna.
-        - **Normalización y control de calidad:**
+        - **Fuentes:** Vectorstore .parquet de los Reportes de **LIMS** y hojas de trabajo analiticas que documenten la precision intermedia.
+        - **Objetivo especifico:** Registrar las replicas individuales de cada analista, asi como los calculos de %RSD, para cada API.
+        - **Plan de accion:**
+          1. Para cada API, procesa primero los .parquet de los reportes LIMS: extrae cada una de las filas "Solucion Muestra n" y captura los porcentajes del analista correspondiente A1D1E1 o A2D1E1 (Puedes usar esto en las consultas).
+          2. Luego de esto usa el vectostore .parquet del reporte LIMS para recuperar los calculos consolidados (`rsd_an1_an2`) y cualquier referencia de corrida. Si el reporte no provee el dato, deja el campo en `null` pero registra en `issues` que debe calcularse en el razonamiento.
+          3. Propaga el criterio recuperado en la Fase 1 hacia cada API. Si el LIMS incluye identificadores de corrida o notas relevantes, registralos en la trazabilidad interna.
+        - **Normalizacion y control de calidad:**
           - Usa punto decimal y convierte todos los porcentajes a `float`.
-          - Conserva exactamente los nombres de réplicas y APIs.
-          - No promedies ni elimines réplicas salvo que estén claramente vacías; registra cualquier limpieza en las notas de trazabilidad.
+          - Conserva exactamente los nombres de replicas y APIs.
+          - No promedies ni elimines replicas salvo que esten claramente vacias; registra cualquier limpieza en las notas de trazabilidad.
+          - Los campos `porcentaje_an1`, `porcentaje_an2`, `rsd_an1_an2` son obligatorios para validar el modelo; si alguno falta tras agotar las busquedas, reportalo en `issues` y evita generar un registro invalido.
+          - Aprovecha el campo `issues` para describir cualquier documento faltante o diferencia detectada.
         - **Trazabilidad obligatoria (registro interno, no en la salida):** `source_document`, `page_or_span`, `query_used`, `confidence`, `cleaning_notes`.
-        - **Control adicional:** Si existen varias corridas para la misma combinación (API, analista, réplica), prioriza la más reciente/completa y deja constancia del criterio de deduplicación.
+        - **Control adicional:** Si existen varias corridas para la misma combinacion (API, analista, replica), prioriza la mas reciente/completa y deja constancia del criterio de deduplicacion.
 
   -----
 
-    - **Ejemplo de extracción completa (Set7ExtractionModel):**
+    - **Ejemplo de extraccion completa (Set7ExtractionModel):**
       ```json
       {
         "activos_precision_intermedia": [
@@ -879,9 +880,7 @@ RULES_SET_7 = """
               { "replica": "Solucion Muestra 5", "porcentaje_an1": 99.7, "porcentaje_an2": 99.9 },
               { "replica": "Solucion Muestra 6", "porcentaje_an1": 100.0, "porcentaje_an2": 100.2 }
             ],
-            "conclusion": "[pendiente_validar]",
             "rsd_an1_an2": 0.58,
-            "diferencia_promedio_an1_an2": 0.00,
             "criterio_precision_intermedia": "Aceptar si %RSD <= 2.0% y |diferencia promedio| <= 2.0%."
           },
           {
@@ -894,9 +893,7 @@ RULES_SET_7 = """
               { "replica": "Solucion Muestra 5", "porcentaje_an1": 101.3, "porcentaje_an2": 101.1 },
               { "replica": "Solucion Muestra 6", "porcentaje_an1": 101.5, "porcentaje_an2": 101.3 }
             ],
-            "conclusion": "[pendiente_validar]",
             "rsd_an1_an2": 0.72,
-            "diferencia_promedio_an1_an2": 0.22,
             "criterio_precision_intermedia": "Aceptar si %RSD <= 2.5% y |diferencia promedio| <= 2.0%."
           }
         ]
@@ -909,17 +906,17 @@ RULES_SET_7 = """
   <REGLAS_DE_RAZONAMIENTO>
   Estas reglas aplican al `reasoning_agent`.
 
-    - **Propósito:** Determinar, para cada API, si la precisión intermedia cumple los criterios del protocolo y preparar los datos requeridos por `Set7StructuredOutputSupervisor`.
+    - **Proposito:** Determinar, para cada API, si la precision intermedia cumple los criterios del protocolo y preparar los datos requeridos por `Set7StructuredOutputSupervisor`.
     - **Herramientas restringidas:** No utilices `linealidad_tool`; esta herramienta es exclusiva de `RULES_SET_3`.
     - **Entradas:** Objeto JSON completo producido por el `structured_extraction_agent`.
     - **Pasos del razonamiento:**
-      1.  Verifica la consistencia de réplicas y analistas. Si falta algún dato clave, registralo y explica cómo impacta el cálculo.
-      2.  Calcula el promedio global por analista (`promedio_an1`, `promedio_an2`) usando todas las réplicas disponibles para el API.
-      3.  Calcula `diferencia_promedio_an1_an2` si venía en `null`, tomando la diferencia absoluta de los promedios obtenidos.
-      4.  Calcula el `%RSD` combinado entre analistas cuando el LIMS no lo reportó. Justifica el método usado (p. ej. RSD del promedio de ambos analistas).
-      5.  Compara los valores calculados con el criterio literal del protocolo. Documenta explícitamente los umbrales aplicados antes de decidir.
-      6.  Determina `conclusion` por API: "Cumple" solo si cada condición evaluada se encuentra dentro de los límites del protocolo; de lo contrario, "No Cumple".
-      7.  Prepara los promedios globales para replicarlos en el campo `promedio_analistas` de cada réplica, manteniendo dos decimales.
+      1.  Verifica la consistencia de replicas y analistas. Si falta algun dato clave, registralo y explica como impacta el calculo.
+      2.  Calcula el promedio global por analista (`promedio_an1`, `promedio_an2`) usando todas las replicas disponibles para el API.
+      3.  Calcula `diferencia_promedio_an1_an2`, tomando la diferencia absoluta de los promedios obtenidos.
+      4.  Calcula el `%RSD` combinado entre analistas cuando el LIMS no lo reporto. Justifica el metodo usado (p. ej. RSD del promedio de ambos analistas).
+      5.  Compara los valores calculados con el criterio literal del protocolo. Documenta explicitamente los umbrales aplicados antes de decidir.
+      6.  Determina `conclusion` por API: "Cumple" solo si cada condicion evaluada se encuentra dentro de los limites del protocolo; de lo contrario, "No Cumple".
+      7.  Prepara los promedios globales para replicarlos en el campo `promedio_analistas` de cada replica, manteniendo dos decimales.
     - **Mini-ejemplo (orden recomendado):**
       - `[API_PRINCIPAL]`: promedio_an1=100.05; promedio_an2=100.05; diferencia=0.00%; RSD=0.58% vs criterio (%RSD <=2.0% y diferencia<=2.0%) -> Cumple.
       - `[API_SECUNDARIO]`: promedio_an1=101.18; promedio_an2=100.97; diferencia=0.21%; RSD=0.72% vs criterio (%RSD <=2.5% y diferencia<=2.0%) -> Cumple.
@@ -931,11 +928,11 @@ RULES_SET_7 = """
   Aplica al `supervisor_agent`.
 
     - **Modelo de salida obligatorio:** `Set7StructuredOutputSupervisor`.
-    - **Formato:** Emite un único objeto JSON válido; ninguna frase adicional después del razonamiento.
-    - **Integración de datos:**
-      - Replica cada registro de `precision_intermedia` agregando `promedio_analistas` con un único objeto `{ "promedio_an1": <valor>, "promedio_an2": <valor> }`.
+    - **Formato:** Emite un unico objeto JSON valido; ninguna frase adicional despues del razonamiento.
+    - **Integracion de datos:**
+      - Replica cada registro de `precision_intermedia` agregando `promedio_analistas` con un unico objeto `{ "promedio_an1": <valor>, "promedio_an2": <valor> }`.
       - Completa `rsd_an1_an2`, `diferencia_promedio_an1_an2` y `conclusion` utilizando los valores calculados por el razonamiento.
-      - Incluye `criterio_precision_intermedia` como texto literal por API y añade `referencia_precision_intermedia` con la referencia analítica pertinente al conjunto de datos.
+      - Incluye `criterio_precision_intermedia` como texto literal por API y anade `referencia_precision_intermedia` con la referencia analitica pertinente al conjunto de datos.
     - **Ejemplo de salida final del supervisor (tras documentar el razonamiento):**
       ```json
       {
@@ -947,42 +944,38 @@ RULES_SET_7 = """
                 "replica": "Solucion Muestra 1",
                 "porcentaje_an1": 100.2,
                 "porcentaje_an2": 99.8,
-                "promedio_analistas": [ { "promedio_an1": 100.05, "promedio_an2": 100.05 } ]
               },
               {
                 "replica": "Solucion Muestra 2",
                 "porcentaje_an1": 100.1,
                 "porcentaje_an2": 100.0,
-                "promedio_analistas": [ { "promedio_an1": 100.05, "promedio_an2": 100.05 } ]
               },
               {
                 "replica": "Solucion Muestra 3",
                 "porcentaje_an1": 99.9,
                 "porcentaje_an2": 100.3,
-                "promedio_analistas": [ { "promedio_an1": 100.05, "promedio_an2": 100.05 } ]
               },
               {
                 "replica": "Solucion Muestra 4",
                 "porcentaje_an1": 100.4,
                 "porcentaje_an2": 100.1,
-                "promedio_analistas": [ { "promedio_an1": 100.05, "promedio_an2": 100.05 } ]
               },
               {
                 "replica": "Solucion Muestra 5",
                 "porcentaje_an1": 99.7,
                 "porcentaje_an2": 99.9,
-                "promedio_analistas": [ { "promedio_an1": 100.05, "promedio_an2": 100.05 } ]
               },
               {
                 "replica": "Solucion Muestra 6",
                 "porcentaje_an1": 100.0,
                 "porcentaje_an2": 100.2,
-                "promedio_analistas": [ { "promedio_an1": 100.05, "promedio_an2": 100.05 } ]
               }
             ],
             "conclusion": "Cumple",
             "rsd_an1_an2": 0.58,
-            "diferencia_promedio_an1_an2": 0.00,
+            "promedio_an1": 100.05,
+            "promedio_an2": 100.05,            
+            "diferencia_promedios_an1_an2": 0.00,
             "criterio_precision_intermedia": "Aceptar si %RSD <= 2.0% y |diferencia promedio| <= 2.0%."
           },
           {
@@ -992,51 +985,46 @@ RULES_SET_7 = """
                 "replica": "Solucion Muestra 1",
                 "porcentaje_an1": 101.1,
                 "porcentaje_an2": 100.5,
-                "promedio_analistas": [ { "promedio_an1": 101.18, "promedio_an2": 100.97 } ]
               },
               {
                 "replica": "Solucion Muestra 2",
                 "porcentaje_an1": 101.4,
                 "porcentaje_an2": 101.2,
-                "promedio_analistas": [ { "promedio_an1": 101.18, "promedio_an2": 100.97 } ]
               },
               {
                 "replica": "Solucion Muestra 3",
                 "porcentaje_an1": 100.8,
                 "porcentaje_an2": 101.0,
-                "promedio_analistas": [ { "promedio_an1": 101.18, "promedio_an2": 100.97 } ]
               },
               {
                 "replica": "Solucion Muestra 4",
                 "porcentaje_an1": 101.0,
                 "porcentaje_an2": 100.7,
-                "promedio_analistas": [ { "promedio_an1": 101.18, "promedio_an2": 100.97 } ]
               },
               {
                 "replica": "Solucion Muestra 5",
                 "porcentaje_an1": 101.3,
                 "porcentaje_an2": 101.1,
-                "promedio_analistas": [ { "promedio_an1": 101.18, "promedio_an2": 100.97 } ]
               },
               {
                 "replica": "Solucion Muestra 6",
                 "porcentaje_an1": 101.5,
                 "porcentaje_an2": 101.3,
-                "promedio_analistas": [ { "promedio_an1": 101.18, "promedio_an2": 100.97 } ]
               }
             ],
             "conclusion": "Cumple",
             "rsd_an1_an2": 0.72,
-            "diferencia_promedio_an1_an2": 0.22,
+            "promedio_an1": 101.18,
+            "promedio_an2": 100.97,
+            "diferencia_promedios_an1_an2": 0.22,
             "criterio_precision_intermedia": "Aceptar si %RSD <= 2.5% y |diferencia promedio| <= 2.0%."
           }
         ],
         "referencia_precision_intermedia": "[ID_CORRIDA_PRECISION_INTERMEDIA]"
       }
       ```
-    - **Recordatorio estricto:** El razonamiento completo debe preceder al JSON final; incluye todos los cálculos (promedios, diferencias, RSD, criterios) antes de presentar la salida estructurada.
+    - **Recordatorio estricto:** El razonamiento completo debe preceder al JSON final; incluye todos los calculos (promedios, diferencias, RSD, criterios) antes de presentar la salida estructurada.
   </REGLAS_DE_SALIDA_SUPERVISOR>
-
 """
 
 

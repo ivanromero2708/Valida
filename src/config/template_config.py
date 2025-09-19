@@ -113,6 +113,7 @@ TEMPLATE_SETS_TRIAL = {
     "Set 7": {
         "human_message_prompt": RULES_SET_7,
         "doc_path_list": [
+            "dir_protocolo",
             "dir_reporte_lims_precision_intermedia",
             "dirs_hoja_trabajo_precision_intermedia",
             "dirs_bitacoras_precision_intermedia",
@@ -125,6 +126,7 @@ TEMPLATE_SETS_TRIAL = {
     "Set 8": {
         "human_message_prompt": RULES_SET_8,
         "doc_path_list": [
+            "dir_protocolo",
             "dir_reporte_lims_estabilidad_solucion_estandar",
             "dirs_hoja_trabajo_estabilidad_solucion_estandar",
             "dirs_bitacoras_estabilidad_solucion_estandar",
@@ -137,6 +139,7 @@ TEMPLATE_SETS_TRIAL = {
     "Set 9": {
         "human_message_prompt": RULES_SET_9,
         "doc_path_list": [
+            "dir_protocolo",
             "dir_reporte_lims_estabilidad_solucion_muestra",
             "dirs_hoja_trabajo_estabilidad_solucion_muestra",
             "dirs_bitacoras_estabilidad_solucion_muestra",
@@ -149,6 +152,7 @@ TEMPLATE_SETS_TRIAL = {
     "Set 10": {
         "human_message_prompt": RULES_SET_10,
         "doc_path_list": [
+            "dir_protocolo",
             "dir_reporte_lims_estabilidad_solucion_fase_movil",
             "dirs_hoja_trabajo_estabilidad_solucion_fase_movil",
             "dirs_bitacoras_estabilidad_solucion_fase_movil",
@@ -161,6 +165,7 @@ TEMPLATE_SETS_TRIAL = {
     "Set 11": {
         "human_message_prompt": RULES_SET_11,
         "doc_path_list": [
+            "dir_protocolo",
             "dir_reporte_lims_robustez",
             "dirs_hoja_trabajo_robustez",
             "dirs_bitacoras_robustez",
