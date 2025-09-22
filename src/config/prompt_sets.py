@@ -1029,269 +1029,148 @@ RULES_SET_7 = """
 
 
 RULES_SET_8 = """
-
-  <REGLAS_DE_EXTRACCION_ESTRUCTURADA>
+<REGLAS_DE_EXTRACCION_ESTRUCTURADA>
   Estas reglas aplican al `structured_extraction_agent`.
-
-    - **Objetivo General:** Extraer y estructurar la información de **estabilidad de soluciones** (estándar y muestra) mediante un proceso en dos fases, alineado con el modelo `Set8ExtractionModel`.
-
+ 
+    - **Objetivo General:** Extraer y estructurar la información de **estabilidad de soluciones** para cada **analito** (estándar y muestra), mediante un proceso en dos fases, alineado con el modelo `Set8ExtractionModel`.
+ 
   -----
-
+ 
     - **Fase 1: Extracción de criterios del protocolo de validación**
-
+ 
+      
         - **Fuente primaria:** Documento del **Protocolo de Validación** en vectorstore.
         - **Objetivo específico:** Identificar los criterios de aceptación, tiempos evaluados y condiciones de almacenamiento que aplican a cada solución.
         - **Plan de acción:**
           1.  Localiza secciones tituladas "Estabilidad de soluciones", "Solution stability" o equivalentes.
-          2.  Extrae los límites de variación permitida (ej.: `|%di| <= 2.0%` o `Promedio >= 98.0%`) y las condiciones experimentales (condición de almacenamiento, tiempos, réplicas).
-          3.  Registra los criterios en el campo `criterio_aceptacion` que corresponda a cada combinación de condición/tiempo; documenta también si el protocolo exige evaluar soluciones estándar y de muestra por separado.
-        - **Salida esperada Fase 1 (ejemplo sintético):**
-          ```json
-          {
-            "soluciones": [
-              {
-                "solucion": "[Solucion Estandar]",
-                "data_estabilidad_solucion": [
-                  {
-                    "condicion_estabilidad": "Condicion 1",
-                    "tiempo_estabilidad": "Initial Sample Stability",
-                    "criterio_aceptacion": "Aceptar si |%di| <= 2.0% frente al tiempo inicial."
-                  }
-                ]
-              },
-            ],
-            "referencia_analitica": "[ID_PROTOCOLO]",
-            "conclusion_estabilidad_muestra": "[pendiente_validar]"
-          }
-          ```
-
+          2.  Extrae los límites de variación permitida (ej.: `|%di| <= 2.0%`, `±2.0%`, `no exceda 2%`) y las condiciones experimentales.
+          3.  Registra los criterios en el campo `criterio_aceptacion` para cada combinación de condición/tiempo.
+ 
   -----
-
-    - **Fase 2: Extracción de datos experimentales (hojas de trabajo / LIMS)**
-
-        - **Fuentes:** Reportes crudos del **LIMS** y hojas de trabajo analíticas asociadas a estabilidad de soluciones.
-        - **Objetivo específico:** Capturar las réplicas individuales de cada condición y tiempo, junto con los promedios y diferencias reportados para cada solución estándar y de muestra.
+ 
+    - **Fase 2: Extracción de datos experimentales (hojas de trabajo / LIMS)** ES MUY IMPORTANTE QUE EJECUTES AMBAS FASES ANTES DE EMITIR CUALQUIER SALIDA.
+ 
+        - **Fuentes:** Documentos del reporte **LIMS** y hojas de trabajo analíticas.
+        - **Objetivo específico:** Extraer todos los valores de las réplicas individuales, promedios y diferencias para cada **analito**, solución (estándar y muestra), condición y tiempo.
         - **Plan de acción:**
-          1.  Identifica tablas con encabezados como "Initial Sample Stability", "Sample Stability Time 1", "Condición 1/2", "Solucion Estandar R1..R3".
-          2.  Para cada solución registrada, construye `data_estabilidad_solucion` con entradas por `tiempo_estabilidad` y `condicion_estabilidad`, agregando todas las réplicas en `data_condicion`.
-          3.  Transcribe `promedio_areas` y `diferencia_promedios` tal como aparezcan (sin símbolo %). Si no están presentes, deja `null` y anota en la trazabilidad que se calcularán en el razonamiento.
-          4.  Pobla `conclusion_estabilidad` con `[pendiente_validar]` hasta que el razonamiento determine el resultado final.
-          5.  Extrae la `referencia_analitica` (ej. identificador del reporte) para la raíz del objeto y conserva una descripción general en `conclusion_estabilidad_muestra` como `[pendiente_validar]` hasta el razonamiento.
-        - **Normalización y control de calidad:**
-          - Usa punto decimal; asegura que `replica` sea entero.
-          - Respeta literalidad de los tiempos y condiciones.
-          - No mezcles datos de soluciones distintas; cada solución mantiene su propio bloque.
-        - **Trazabilidad obligatoria (registro interno, no en la salida):** `source_document`, `page_or_span`, `query_used`, `confidence`, `cleaning_notes`.
-        - **Control adicional:** Si hay corridas repetidas, prioriza la más reciente/completa y documenta la decisión.
-
+          1.  **PRIMERO Y MÁS IMPORTANTE:** Identifica el **analito principal** que se está evaluando en la sección o página (ej. `HIDROCODONA VALORACIÓN`, `ACETAMINOFEN VALORACIÓN`). Este es el contexto para todos los datos que siguen.
+          2.  Dentro del contexto de cada analito, identifica las secciones para "Solucion Muestra" y "Solucion Estandar".
+          3.  **CRÍTICO: Al poblar el campo `solucion`, DEBES usar un formato compuesto: `"[NOMBRE_DEL_ANALITO] - Solucion Muestra"` o `"[NOMBRE_DEL_ANALITO] - Solucion Estandar"`.**
+          4.  Para cada solución, extrae los datos agrupados por `tiempo_estabilidad` (ej. "Initial Sample Stability", "Sample Stability Time 1").
+          5.  Para cada tiempo, crea un objeto separado para **CADA CONDICIÓN** (`Condicion 1`, `Condicion 2`). **NO LAS COMBINES.**
+          6.  Dentro de cada objeto de condición/tiempo, extrae el promedio (`Promedio Solucion...`), el porcentaje de diferencia (`%di Solucion...`), y **ASEGÚRATE DE EXTRAER TODAS las réplicas individuales** (`R1`, `R2`, `R3`, etc.). Cada réplica debe ser un objeto separado en la lista `data_condicion`.
+          7.  Transcribe `promedio_areas` y `diferencia_promedios` (`%di`) tal como aparezcan en el documento. Si no están, deja `null`.
+          8.  Extrae la `referencia_analitica` (ej. `HT001/25-01904 ID-VAL`).
+ 
   -----
-
+ 
     - **Ejemplo de extracción completa (Set8ExtractionModel):**
+      **ADVERTENCIA: El siguiente ejemplo es ESTRUCTURAL. Todos los valores entre corchetes (ej. `"[VALOR_PLACEHOLDER]"`) son placeholders genéricos. NO DEBEN ser copiados. El agente DEBE extraer los valores y nombres reales del documento fuente.**
       ```json
       {
         "soluciones": [
           {
-            "solucion": "[Solucion Estandar]",
+            "solucion": "[ANALITO_EXTRAIDO] - Solucion Muestra",
             "data_estabilidad_solucion": [
               {
-                "condicion_estabilidad": "Condicion 1",
-                "tiempo_estabilidad": "Initial Sample Stability",
-                "promedio_areas": 512300.0,
-                "diferencia_promedios": 0.0,
-                "criterio_aceptacion": "Aceptar si |%di| <= 2.0% frente al tiempo inicial.",
-                "conclusion_estabilidad": "[pendiente_validar]",
+                "condicion_estabilidad": "[CONDICION_EXTRAIDA]",
+                "tiempo_estabilidad": "[TIEMPO_INICIAL_EXTRAIDO]",
+                "promedio_areas": "[VALOR_NUMERICO_PROMEDIO]",
+                "diferencia_promedios": null,
+                "criterio_aceptacion": "[CRITERIO_EXTRAIDO_DEL_PROTOCOLO]",
                 "data_condicion": [
-                  { "replica": 1, "area": 512100.0 },
-                  { "replica": 2, "area": 512350.0 },
-                  { "replica": 3, "area": 512450.0 }
+                  { "replica": 1, "area": "[VALOR_NUMERICO_REPLICA]" },
+                  { "replica": 2, "area": "[VALOR_NUMERICO_REPLICA]" },
+                  { "replica": 3, "area": "[VALOR_NUMERICO_REPLICA]" }
                 ]
               },
               {
-                "condicion_estabilidad": "Condicion 1",
-                "tiempo_estabilidad": "Sample Stability Time 1",
-                "promedio_areas": 510900.0,
-                "diferencia_promedios": -0.27,
-                "criterio_aceptacion": "Aceptar si |%di| <= 2.0% frente al tiempo inicial.",
-                "conclusion_estabilidad": "[pendiente_validar]",
+                "condicion_estabilidad": "[CONDICION_EXTRAIDA]",
+                "tiempo_estabilidad": "[TIEMPO_POSTERIOR_EXTRAIDO]",
+                "promedio_areas": "[VALOR_NUMERICO_PROMEDIO]",
+                "diferencia_promedios": "[VALOR_PORCENTUAL_DIF]",
+                "criterio_aceptacion": "[CRITERIO_EXTRAIDO_DEL_PROTOCOLO]",
                 "data_condicion": [
-                  { "replica": 1, "area": 510800.0 },
-                  { "replica": 2, "area": 510950.0 },
-                  { "replica": 3, "area": 511000.0 }
-                ]
-              },
-              {
-                "condicion_estabilidad": "Condicion 2",
-                "tiempo_estabilidad": "Sample Stability Time 1",
-                "promedio_areas": 509800.0,
-                "diferencia_promedios": -0.49,
-                "criterio_aceptacion": "Aceptar si |%di| <= 2.5% frente al tiempo inicial.",
-                "conclusion_estabilidad": "[pendiente_validar]",
-                "data_condicion": [
-                  { "replica": 1, "area": 509600.0 },
-                  { "replica": 2, "area": 509850.0 },
-                  { "replica": 3, "area": 509950.0 }
+                  { "replica": 1, "area": "[VALOR_NUMERICO_REPLICA]" },
+                  { "replica": 2, "area": "[VALOR_NUMERICO_REPLICA]" },
+                  { "replica": 3, "area": "[VALOR_NUMERICO_REPLICA]" }
                 ]
               }
             ]
           },
           {
-            "solucion": "[Solucion Muestra]",
+            "solucion": "[OTRO_ANALITO_EXTRAIDO] - Solucion Estandar",
             "data_estabilidad_solucion": [
               {
-                "condicion_estabilidad": "Condicion 1",
-                "tiempo_estabilidad": "Initial Sample Stability",
-                "promedio_areas": 498200.0,
-                "diferencia_promedios": 0.0,
-                "criterio_aceptacion": "Aceptar si |%di| <= 3.0% frente al tiempo inicial.",
-                "conclusion_estabilidad": "[pendiente_validar]",
+                "condicion_estabilidad": "[CONDICION_EXTRAIDA]",
+                "tiempo_estabilidad": "[TIEMPO_INICIAL_EXTRAIDO]",
+                "promedio_areas": "[VALOR_NUMERICO_PROMEDIO]",
+                "diferencia_promedios": null,
+                "criterio_aceptacion": "[CRITERIO_EXTRAIDO_DEL_PROTOCOLO]",
                 "data_condicion": [
-                  { "replica": 1, "area": 498100.0 },
-                  { "replica": 2, "area": 498250.0 },
-                  { "replica": 3, "area": 498250.0 }
-                ]
-              },
-              {
-                "condicion_estabilidad": "Condicion 1",
-                "tiempo_estabilidad": "Sample Stability Time 2",
-                "promedio_areas": 493900.0,
-                "diferencia_promedios": -0.86,
-                "criterio_aceptacion": "Aceptar si |%di| <= 3.0% frente al tiempo inicial.",
-                "conclusion_estabilidad": "[pendiente_validar]",
-                "data_condicion": [
-                  { "replica": 1, "area": 493700.0 },
-                  { "replica": 2, "area": 493950.0 },
-                  { "replica": 3, "area": 494050.0 }
+                  { "replica": 1, "area": "[VALOR_NUMERICO_REPLICA]" },
+                  { "replica": 2, "area": "[VALOR_NUMERICO_REPLICA]" }
                 ]
               }
             ]
           }
         ],
-        "referencia_analitica": "[HTA_ESTABILIDAD_SOLUCIONES]",
+        "referencia_analitica": "[ID_DEL_DOCUMENTO_FUENTE]",
         "conclusion_estabilidad_muestra": "[pendiente_validar]"
       }
       ```
-  </REGLAS_DE_EXTRACCION_ESTRUCTURADA>
-
+</REGLAS_DE_EXTRACCION_ESTRUCTURADA>
+ 
   <br>
-
+ 
   <REGLAS_DE_RAZONAMIENTO>
   Estas reglas aplican al `reasoning_agent`.
-
-    - **Propósito:** Evaluar si cada solución y condición mantiene la estabilidad dentro de los criterios del protocolo y preparar la salida para `Set8StructuredOutputSupervisor`.
-    - **Herramientas restringidas:** No utilices `linealidad_tool`; la herramienta está prohibida en este conjunto.
+ 
+    - **Propósito:** Evaluar si cada solución y condición mantiene la estabilidad dentro de los criterios del protocolo y preparar la salida.
     - **Entradas:** Objeto JSON del `structured_extraction_agent`.
     - **Pasos del razonamiento:**
-      1.  Identifica, por solución, cuál es el valor de referencia (tiempo inicial) para cada condición.
-      2.  Si `promedio_areas` o `diferencia_promedios` se dejaron en `null`, calcúlalos a partir de las réplicas disponibles y documenta el procedimiento.
-      3.  Calcula el porcentaje de variación respecto al tiempo inicial (ej.: `delta = 100 * (promedio_t - promedio_t0) / promedio_t0`).
-      4.  Compara cada variación con el criterio literal registrado; deja explícito el umbral antes de decidir.
-      5.  Asigna `conclusion_estabilidad` por entrada (`"Cumple"` / `"No Cumple"`) y justifica todo incumplimiento.
-      6.  Determina `conclusion_estabilidad_muestra` considerando el comportamiento de las soluciones de muestra; si alguna condición no cumple, marca `"No Cumple"`.
-      7.  Conserva en la narrativa cualquier supuesto o dato ausente y cómo se manejará en el reporte.
-    - **Mini-ejemplo (orden recomendado):**
-      - `[Solucion Estandar] Condicion 1 Time 1`: delta=-0.27% vs límite 2.0% -> Cumple.
-      - `[Solucion Muestra] Condicion 1 Time 2`: delta=-0.86% vs límite 3.0% -> Cumple.
-      - Resultado global muestras: todas las condiciones cumplen -> `conclusion_estabilidad_muestra = "Cumple"`.
-  </REGLAS_DE_RAZONAMIENTO>
-
-  <br>
-
+      1.  Itera sobre cada `solucion`.
+      2.  Dentro de cada solución, identifica el valor de referencia (tiempo inicial) para cada condición.
+      3.  Si `promedio_areas` o `diferencia_promedios` son `null`, calcúlalos a partir de las réplicas. Si el valor `%di` ya fue extraído, úsalo como `diferencia_promedios`.
+      4.  Compara el valor absoluto de `diferencia_promedios` con el umbral numérico del `criterio_aceptacion`.
+      5.  Asigna `conclusion_estabilidad` por entrada (`"Cumple"` / `"No Cumple"`).
+      6.  Determina la `conclusion_estabilidad_muestra` global. Será `"Cumple"` solo si **TODAS** las condiciones de **TODAS** las soluciones de tipo "Muestra" cumplen.
+</REGLAS_DE_RAZONAMIENTO>
+ 
   <REGLAS_DE_SALIDA_SUPERVISOR>
   Aplica al `supervisor_agent`.
-
+ 
     - **Modelo de salida obligatorio:** `Set8StructuredOutputSupervisor`.
-    - **Formato:** único objeto JSON bien formado; sin texto adicional tras el razonamiento.
-    - **Integración de datos:**
-      - Replica los bloques de `data_estabilidad_solucion`, reemplazando los campos calculados con los valores definitivos.
-      - Actualiza cada `conclusion_estabilidad` y `conclusion_estabilidad_muestra` según el análisis.
-      - Asegura que `referencia_analitica` permanezca presente y corresponda a la fuente utilizada.
-    - **Ejemplo de salida final del supervisor:**
+    - **Formato:** único objeto JSON bien formado.
+    - **Integración de datos:** Replica la estructura del `reasoning_agent`, asegurando que `conclusion_estabilidad` y `conclusion_estabilidad_muestra` estén actualizados.
+    - **Ejemplo de salida final (Estructural - Rellenar con datos reales):**
       ```json
       {
         "soluciones": [
           {
-            "solucion": "[Solucion Estandar]",
+            "solucion": "[ANALITO_REAL] - Solucion Estandar",
             "data_estabilidad_solucion": [
               {
-                "condicion_estabilidad": "Condicion 1",
-                "tiempo_estabilidad": "Initial Sample Stability",
-                "promedio_areas": 512300.0,
-                "diferencia_promedios": 0.0,
-                "criterio_aceptacion": "Aceptar si |%di| <= 2.0% frente al tiempo inicial.",
-                "conclusion_estabilidad": "Cumple",
+                "condicion_estabilidad": "[CONDICION_REAL]",
+                "tiempo_estabilidad": "[TIEMPO_REAL]",
+                "promedio_areas": "[VALOR_NUMERICO_CALCULADO]",
+                "diferencia_promedios": "[VALOR_PORCENTUAL_CALCULADO]",
+                "criterio_aceptacion": "[CRITERIO_DEL_PROTOCOLO]",
+                "conclusion_estabilidad": "[CONCLUSION_RAZONADA]",
                 "data_condicion": [
-                  { "replica": 1, "area": 512100.0 },
-                  { "replica": 2, "area": 512350.0 },
-                  { "replica": 3, "area": 512450.0 }
-                ]
-              },
-              {
-                "condicion_estabilidad": "Condicion 1",
-                "tiempo_estabilidad": "Sample Stability Time 1",
-                "promedio_areas": 510900.0,
-                "diferencia_promedios": -0.27,
-                "criterio_aceptacion": "Aceptar si |%di| <= 2.0% frente al tiempo inicial.",
-                "conclusion_estabilidad": "Cumple",
-                "data_condicion": [
-                  { "replica": 1, "area": 510800.0 },
-                  { "replica": 2, "area": 510950.0 },
-                  { "replica": 3, "area": 511000.0 }
-                ]
-              },
-              {
-                "condicion_estabilidad": "Condicion 2",
-                "tiempo_estabilidad": "Sample Stability Time 1",
-                "promedio_areas": 509800.0,
-                "diferencia_promedios": -0.49,
-                "criterio_aceptacion": "Aceptar si |%di| <= 2.5% frente al tiempo inicial.",
-                "conclusion_estabilidad": "Cumple",
-                "data_condicion": [
-                  { "replica": 1, "area": 509600.0 },
-                  { "replica": 2, "area": 509850.0 },
-                  { "replica": 3, "area": 509950.0 }
-                ]
-              }
-            ]
-          },
-          {
-            "solucion": "[Solucion Muestra]",
-            "data_estabilidad_solucion": [
-              {
-                "condicion_estabilidad": "Condicion 1",
-                "tiempo_estabilidad": "Initial Sample Stability",
-                "promedio_areas": 498200.0,
-                "diferencia_promedios": 0.0,
-                "criterio_aceptacion": "Aceptar si |%di| <= 3.0% frente al tiempo inicial.",
-                "conclusion_estabilidad": "Cumple",
-                "data_condicion": [
-                  { "replica": 1, "area": 498100.0 },
-                  { "replica": 2, "area": 498250.0 },
-                  { "replica": 3, "area": 498250.0 }
-                ]
-              },
-              {
-                "condicion_estabilidad": "Condicion 1",
-                "tiempo_estabilidad": "Sample Stability Time 2",
-                "promedio_areas": 493900.0,
-                "diferencia_promedios": -0.86,
-                "criterio_aceptacion": "Aceptar si |%di| <= 3.0% frente al tiempo inicial.",
-                "conclusion_estabilidad": "Cumple",
-                "data_condicion": [
-                  { "replica": 1, "area": 493700.0 },
-                  { "replica": 2, "area": 493950.0 },
-                  { "replica": 3, "area": 494050.0 }
+                  { "replica": 1, "area": "[VALOR_NUMERICO_REAL]" },
+                  { "replica": 2, "area": "[VALOR_NUMERICO_REAL]" },
+                  { "replica": 3, "area": "[VALOR_NUMERICO_REAL]" }
                 ]
               }
             ]
           }
         ],
-        "referencia_analitica": "[HTA_ESTABILIDAD_SOLUCIONES]",
-        "conclusion_estabilidad_muestra": "Cumple"
+        "referencia_analitica": "[ID_REAL_DEL_REPORTE]",
+        "conclusion_estabilidad_muestra": "[CONCLUSION_FINAL_RAZONADA]"
       }
       ```
-    - **Recordatorio estricto:** Documenta en el razonamiento todos los cálculos y comparaciones antes de mostrar la salida JSON final.
-  </REGLAS_DE_SALIDA_SUPERVISOR>
-
+</REGLAS_DE_SALIDA_SUPERVISOR>
 """
 
 RULES_SET_9 = """
