@@ -1058,7 +1058,7 @@ RULES_SET_8 = """
                     "criterio_aceptacion": "Aceptar si |%di| <= 2.0% frente al tiempo inicial."
                   }
                 ]
-              }
+              },
             ],
             "referencia_analitica": "[ID_PROTOCOLO]",
             "conclusion_estabilidad_muestra": "[pendiente_validar]"
