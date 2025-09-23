@@ -1029,148 +1029,144 @@ RULES_SET_7 = """
 
 
 RULES_SET_8 = """
-<REGLAS_DE_EXTRACCION_ESTRUCTURADA>
-  Estas reglas aplican al `structured_extraction_agent`.
- 
-    - **Objetivo General:** Extraer y estructurar la información de **estabilidad de soluciones** para cada **analito** (estándar y muestra), mediante un proceso en dos fases, alineado con el modelo `Set8ExtractionModel`.
- 
-  -----
- 
-    - **Fase 1: Extracción de criterios del protocolo de validación**
- 
-      
-        - **Fuente primaria:** Documento del **Protocolo de Validación** en vectorstore.
-        - **Objetivo específico:** Identificar los criterios de aceptación, tiempos evaluados y condiciones de almacenamiento que aplican a cada solución.
-        - **Plan de acción:**
-          1.  Localiza secciones tituladas "Estabilidad de soluciones", "Solution stability" o equivalentes.
-          2.  Extrae los límites de variación permitida (ej.: `|%di| <= 2.0%`, `±2.0%`, `no exceda 2%`) y las condiciones experimentales.
-          3.  Registra los criterios en el campo `criterio_aceptacion` para cada combinación de condición/tiempo.
- 
-  -----
- 
-    - **Fase 2: Extracción de datos experimentales (hojas de trabajo / LIMS)** ES MUY IMPORTANTE QUE EJECUTES AMBAS FASES ANTES DE EMITIR CUALQUIER SALIDA.
- 
-        - **Fuentes:** Documentos del reporte **LIMS** y hojas de trabajo analíticas.
-        - **Objetivo específico:** Extraer todos los valores de las réplicas individuales, promedios y diferencias para cada **analito**, solución (estándar y muestra), condición y tiempo.
-        - **Plan de acción:**
-          1.  **PRIMERO Y MÁS IMPORTANTE:** Identifica el **analito principal** que se está evaluando en la sección o página (ej. `HIDROCODONA VALORACIÓN`, `ACETAMINOFEN VALORACIÓN`). Este es el contexto para todos los datos que siguen.
-          2.  Dentro del contexto de cada analito, identifica las secciones para "Solucion Muestra" y "Solucion Estandar".
-          3.  **CRÍTICO: Al poblar el campo `solucion`, DEBES usar un formato compuesto: `"[NOMBRE_DEL_ANALITO] - Solucion Muestra"` o `"[NOMBRE_DEL_ANALITO] - Solucion Estandar"`.**
-          4.  Para cada solución, extrae los datos agrupados por `tiempo_estabilidad` (ej. "Initial Sample Stability", "Sample Stability Time 1").
-          5.  Para cada tiempo, crea un objeto separado para **CADA CONDICIÓN** (`Condicion 1`, `Condicion 2`). **NO LAS COMBINES.**
-          6.  Dentro de cada objeto de condición/tiempo, extrae el promedio (`Promedio Solucion...`), el porcentaje de diferencia (`%di Solucion...`), y **ASEGÚRATE DE EXTRAER TODAS las réplicas individuales** (`R1`, `R2`, `R3`, etc.). Cada réplica debe ser un objeto separado en la lista `data_condicion`.
-          7.  Transcribe `promedio_areas` y `diferencia_promedios` (`%di`) tal como aparezcan en el documento. Si no están, deja `null`.
-          8.  Extrae la `referencia_analitica` (ej. `HT001/25-01904 ID-VAL`).
- 
-  -----
- 
-    - **Ejemplo de extracción completa (Set8ExtractionModel):**
-      **ADVERTENCIA: El siguiente ejemplo es ESTRUCTURAL. Todos los valores entre corchetes (ej. `"[VALOR_PLACEHOLDER]"`) son placeholders genéricos. NO DEBEN ser copiados. El agente DEBE extraer los valores y nombres reales del documento fuente.**
-      ```json
-      {
-        "soluciones": [
-          {
-            "solucion": "[ANALITO_EXTRAIDO] - Solucion Muestra",
-            "data_estabilidad_solucion": [
-              {
-                "condicion_estabilidad": "[CONDICION_EXTRAIDA]",
-                "tiempo_estabilidad": "[TIEMPO_INICIAL_EXTRAIDO]",
-                "promedio_areas": "[VALOR_NUMERICO_PROMEDIO]",
-                "diferencia_promedios": null,
-                "criterio_aceptacion": "[CRITERIO_EXTRAIDO_DEL_PROTOCOLO]",
-                "data_condicion": [
-                  { "replica": 1, "area": "[VALOR_NUMERICO_REPLICA]" },
-                  { "replica": 2, "area": "[VALOR_NUMERICO_REPLICA]" },
-                  { "replica": 3, "area": "[VALOR_NUMERICO_REPLICA]" }
-                ]
-              },
-              {
-                "condicion_estabilidad": "[CONDICION_EXTRAIDA]",
-                "tiempo_estabilidad": "[TIEMPO_POSTERIOR_EXTRAIDO]",
-                "promedio_areas": "[VALOR_NUMERICO_PROMEDIO]",
-                "diferencia_promedios": "[VALOR_PORCENTUAL_DIF]",
-                "criterio_aceptacion": "[CRITERIO_EXTRAIDO_DEL_PROTOCOLO]",
-                "data_condicion": [
-                  { "replica": 1, "area": "[VALOR_NUMERICO_REPLICA]" },
-                  { "replica": 2, "area": "[VALOR_NUMERICO_REPLICA]" },
-                  { "replica": 3, "area": "[VALOR_NUMERICO_REPLICA]" }
-                ]
-              }
-            ]
-          },
-          {
-            "solucion": "[OTRO_ANALITO_EXTRAIDO] - Solucion Estandar",
-            "data_estabilidad_solucion": [
-              {
-                "condicion_estabilidad": "[CONDICION_EXTRAIDA]",
-                "tiempo_estabilidad": "[TIEMPO_INICIAL_EXTRAIDO]",
-                "promedio_areas": "[VALOR_NUMERICO_PROMEDIO]",
-                "diferencia_promedios": null,
-                "criterio_aceptacion": "[CRITERIO_EXTRAIDO_DEL_PROTOCOLO]",
-                "data_condicion": [
-                  { "replica": 1, "area": "[VALOR_NUMERICO_REPLICA]" },
-                  { "replica": 2, "area": "[VALOR_NUMERICO_REPLICA]" }
-                ]
-              }
-            ]
-          }
-        ],
-        "referencia_analitica": "[ID_DEL_DOCUMENTO_FUENTE]",
-        "conclusion_estabilidad_muestra": "[pendiente_validar]"
-      }
-      ```
-</REGLAS_DE_EXTRACCION_ESTRUCTURADA>
- 
-  <br>
- 
-  <REGLAS_DE_RAZONAMIENTO>
-  Estas reglas aplican al `reasoning_agent`.
- 
-    - **Propósito:** Evaluar si cada solución y condición mantiene la estabilidad dentro de los criterios del protocolo y preparar la salida.
-    - **Entradas:** Objeto JSON del `structured_extraction_agent`.
-    - **Pasos del razonamiento:**
-      1.  Itera sobre cada `solucion`.
-      2.  Dentro de cada solución, identifica el valor de referencia (tiempo inicial) para cada condición.
-      3.  Si `promedio_areas` o `diferencia_promedios` son `null`, calcúlalos a partir de las réplicas. Si el valor `%di` ya fue extraído, úsalo como `diferencia_promedios`.
-      4.  Compara el valor absoluto de `diferencia_promedios` con el umbral numérico del `criterio_aceptacion`.
-      5.  Asigna `conclusion_estabilidad` por entrada (`"Cumple"` / `"No Cumple"`).
-      6.  Determina la `conclusion_estabilidad_muestra` global. Será `"Cumple"` solo si **TODAS** las condiciones de **TODAS** las soluciones de tipo "Muestra" cumplen.
-</REGLAS_DE_RAZONAMIENTO>
- 
-  <REGLAS_DE_SALIDA_SUPERVISOR>
-  Aplica al `supervisor_agent`.
- 
-    - **Modelo de salida obligatorio:** `Set8StructuredOutputSupervisor`.
-    - **Formato:** único objeto JSON bien formado.
-    - **Integración de datos:** Replica la estructura del `reasoning_agent`, asegurando que `conclusion_estabilidad` y `conclusion_estabilidad_muestra` estén actualizados.
-    - **Ejemplo de salida final (Estructural - Rellenar con datos reales):**
-      ```json
-      {
-        "soluciones": [
-          {
-            "solucion": "[ANALITO_REAL] - Solucion Estandar",
-            "data_estabilidad_solucion": [
-              {
-                "condicion_estabilidad": "[CONDICION_REAL]",
-                "tiempo_estabilidad": "[TIEMPO_REAL]",
-                "promedio_areas": "[VALOR_NUMERICO_CALCULADO]",
-                "diferencia_promedios": "[VALOR_PORCENTUAL_CALCULADO]",
-                "criterio_aceptacion": "[CRITERIO_DEL_PROTOCOLO]",
-                "conclusion_estabilidad": "[CONCLUSION_RAZONADA]",
-                "data_condicion": [
-                  { "replica": 1, "area": "[VALOR_NUMERICO_REAL]" },
-                  { "replica": 2, "area": "[VALOR_NUMERICO_REAL]" },
-                  { "replica": 3, "area": "[VALOR_NUMERICO_REAL]" }
-                ]
-              }
-            ]
-          }
-        ],
-        "referencia_analitica": "[ID_REAL_DEL_REPORTE]",
-        "conclusion_estabilidad_muestra": "[CONCLUSION_FINAL_RAZONADA]"
-      }
-      ```
-</REGLAS_DE_SALIDA_SUPERVISOR>
+  <REGLAS_DE_EXTRACCION_ESTRUCTURADA>
+    Estas reglas aplican al `structured_extraction_agent`.
+  
+      - **Objetivo General:** Extraer y estructurar el criterio de aceptación y la información de **estabilidad de soluciones** para cada **analito** (estándar y muestra), mediante un proceso en dos fases. SIEMPRE DEBES EJECUTAR LAS 2 FASES.. ES OBLIGATORIO!!
+      - DEBES planificar exhaustivamente antes de cada llamada a una función y reflexionar exhaustivamente sobre los resultados de las llamadas a las funciones anteriores. NO realices todo este proceso haciendo solo llamadas a funciones, ya que esto puede afectar tu capacidad para resolver el problema y pensar de manera perspicaz.
+    -----
+  
+      - **Fase 1: Extracción de criterios de aceptación del protocolo de validación**
+          - **Fuente primaria:** UNICAMENTE EL Documento del **Protocolo de Validación** en vectorstore .parquet.
+          - **Objetivo específico:** Identificar los criterios de aceptación del parámetro estabilidad de las soluciones.
+          - **Plan de acción:**
+            1.  Genera consultas sobre el vectorstore .parque del protocolo de validación con strings similares a "Criterio de aceptación", "Estabilidad de soluciones", "Solution stability" o equivalentes.
+            2.  Extrae el texto de los criterios de aceptación de la tabla "Criterio de aceptación" del protocolo de validación
+            3.  Registra el string con el criterio de aceptación de acuerdo a lo reportado en el texto extraído.
+  
+    -----
+  
+      - **Fase 2: Extracción de datos experimentales (hojas de trabajo / LIMS)**
+          - **Fuentes:** Documentos del reporte LIMS o Soluciones, hojas de trabajo analíticas, o data cromatografica en vectorstore .parquet.
+          - **Objetivo específico:** Extraer todos los valores de las réplicas individuales, promedios y diferencias para cada **analito**, solución (estándar y muestra), condición y tiempo de los Documentos del reporte LIMS o Soluciones, hojas de trabajo analíticas, o data cromatografica en vectorstore .parquet. Debes hacer esta segunda ronda de consultas sobre estos documentos.
+          - **Plan de acción:**
+            1.  **PRIMERO Y MÁS IMPORTANTE:** Identifica el **analito principal** que se está evaluando en la sección o página. Este es el contexto para todos los datos que siguen.
+            2.  Dentro del contexto de cada analito, identifica las "Soluciones Estandar" del reporte LIMS o la data cromatográfica en sus respectivos vectorstore .parquet. Para ello debes hacer consultas sobre los vectostores .parquet de la data cromatográfica y los reportes LIMS con strings que contengan "Solucion Estandar", "Results", "Sample Stability Time", o "Initial Sample Stability". Importante que hagas varias consultas para obtener todas las porciones de los documentos que podamos analizar. Genera tantas consultas como sean posibles para recuperar el contexto del documento.
+            3. Para cada una de las soluciones estandar identificadas, debes extraer las condiciones en las que fueron evaluadas. Para ello deberás extraer esto en los strings que indican la Solucion Estandar, dichas condiciones van acompañadas del string "Condicion 1", "Condicion 2", etc.
+            4. Para cada combinación de Analito, Solucion Estandar, Condición, debes identificar los tiempos de estabilidad de la solución estandar. Para ello debes analizar los strings  "Standard Stability Time 1", "Standard Stability Time 2", etc, para extraer los tiempos en los que fueron evaluadas estas soluciones estandar.
+            5. Para cada combinación de Analito, Solucion Estandar, Condición, Tiempo de estabilidad, debes identificar los resultados de la solución estandar. Para ello debes analizar los strings  "Standard Stability Result 1", "Standard Stability Result 2", "Results", para extraer los resultados en los que fueron evaluadas estas soluciones estandar.
+            6. Extraer `promedio_areas` y `diferencia_promedios` (`%di`) tal como aparezcan en el documento. Si no están, deja `null`.
+            8. Extrae la `referencia_analitica` (ej. `HT001/25-01904 ID-VAL`).
+  
+    -----
+  
+      - **Ejemplo de extracción completa (Set8ExtractionModel):**
+        **ADVERTENCIA: El siguiente ejemplo es ESTRUCTURAL. Todos los valores entre corchetes (ej. `"[VALOR_PLACEHOLDER]"`) son placeholders genéricos. NO DEBEN ser copiados. El agente DEBE extraer los valores y nombres reales del documento fuente.**
+        ```json
+        {
+          "soluciones": [
+            {
+              "solucion": "[ANALITO_EXTRAIDO] - Solucion Muestra",
+              "data_estabilidad_solucion": [
+                {
+                  "condicion_estabilidad": "[CONDICION_EXTRAIDA]",
+                  "tiempo_estabilidad": "[TIEMPO_INICIAL_EXTRAIDO]",
+                  "promedio_areas": "[VALOR_NUMERICO_PROMEDIO]",
+                  "diferencia_promedios": null,
+                  "criterio_aceptacion": "[CRITERIO_EXTRAIDO_DEL_PROTOCOLO]",
+                  "data_condicion": [
+                    { "replica": 1, "area": "[VALOR_NUMERICO_REPLICA]" },
+                    { "replica": 2, "area": "[VALOR_NUMERICO_REPLICA]" },
+                    { "replica": 3, "area": "[VALOR_NUMERICO_REPLICA]" }
+                  ]
+                },
+                {
+                  "condicion_estabilidad": "[CONDICION_EXTRAIDA]",
+                  "tiempo_estabilidad": "[TIEMPO_POSTERIOR_EXTRAIDO]",
+                  "promedio_areas": "[VALOR_NUMERICO_PROMEDIO]",
+                  "diferencia_promedios": "[VALOR_PORCENTUAL_DIF]",
+                  "criterio_aceptacion": "[CRITERIO_EXTRAIDO_DEL_PROTOCOLO]",
+                  "data_condicion": [
+                    { "replica": 1, "area": "[VALOR_NUMERICO_REPLICA]" },
+                    { "replica": 2, "area": "[VALOR_NUMERICO_REPLICA]" },
+                    { "replica": 3, "area": "[VALOR_NUMERICO_REPLICA]" }
+                  ]
+                }
+              ]
+            },
+            {
+              "solucion": "[OTRO_ANALITO_EXTRAIDO] - Solucion Estandar",
+              "data_estabilidad_solucion": [
+                {
+                  "condicion_estabilidad": "[CONDICION_EXTRAIDA]",
+                  "tiempo_estabilidad": "[TIEMPO_INICIAL_EXTRAIDO]",
+                  "promedio_areas": "[VALOR_NUMERICO_PROMEDIO]",
+                  "diferencia_promedios": null,
+                  "criterio_aceptacion": "[CRITERIO_EXTRAIDO_DEL_PROTOCOLO]",
+                  "data_condicion": [
+                    { "replica": 1, "area": "[VALOR_NUMERICO_REPLICA]" },
+                    { "replica": 2, "area": "[VALOR_NUMERICO_REPLICA]" }
+                  ]
+                }
+              ]
+            }
+          ],
+          "referencia_analitica": "[ID_DEL_DOCUMENTO_FUENTE]",
+          "conclusion_estabilidad_muestra": "[pendiente_validar]"
+        }
+        ```
+  </REGLAS_DE_EXTRACCION_ESTRUCTURADA>
+  
+    <br>
+  
+    <REGLAS_DE_RAZONAMIENTO>
+    Estas reglas aplican al `reasoning_agent`.
+  
+      - **Propósito:** Evaluar si cada solución y condición mantiene la estabilidad dentro de los criterios del protocolo y preparar la salida.
+      - **Entradas:** Objeto JSON del `structured_extraction_agent`.
+      - **Pasos del razonamiento:**
+        1.  Itera sobre cada `solucion`.
+        2.  Dentro de cada solución, identifica el valor de referencia (tiempo inicial) para cada condición.
+        3.  Si `promedio_areas` o `diferencia_promedios` son `null`, calcúlalos a partir de las réplicas. Si el valor `%di` ya fue extraído, úsalo como `diferencia_promedios`.
+        4.  Compara el valor absoluto de `diferencia_promedios` con el umbral numérico del `criterio_aceptacion`.
+        5.  Asigna `conclusion_estabilidad` por entrada (`"Cumple"` / `"No Cumple"`).
+        6.  Determina la `conclusion_estabilidad_muestra` global. Será `"Cumple"` solo si **TODAS** las condiciones de **TODAS** las soluciones de tipo "Muestra" cumplen.
+  </REGLAS_DE_RAZONAMIENTO>
+  
+    <REGLAS_DE_SALIDA_SUPERVISOR>
+    Aplica al `supervisor_agent`.
+  
+      - **Modelo de salida obligatorio:** `Set8StructuredOutputSupervisor`.
+      - **Formato:** único objeto JSON bien formado.
+      - **Integración de datos:** Replica la estructura del `reasoning_agent`, asegurando que `conclusion_estabilidad` y `conclusion_estabilidad_muestra` estén actualizados.
+      - **Ejemplo de salida final (Estructural - Rellenar con datos reales):**
+        ```json
+        {
+          "soluciones": [
+            {
+              "solucion": "[ANALITO_REAL] - Solucion Estandar",
+              "data_estabilidad_solucion": [
+                {
+                  "condicion_estabilidad": "[CONDICION_REAL]",
+                  "tiempo_estabilidad": "[TIEMPO_REAL]",
+                  "promedio_areas": "[VALOR_NUMERICO_CALCULADO]",
+                  "diferencia_promedios": "[VALOR_PORCENTUAL_CALCULADO]",
+                  "criterio_aceptacion": "[CRITERIO_DEL_PROTOCOLO]",
+                  "conclusion_estabilidad": "[CONCLUSION_RAZONADA]",
+                  "data_condicion": [
+                    { "replica": 1, "area": "[VALOR_NUMERICO_REAL]" },
+                    { "replica": 2, "area": "[VALOR_NUMERICO_REAL]" },
+                    { "replica": 3, "area": "[VALOR_NUMERICO_REAL]" }
+                  ]
+                }
+              ]
+            }
+          ],
+          "referencia_analitica": "[ID_REAL_DEL_REPORTE]",
+          "conclusion_estabilidad_muestra": "[CONCLUSION_FINAL_RAZONADA]"
+        }
+        ```
+  </REGLAS_DE_SALIDA_SUPERVISOR>
 """
 
 RULES_SET_9 = """

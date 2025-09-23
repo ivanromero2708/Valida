@@ -26,12 +26,12 @@ class EstabilidadSoluciones(BaseModel):
  
 class Set8ExtractionModel(BaseModel):
     """Modelo de validación de datos del Set 8"""
-    soluciones: List[EstabilidadSoluciones] = Field(..., description="Listado de diccionarios que contiene toda la información relacionada con la validación de la estabilidad de las soluciones de estandares y muestras.",)
+    activos_estabilidad_solucion_estandar: List[EstabilidadSoluciones] = Field(..., description="Listado de diccionarios que contiene toda la información relacionada con la validación de la estabilidad de las soluciones de estandares y muestras.",)
     referencia_analitica: str = Field(..., description="Referencia analítica de las soluciones estandar y muestra")
     conclusion_estabilidad_muestra: str = Field(..., description="Conclusion de la estabilidad de las soluciones")
  
 class Set8StructuredOutputSupervisor(BaseModel):
     """Modelo de validación de datos del Set 8"""
-    soluciones: List[EstabilidadSoluciones] = Field(..., description="Listado de diccionarios que contiene toda la información relacionada con la validación de la estabilidad de las soluciones de estandares y muestras.",)
+    activos_estabilidad_solucion_estandar: List[EstabilidadSoluciones] = Field(..., description="Listado de diccionarios que contiene toda la información relacionada con la validación de la estabilidad de las soluciones de estandares y muestras.",)
     referencia_analitica: str = Field(..., description="Referencia analítica de las soluciones estandar y muestra")
     conclusion_estabilidad_muestra: str = Field(..., description="Conclusion de la estabilidad de las soluciones")
