@@ -1387,7 +1387,6 @@ RULES_SET_8_1 = """
 """
 
 RULES_SET_9 = """
-
   <REGLAS_DE_EXTRACCION_ESTRUCTURADA>
   Estas reglas aplican al `structured_extraction_agent`.
 
@@ -1424,22 +1423,34 @@ RULES_SET_9 = """
 
   -----
 
-    - **Fase 2: Extracción de datos experimentales (hojas de trabajo / LIMS)**
-
-        - **Fuentes:** Reportes crudos del **LIMS** y hojas de trabajo analíticas referentes a la estabilidad de la muestra.
-        - **Objetivo específico:** Capturar las réplicas individuales, promedios y diferencias reportados para cada combinación solución/condición/tiempo.
+    - **Paso 0: Inventario de analitos en los reportes**
+        - **Objetivo:** Levantar un inventario claro de analitos/soluciones antes de iniciar cualquier extracción numérica.
         - **Plan de acción:**
-          1.  Identifica tablas con columnas de tiempo (Initial, Time 1, Time 2, etc.) y condiciones (Condición 1/2) que contengan réplicas `R1..R3`.
-          2.  Para cada solución, agrega entradas en `data_estabilidad_solucion` manteniendo literal los nombres de tiempos y condiciones.
-          3.  Transcribe `promedio_areas` y `diferencia_promedios`. Si faltan, deja `null` y registra en la trazabilidad que se calcularán posteriormente.
-          4.  Inicializa `conclusion_estabilidad` con `[pendiente_validar]`.
-          5.  Compila todas las referencias relevantes (ID de reporte, número de corrida) en `referencia_analitica` (lista de strings).
-        - **Normalización y control de calidad:**
-          - Puntualiza las réplicas con enteros consecutivos y áreas en `float`.
-          - Mantén separados los bloques por solución.
-          - Documenta cualquier exclusión o dato faltante en la trazabilidad interna.
-        - **Trazabilidad obligatoria (registro interno, no en la salida):** `source_document`, `page_or_span`, `query_used`, `confidence`, `cleaning_notes`.
-        - **Control adicional:** Si hay corridas duplicadas, prioriza la más reciente/completa y deja constancia del criterio.
+          1.  Recorre encabezados y subtítulos de cada documento (por ejemplo, "Sample Stability Results - HIDROCODONA", "ACETAMINOFEN VALORACION") y captura el analito literal junto con alias o abreviaturas.
+          2.  Construye la lista `inventario_analitos = [{analito, alias_detectados, referencia_de_pagina}]`. Si la lista queda vacía, realiza consultas genéricas ("Sample Stability Results", "Valoracion") hasta confirmarla; **no continúes a la Fase 2 sin este inventario**.
+          3.  Presenta el inventario en tu respuesta (tabla o viñetas) y declara que será el iterador principal para Fase 2.
+          4.  Usa los nombres/alias registrados como prefijo en todas las consultas posteriores, como etiqueta en `solucion` y como contexto de cita.
+
+  -----
+
+    - **Fase 2: Extracción de datos experimentales (hojas de trabajo / LIMS / data cromatográfica)**
+
+        - **Fuentes:** Reportes crudos del **LIMS**, hojas de trabajo analíticas y data cromatográfica en vectorstore .parquet.
+        - **Objetivo específico:** Capturar réplicas individuales, promedios y diferencias para cada combinación analito / solución / condición / tiempo.
+        - **Plan de acción:**
+          1.  **Bucle por analito:** Itera sobre `inventario_analitos` y anuncia explícitamente el analito activo antes de lanzar consultas.
+          2.  **Protocolo de consultas dirigidas:** Antes de utilizar búsquedas generales, lanza queries combinando analito + patrón. Usa secuencias como `"{analito} Sample Stability Time {n} Condicion {m}"`, `"{analito} %di"`, `"{analito} Promedio Solucion Muestra"`, `"{analito} Solucion Muestra Tiempo {n}"`, ajustando `{n}` y `{m}` según el bloque que estés extrayendo.
+          3.  Cada vez que un patrón no devuelva datos completos, documenta el reintento especificando el vectorstore/parquet usado y el nuevo patrón aplicado.
+          4.  **Sub-etapa A – Soluciones estándar:** Cuando corresponda, combina el analito con patrones como "Standard Stability Time", "Initial Standard Stability", "Solucion Estandar R" y `%di` para poblar los valores de referencia que afectan la solución de muestra.
+          5.  **Sub-etapa B – Soluciones muestra:** Aplica el protocolo de consultas dirigidas para cada condición y tiempo, registrando réplicas (`Solucion Muestra Rn Condicion m`), promedios (`Promedio Solucion Muestra ...`) y `%di`/`% similitud` asociados.
+          6.  **Resumen del bloque relevante:** Limita la información que arrastras de cada consulta al bloque que contiene el tiempo y condición analizados; descarta encabezados o páginas completas que no aporten datos numéricos.
+          7.  Si detectas valores faltantes o inconsistentes, valida contra la data cromatográfica, respetando siempre la combinación analito + tiempo + condición.
+          8.  Completa `data_estabilidad_solucion` con `data_condicion` (lista ordenada de `{replica, area}` en float), `promedio_areas`, `diferencia_promedios`, `condicion_estabilidad`, `tiempo_estabilidad`, `solucion` y el `criterio_aceptacion` asociado en Fase 1.
+        - **Verificación y reintentos obligatorios:**
+          - Tras cerrar un analito, verifica que cada condición-tiempo tenga réplicas, `promedio_areas` y `%di`. Si falta algo, relanza consultas dirigidas y documenta los intentos.
+          - Si la información sigue ausente, registra el caso en `issues` con el formato "Analito - Condicion X - Tiempo Y sin dato" y deja el campo en `null` cuando el modelo lo permita.
+          - Añade a `referencia_analitica` todos los identificadores consultados (HT..., REP-I&D-...).
+          - Antes de pasar al siguiente analito, confirma que `activos_estabilidad_solucion_muestra` contenga al menos un bloque válido; si no, explica la ausencia en `issues` tras repetir las consultas.
 
   -----
 
@@ -1462,63 +1473,6 @@ RULES_SET_9 = """
                   { "replica": 2, "area": 305550.0 },
                   { "replica": 3, "area": 305550.0 }
                 ]
-              },
-              {
-                "condicion_estabilidad": "Condicion 1",
-                "tiempo_estabilidad": "Sample Stability Time 1",
-                "promedio_areas": 303900.0,
-                "diferencia_promedios": -0.52,
-                "criterio_aceptacion": "Aceptar si |%di| <= 2.0% frente al tiempo inicial.",
-                "conclusion_estabilidad": "[pendiente_validar]",
-                "data_condicion": [
-                  { "replica": 1, "area": 303700.0 },
-                  { "replica": 2, "area": 303950.0 },
-                  { "replica": 3, "area": 304050.0 }
-                ]
-              },
-              {
-                "condicion_estabilidad": "Condicion 2",
-                "tiempo_estabilidad": "Sample Stability Time 2",
-                "promedio_areas": 300800.0,
-                "diferencia_promedios": -1.54,
-                "criterio_aceptacion": "Aceptar si |%di| <= 2.5% frente al tiempo inicial.",
-                "conclusion_estabilidad": "[pendiente_validar]",
-                "data_condicion": [
-                  { "replica": 1, "area": 300600.0 },
-                  { "replica": 2, "area": 300850.0 },
-                  { "replica": 3, "area": 300950.0 }
-                ]
-              }
-            ]
-          },
-          {
-            "solucion": "[Solucion Muestra Lote B]",
-            "data_estabilidad_solucion": [
-              {
-                "condicion_estabilidad": "Condicion 1",
-                "tiempo_estabilidad": "Initial Sample Stability",
-                "promedio_areas": 298400.0,
-                "diferencia_promedios": 0.0,
-                "criterio_aceptacion": "Aceptar si |%di| <= 2.5% frente al tiempo inicial.",
-                "conclusion_estabilidad": "[pendiente_validar]",
-                "data_condicion": [
-                  { "replica": 1, "area": 298250.0 },
-                  { "replica": 2, "area": 298400.0 },
-                  { "replica": 3, "area": 298550.0 }
-                ]
-              },
-              {
-                "condicion_estabilidad": "Condicion 2",
-                "tiempo_estabilidad": "Sample Stability Time 1",
-                "promedio_areas": 294200.0,
-                "diferencia_promedios": -1.40,
-                "criterio_aceptacion": "Aceptar si |%di| <= 2.5% frente al tiempo inicial.",
-                "conclusion_estabilidad": "[pendiente_validar]",
-                "data_condicion": [
-                  { "replica": 1, "area": 294050.0 },
-                  { "replica": 2, "area": 294150.0 },
-                  { "replica": 3, "area": 294400.0 }
-                ]
               }
             ]
           }
@@ -1538,11 +1492,11 @@ RULES_SET_9 = """
     - **Entradas:** Objeto JSON generado por el `structured_extraction_agent`.
     - **Pasos del razonamiento:**
       1.  Para cada solución, identifica el valor de referencia (tiempo inicial) por condición.
-      2.  Calcula `promedio_areas` y `diferencia_promedios` si se dejaron en `null`, explicando el método empleado.
-      3.  Obtén el porcentaje de variación respecto al tiempo inicial y compáralo con el criterio literal (`criterio_aceptacion`).
-      4.  Define `conclusion_estabilidad` para cada entrada: "Cumple" únicamente si la variación esté dentro del umbral; de lo contrario, "No Cumple".
-      5.  Documenta cualquier desviación, dato faltante o límite inferido antes de fijar la conclusión.
-      6.  Resume en la narrativa el estado global de la solución (todas cumplen / alguna falla) para facilitar la supervisión.
+      2.  Calcula `promedio_areas` y `diferencia_promedios` únicamente cuando existan réplicas suficientes; si no puedes derivarlos con certeza, deja los campos en `null`, registra el issue y no los sustituyas por 0.
+      3.  Compara el valor absoluto de `diferencia_promedios` con el umbral literal de `criterio_aceptacion`, documentando cualquier cálculo auxiliar.
+      4.  Define `conclusion_estabilidad`: "Cumple" solo si la variación cae dentro del umbral; si faltan métricas clave, marca "Pendiente" y referencia el issue.
+      5.  Determina la `conclusion_estabilidad_muestra` global considerando solo las condiciones con datos completos. Si quedan condiciones pendientes, deja la conclusión global en "Pendiente" y explica la razón.
+      6.  Resume explícitamente los cálculos, supuestos e issues antes de producir el JSON final.
   </REGLAS_DE_RAZONAMIENTO>
 
   <br>
@@ -1575,74 +1529,16 @@ RULES_SET_9 = """
                   { "replica": 2, "area": 305550.0 },
                   { "replica": 3, "area": 305550.0 }
                 ]
-              },
-              {
-                "condicion_estabilidad": "Condicion 1",
-                "tiempo_estabilidad": "Sample Stability Time 1",
-                "promedio_areas": 303900.0,
-                "diferencia_promedios": -0.52,
-                "criterio_aceptacion": "Aceptar si |%di| <= 2.0% frente al tiempo inicial.",
-                "conclusion_estabilidad": "Cumple",
-                "data_condicion": [
-                  { "replica": 1, "area": 303700.0 },
-                  { "replica": 2, "area": 303950.0 },
-                  { "replica": 3, "area": 304050.0 }
-                ]
-              },
-              {
-                "condicion_estabilidad": "Condicion 2",
-                "tiempo_estabilidad": "Sample Stability Time 2",
-                "promedio_areas": 300800.0,
-                "diferencia_promedios": -1.54,
-                "criterio_aceptacion": "Aceptar si |%di| <= 2.5% frente al tiempo inicial.",
-                "conclusion_estabilidad": "Cumple",
-                "data_condicion": [
-                  { "replica": 1, "area": 300600.0 },
-                  { "replica": 2, "area": 300850.0 },
-                  { "replica": 3, "area": 300950.0 }
-                ]
-              }
-            ]
-          },
-          {
-            "solucion": "[Solucion Muestra Lote B]",
-            "data_estabilidad_solucion": [
-              {
-                "condicion_estabilidad": "Condicion 1",
-                "tiempo_estabilidad": "Initial Sample Stability",
-                "promedio_areas": 298400.0,
-                "diferencia_promedios": 0.0,
-                "criterio_aceptacion": "Aceptar si |%di| <= 2.5% frente al tiempo inicial.",
-                "conclusion_estabilidad": "Cumple",
-                "data_condicion": [
-                  { "replica": 1, "area": 298250.0 },
-                  { "replica": 2, "area": 298400.0 },
-                  { "replica": 3, "area": 298550.0 }
-                ]
-              },
-              {
-                "condicion_estabilidad": "Condicion 2",
-                "tiempo_estabilidad": "Sample Stability Time 1",
-                "promedio_areas": 294200.0,
-                "diferencia_promedios": -1.40,
-                "criterio_aceptacion": "Aceptar si |%di| <= 2.5% frente al tiempo inicial.",
-                "conclusion_estabilidad": "Cumple",
-                "data_condicion": [
-                  { "replica": 1, "area": 294050.0 },
-                  { "replica": 2, "area": 294150.0 },
-                  { "replica": 3, "area": 294400.0 }
-                ]
               }
             ]
           }
         ],
-        "referencia_analitica": ["[HTA-MUESTRA-001]", "[PLAN-ENSAYO-REF]"]
+        "referencia_analitica": ["[HTA-MUESTRA-001]"]
       }
       ```
-    - **Recordatorio estricto:** El razonamiento debe documentar cálculos y criterios antes del JSON definitivo.
   </REGLAS_DE_SALIDA_SUPERVISOR>
-
 """
+
 
 
 RULES_SET_10 = """

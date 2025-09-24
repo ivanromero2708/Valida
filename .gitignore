@@ -186,3 +186,8 @@ cython_debug/
 *.xls
 temp_uploads/
 
+vectorstores/
+
+src/output/
+
+stc/images/

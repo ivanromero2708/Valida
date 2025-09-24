@@ -14,22 +14,23 @@ class DataEstabilidadSoluciones(BaseModel):
     tiempo_estabilidad: str = Field(..., description="Tiempo de estabilidad de las soluciones, reportado como (Initial Sample Stability) para tiempo 0, Sample Stability Time 1 para el primer tiempo y Sample Stability Time n para los demás tiempos del reporte LIMS para estabilidad")
     promedio_areas: float = Field(..., description="Promedio de las áreas bajo la curva del pico asociado al dato de validación de la estabilidad de las soluciones, reportado como Promedio Solucion Muestra Tiempo Inicial, Promedio Solucion Muestra Tiempo 1 condicion 1, Promedio Solucion Muestra Tiempo 1 condicion 2, Promedio Solucion Muestra Tiempo 2 condicion 1, Promedio Solucion Muestra Tiempo 2 condicion 2......")
     diferencia_promedios: float = Field(..., description="Diferencia entre los promedios de las áreas bajo la curva del pico asociado al dato de validación de la estabilidad de las soluciones, reportado como %di Solucion Muestra Tiempo 1 condicion 1, %di Solucion Muestra Tiempo 1 condicion 2, %di Solucion Muestra Tiempo 2 condicion 1, %di Solucion Muestra Tiempo 2 condicion 2......")
-    criterio_aceptacion: str = Field(..., description="Criterio de aceptación para la estabilidad de las soluciones")
     conclusion_estabilidad: str = Field(..., description="Conclusion de la estabilidad de las soluciones")
     data_condicion: list[DataReplicaEstabilidadSoluciones] = Field(..., description="Listado de diccionarios que contiene toda la información relacionada con la validación de la estabilidad de las soluciones de estandares y muestras.",)
 
 class EstabilidadSoluciones(BaseModel):
     solucion: str = Field(..., description="Nombre de la solucion estandar o muestra")
     data_estabilidad_solucion: List[DataEstabilidadSoluciones]
+    criterio_aceptacion: str = Field(..., description="Criterio de aceptación para la estabilidad de las soluciones")
 
 # Modelos de validación de datos
 
 class Set9ExtractionModel(BaseModel):
     """Modelo de validación de datos del Set 9"""
-    soluciones: List[EstabilidadSoluciones] = Field(..., description="Listado de diccionarios que contiene toda la información relacionada con la validación de la estabilidad de las soluciones de estandares y muestras.",)
+    activos_estabilidad_solucion_muestra: List[EstabilidadSoluciones] = Field(..., description="Listado de diccionarios que contiene toda la información relacionada con la validación de la estabilidad de las soluciones de estandares y muestras.",)
     referencia_analitica: List[str] = Field(..., description="Referencia analítica de las soluciones estandar y muestra")
 
 class Set9StructuredOutputSupervisor(BaseModel):
     """Modelo de validación de datos del Set 9"""
-    soluciones: List[EstabilidadSoluciones] = Field(..., description="Listado de diccionarios que contiene toda la información relacionada con la validación de la estabilidad de las soluciones de estandares y muestras.",)
+    activos_estabilidad_solucion_muestra: List[EstabilidadSoluciones] = Field(..., description="Listado de diccionarios que contiene toda la información relacionada con la validación de la estabilidad de las soluciones de estandares y muestras.",)
     referencia_analitica: List[str] = Field(..., description="Referencia analítica de las soluciones estandar y muestra")
+    conclusion_estabilidad_muestra: str = Field(..., description="Conclusion de la estabilidad de las soluciones")
