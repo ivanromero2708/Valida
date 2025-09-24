@@ -1027,8 +1027,186 @@ RULES_SET_7 = """
   </REGLAS_DE_SALIDA_SUPERVISOR>
 """
 
-
 RULES_SET_8 = """
+  <REGLAS_DE_EXTRACCION_ESTRUCTURADA>
+    Estas reglas aplican al `structured_extraction_agent`.
+  
+      - **Objetivo General:** Extraer y estructurar el criterio de aceptación y la información de **estabilidad de soluciones** para cada **analito** (SOLO estándar), mediante un proceso en dos fases. SIEMPRE DEBES EJECUTAR LAS 2 FASES.. ES OBLIGATORIO!!
+      - DEBES planificar exhaustivamente antes de cada llamada a una función y reflexionar exhaustivamente sobre los resultados de las llamadas a las funciones anteriores. NO realices todo este proceso haciendo solo llamadas a funciones, ya que esto puede afectar tu capacidad para resolver el problema y pensar de manera perspicaz.
+    -----
+  
+      - **Fase 1: Extracción de criterios de aceptación del protocolo de validación**
+          - **Fuente primaria:** UNICAMENTE EL Documento del **Protocolo de Validación** en vectorstore .parquet.
+          - **Objetivo específico:** Identificar los criterios de aceptación del parámetro estabilidad de las soluciones.
+          - **Plan de acción:**
+            1.  Genera consultas sobre el vectorstore .parque del protocolo de validación con strings similares a "Criterio de aceptación", "Estabilidad de soluciones", "Solution stability" o equivalentes.
+            2.  Extrae el texto de los criterios de aceptación de la tabla "Criterio de aceptación" del protocolo de validación
+            3.  Registra el string con el criterio de aceptación de acuerdo a lo reportado en el texto extraído.
+  
+    -----
+
+      - **Paso 0: Identificacion de analitos en los reportes**
+          - **Objetivo:** Enumerar cada analito presente en los reportes y datos asociados antes de iniciar la Fase 2.
+          - **Plan de accion:**
+            1.  Recorre encabezados y subtitulos de cada hoja (por ejemplo, "Sample Stability Results") y anota el analito literal y cualquier alias.
+            2.  Construye una lista ordenada `{analito, alias_detectados, referencia_de_pagina}`. Si la lista queda vacia, realiza consultas genericas ("Sample Stability Results", "Valoracion") hasta confirmarla; no avances a la Fase 2 sin este inventario.
+            3.  Usa estos nombres/alias como prefijos en todas las consultas posteriores y como etiqueta en `solucion`.
+
+    -----
+
+      - **Fase 2: Extracción de datos experimentales (hojas de trabajo / LIMS / estabilidad soluciones, entre otros)**
+          - **Fuentes:** Documentos del reporte LIMS o Soluciones, hojas de trabajo analíticas, y data cromatográfica en vectorstore .parquet. Recorre estas fuentes para cada analito antes de cerrar la extracción.
+          - **Objetivo específico:** Extraer todas las réplicas individuales, promedios y diferencias para cada analito, solución (estándar y muestra), condición y tiempo reportado.
+          - **Plan de acción:**
+            1.  **Bucle por analito:** Itera sobre la lista generada en el Paso 0 y deja constancia del analito activo antes de lanzar consultas.
+            2.  **Sub-etapa A – Soluciones estándar:** Combina el analito con patrones como "Standard Stability Time", "Initial Standard Stability", "Solucion Estandar R" y "Results". Extrae todas las réplicas (`Solucion Estandar Rn Condicion m`), los promedios (`Promedio Solucion Estandar ...`) y los `%di` o `% similitud`, y construye `data_condicion` con `{replica, area}` numérica.
+            3.  **Consulta iterativa y patrones:** Si obtienes resultados incompletos, amplía las búsquedas con sinónimos ("Results", "Average Area", "%di", "Tiempo 2", "Condition") y combina siempre el analito activo. Aprovecha la data cromatográfica para validar valores faltantes o duplicados.
+            4.  **Normalización de campos:**
+               - `condicion_estabilidad`: literal de la condición ("Condicion 1", "Condicion 2", etc.).
+               - `tiempo_estabilidad`: encabezado del bloque ("Initial Sample Stability", "Sample Stability Time 1", ...).
+               - `data_condicion`: lista de `{replica, area}` en orden de aparición y convertidos a float.
+               - `promedio_areas`: valor numérico del promedio.
+               - `diferencia_promedios`: valor numérico del `%di` o `% similitud` (mantiene signo).
+               - `solucion`: etiqueta formada por el analito y el tipo de solución (ej. "ANALITO_A - Solucion Estandar").
+               - `criterio_aceptacion`: reutiliza el criterio obtenido en la Fase 1.
+          - **Verificación y reintentos obligatorios:**
+            - Tras completar ambas sub-etapas del analito, comprueba que existan réplicas, `promedio_areas` y `diferencia_promedios` para cada condición y tiempo. Si falta algo, relanza consultas en las tres fuentes y documenta el intento.
+            - Si la información sigue ausente, registra el caso en `issues` usando el formato "Analito - Condicion X - Tiempo Y sin dato" y deja el campo en `null` solo cuando el modelo lo permita.
+            - Agrega a `referencia_analitica` todos los identificadores de reporte utilizados (HT..., REP-I&D-...).
+            - Antes de pasar al siguiente analito, asegúrate de que `activos_estabilidad_solucion_estandar` tenga al menos un objeto con `data_estabilidad_solucion`; de lo contrario, explica la ausencia en `issues` tras repetir las consultas.
+
+      **Recordatorio estructural complementario:** Cada entrada de `data_estabilidad_solucion` debe conservar el `criterio_aceptacion` de la Fase 1 y, cuando falte alguna réplica o métrica tras agotar las fuentes, debe documentarse en `issues` (ej.: `issues = ["Analito_A - Condicion 2 - Sample Stability Time 3 sin replicas"]`).
+
+      - **Ejemplo de extracción completa (Set8ExtractionModel):**
+        **ADVERTENCIA: El siguiente ejemplo es ESTRUCTURAL. Todos los valores entre corchetes (ej. "[VALOR_PLACEHOLDER]") son placeholders genéricos. NO DEBEN ser copiados. El agente DEBE extraer los valores y nombres reales del documento fuente.**
+        ```json
+        {
+          "activos_estabilidad_solucion_estandar": [
+            {
+              "solucion": "ANALITO_A - Solucion Estandar",
+              "data_estabilidad_solucion": [
+                {
+                  "condicion_estabilidad": "CONDICION_1",
+                  "tiempo_estabilidad": "Tiempo Inicial",
+                  "promedio_areas": 1234.0,
+                  "diferencia_promedios": 0.0,
+                  "criterio_aceptacion": "CRITERIO_DEL_PROTOCOLO",
+                  "conclusion_estabilidad": "Cumple",
+                  "data_condicion": [
+                    { "replica": 1, "area": "VALOR_REPLICA_1" },
+                    { "replica": 2, "area": "VALOR_REPLICA_2" }
+                  ]
+                },
+                {
+                  "condicion_estabilidad": "CONDICION_2",
+                  "tiempo_estabilidad": "Sample Stability Time 1",
+                  "promedio_areas": "VALOR_PROMEDIO",
+                  "diferencia_promedios": "VALOR_DIFERENCIA_PROMEDIOS",
+                  "criterio_aceptacion": "CRITERIO_DEL_PROTOCOLO",
+                  "conclusion_estabilidad": "Cumple",
+                  "data_condicion": [
+                    { "replica": 1, "area": "VALOR_REPLICA_1" },
+                    { "replica": 2, "area": "VALOR_REPLICA_2" }
+                  ]
+                }
+              ]
+            },
+            {
+              "solucion": "ANALITO_A - Solucion Muestra",
+              "data_estabilidad_solucion": [
+                {
+                  "condicion_estabilidad": "CONDICION_1",
+                  "tiempo_estabilidad": "Sample Stability Time 1",
+                  "promedio_areas": "VALOR_PROMEDIO",
+                  "diferencia_promedios": "VALOR_DIFERENCIA_PROMEDIOS",
+                  "criterio_aceptacion": "CRITERIO_DEL_PROTOCOLO",
+                  "conclusion_estabilidad": "Cumple",
+                  "data_condicion": [
+                    { "replica": 1, "area": "VALOR_REPLICA_1" },
+                    { "replica": 2, "area": "VALOR_REPLICA_2" },
+                    { "replica": 3, "area": "VALOR_REPLICA_3" }
+                  ]
+                }
+              ]
+            },
+            {
+              "solucion": "ANALITO_B - Solucion Estandar",
+              "data_estabilidad_solucion": [
+                {
+                  "condicion_estabilidad": "CONDICION_1",
+                  "tiempo_estabilidad": "Tiempo Inicial",
+                  "promedio_areas": "VALOR_PROMEDIO",
+                  "diferencia_promedios": "VALOR_DIFERENCIA_PROMEDIOS",
+                  "criterio_aceptacion": "CRITERIO_DEL_PROTOCOLO",
+                  "conclusion_estabilidad": "Pendiente",
+                  "data_condicion": [
+                    { "replica": 1, "area": "VALOR_REPLICA_1" },
+                    { "replica": 2, "area": "VALOR_REPLICA_2" }
+                  ]
+                }
+              ]
+            }
+          ],
+          "referencia_analitica": "ID_REPORTE_X; ID_REPORTE_Y",
+          "conclusion_estabilidad_muestra": "Cumple"
+        }
+        ```
+
+  </REGLAS_DE_EXTRACCION_ESTRUCTURADA>
+  
+    <br>
+  
+    <REGLAS_DE_RAZONAMIENTO>
+    Estas reglas aplican al `reasoning_agent`.
+  
+      - **Propósito:** Evaluar si cada solución y condición mantiene la estabilidad dentro de los criterios del protocolo y preparar la salida.
+      - **Entradas:** Objeto JSON del `structured_extraction_agent`.
+      - **Pasos del razonamiento:**
+        1.  Itera sobre cada entrada de `activos_estabilidad_solucion_estandar` y utiliza `solucion` como etiqueta del analito/tipo de solucion.
+        2.  Dentro de cada solución, identifica el valor de referencia (tiempo inicial) para cada condición.
+        3.  Si `promedio_areas` o `diferencia_promedios` son `null`, calcúlalos a partir de las réplicas. Si el valor `%di` ya fue extraído, úsalo como `diferencia_promedios`.
+        4.  Compara el valor absoluto de `diferencia_promedios` con el umbral numérico del `criterio_aceptacion`.
+        5.  Asigna `conclusion_estabilidad` por entrada (`"Cumple"` / `"No Cumple"`).
+        6.  Determina la `conclusion_estabilidad_muestra` global. Será `"Cumple"` solo si **TODAS** las condiciones de **TODAS** las soluciones de tipo "Muestra" cumplen.
+  </REGLAS_DE_RAZONAMIENTO>
+  
+    <REGLAS_DE_SALIDA_SUPERVISOR>
+    Aplica al `supervisor_agent`.
+  
+      - **Modelo de salida obligatorio:** `Set8StructuredOutputSupervisor`.
+      - **Formato:** único objeto JSON bien formado.
+      - **Integración de datos:** Replica la estructura del `reasoning_agent`, consolidando los valores en `activos_estabilidad_solucion_estandar` y actualizando `conclusion_estabilidad` y `conclusion_estabilidad_muestra`.
+      - **Ejemplo de salida final (Estructural - Rellenar con datos reales):**
+        ```json
+        {
+          "activos_estabilidad_solucion_estandar": [
+            {
+              "solucion": "[ANALITO_REAL] - Solucion Estandar",
+              "data_estabilidad_solucion": [
+                {
+                  "condicion_estabilidad": "[CONDICION_REAL]",
+                  "tiempo_estabilidad": "[TIEMPO_REAL]",
+                  "promedio_areas": "[VALOR_NUMERICO_CALCULADO]",
+                  "diferencia_promedios": "[VALOR_PORCENTUAL_CALCULADO]",
+                  "criterio_aceptacion": "[CRITERIO_DEL_PROTOCOLO]",
+                  "conclusion_estabilidad": "[CONCLUSION_RAZONADA]",
+                  "data_condicion": [
+                    { "replica": 1, "area": "[VALOR_NUMERICO_REAL]" },
+                    { "replica": 2, "area": "[VALOR_NUMERICO_REAL]" },
+                    { "replica": 3, "area": "[VALOR_NUMERICO_REAL]" }
+                  ]
+                }
+              ]
+            }
+          ],
+          "referencia_analitica": "[ID_REAL_DEL_REPORTE]",
+          "conclusion_estabilidad_muestra": "[CONCLUSION_FINAL_RAZONADA]"
+        }
+        ```
+  </REGLAS_DE_SALIDA_SUPERVISOR>
+"""
+
+RULES_SET_8_1 = """
   <REGLAS_DE_EXTRACCION_ESTRUCTURADA>
     Estas reglas aplican al `structured_extraction_agent`.
   
@@ -1045,76 +1223,115 @@ RULES_SET_8 = """
             3.  Registra el string con el criterio de aceptación de acuerdo a lo reportado en el texto extraído.
   
     -----
-  
-      - **Fase 2: Extracción de datos experimentales (hojas de trabajo / LIMS)**
-          - **Fuentes:** Documentos del reporte LIMS o Soluciones, hojas de trabajo analíticas, o data cromatografica en vectorstore .parquet.
-          - **Objetivo específico:** Extraer todos los valores de las réplicas individuales, promedios y diferencias para cada **analito**, solución (estándar y muestra), condición y tiempo de los Documentos del reporte LIMS o Soluciones, hojas de trabajo analíticas, o data cromatografica en vectorstore .parquet. Debes hacer esta segunda ronda de consultas sobre estos documentos.
-          - **Plan de acción:**
-            1.  **PRIMERO Y MÁS IMPORTANTE:** Identifica el **analito principal** que se está evaluando en la sección o página. Este es el contexto para todos los datos que siguen.
-            2.  Dentro del contexto de cada analito, identifica las "Soluciones Estandar" del reporte LIMS o la data cromatográfica en sus respectivos vectorstore .parquet. Para ello debes hacer consultas sobre los vectostores .parquet de la data cromatográfica y los reportes LIMS con strings que contengan "Solucion Estandar", "Results", "Sample Stability Time", o "Initial Sample Stability". Importante que hagas varias consultas para obtener todas las porciones de los documentos que podamos analizar. Genera tantas consultas como sean posibles para recuperar el contexto del documento.
-            3. Para cada una de las soluciones estandar identificadas, debes extraer las condiciones en las que fueron evaluadas. Para ello deberás extraer esto en los strings que indican la Solucion Estandar, dichas condiciones van acompañadas del string "Condicion 1", "Condicion 2", etc.
-            4. Para cada combinación de Analito, Solucion Estandar, Condición, debes identificar los tiempos de estabilidad de la solución estandar. Para ello debes analizar los strings  "Standard Stability Time 1", "Standard Stability Time 2", etc, para extraer los tiempos en los que fueron evaluadas estas soluciones estandar.
-            5. Para cada combinación de Analito, Solucion Estandar, Condición, Tiempo de estabilidad, debes identificar los resultados de la solución estandar. Para ello debes analizar los strings  "Standard Stability Result 1", "Standard Stability Result 2", "Results", para extraer los resultados en los que fueron evaluadas estas soluciones estandar.
-            6. Extraer `promedio_areas` y `diferencia_promedios` (`%di`) tal como aparezcan en el documento. Si no están, deja `null`.
-            8. Extrae la `referencia_analitica` (ej. `HT001/25-01904 ID-VAL`).
-  
+
+      - **Paso 0: Identificacion de analitos en los reportes**
+          - **Objetivo:** Enumerar cada analito presente en los reportes LIMS y datos asociados antes de iniciar la Fase 2.
+          - **Plan de accion:**
+            1.  Recorre encabezados y subtitulos de cada hoja (por ejemplo, "Sample Stability Results - HIDROCODONA", "ACETAMINOFEN VALORACION") y anota el analito literal y cualquier alias.
+            2.  Construye una lista ordenada `{analito, alias_detectados, referencia_de_pagina}`. Si la lista queda vacia, realiza consultas genericas ("Sample Stability Results", "Valoracion") hasta confirmarla; no avances a la Fase 2 sin este inventario.
+            3.  Usa estos nombres/alias como prefijos en todas las consultas posteriores y como etiqueta en `solucion`.
+
     -----
-  
+
+      - **Fase 2: Extracción de datos experimentales (hojas de trabajo / LIMS)**
+          - **Fuentes:** Documentos del reporte LIMS o Soluciones, hojas de trabajo analíticas, y data cromatografica en vectorstore .parquet. Recorre estas fuentes para cada analito antes de cerrar la extracción.
+          - **Objetivo específico:** Extraer todas las réplicas individuales, promedios y diferencias para cada analito, solución (estándar y muestra), condición y tiempo reportado.
+          - **Plan de acción:**
+            1.  **Bucle por analito:** Itera sobre la lista generada en el Paso 0 y deja constancia del analito activo antes de lanzar consultas.
+            2.  **Sub-etapa A – Soluciones estándar:** Combina el analito con patrones como "Standard Stability Time", "Initial Standard Stability", "Solucion Estandar R" y "Results". Extrae todas las réplicas (`Solucion Estandar Rn Condicion m`), los promedios (`Promedio Solucion Estandar ...`) y los `%di` o `% similitud`, y construye `data_condicion` con `{replica, area}` numérica.
+            3.  **Sub-etapa B – Soluciones muestra:** Repite el proceso para bloques "Initial Sample Stability" y "Sample Stability Time n" (`Solucion Muestra R`). Registra las áreas por réplica y condición, junto con los promedios y `%di` reportados. Si la tabla es un resumen, apóyate en la data cromatográfica para completar las réplicas o confirmar numeración.
+            4.  **Consulta iterativa y patrones:** Si obtienes resultados incompletos, amplía las búsquedas con sinónimos ("Results", "Average Area", "%di", "Tiempo 2", "Condition") y combina siempre el analito activo. Aprovecha la data cromatográfica para validar valores faltantes o duplicados.
+            5.  **Normalización de campos:**
+               - `condicion_estabilidad`: literal de la condición ("Condicion 1", "Condicion 2", etc.).
+               - `tiempo_estabilidad`: encabezado del bloque ("Initial Sample Stability", "Sample Stability Time 1", ...).
+               - `data_condicion`: lista de `{replica, area}` en orden de aparición y convertidos a float.
+               - `promedio_areas`: valor numérico del promedio.
+               - `diferencia_promedios`: valor numérico del `%di` o `% similitud` (mantiene signo).
+               - `solucion`: etiqueta formada por el analito y el tipo de solución (ej. "ANALITO_A - Solucion Estandar").
+               - `criterio_aceptacion`: reutiliza el criterio obtenido en la Fase 1.
+          - **Verificación y reintentos obligatorios:**
+            - Tras completar ambas sub-etapas del analito, comprueba que existan réplicas, `promedio_areas` y `diferencia_promedios` para cada condición y tiempo. Si falta algo, relanza consultas en las tres fuentes y documenta el intento.
+            - Si la información sigue ausente, registra el caso en `issues` usando el formato "Analito - Condicion X - Tiempo Y sin dato" y deja el campo en `null` solo cuando el modelo lo permita.
+            - Agrega a `referencia_analitica` todos los identificadores de reporte utilizados (HT..., REP-I&D-...).
+            - Antes de pasar al siguiente analito, asegúrate de que `activos_estabilidad_solucion_estandar` tenga al menos un objeto con `data_estabilidad_solucion`; de lo contrario, explica la ausencia en `issues` tras repetir las consultas.
+
+      **Recordatorio estructural complementario:** Cada entrada de `data_estabilidad_solucion` debe conservar el `criterio_aceptacion` de la Fase 1 y, cuando falte alguna réplica o métrica tras agotar las fuentes, debe documentarse en `issues` (ej.: `issues = ["Analito_A - Condicion 2 - Sample Stability Time 3 sin replicas"]`).
+
       - **Ejemplo de extracción completa (Set8ExtractionModel):**
-        **ADVERTENCIA: El siguiente ejemplo es ESTRUCTURAL. Todos los valores entre corchetes (ej. `"[VALOR_PLACEHOLDER]"`) son placeholders genéricos. NO DEBEN ser copiados. El agente DEBE extraer los valores y nombres reales del documento fuente.**
+        **ADVERTENCIA: El siguiente ejemplo es ESTRUCTURAL. Todos los valores entre corchetes (ej. "[VALOR_PLACEHOLDER]") son placeholders genéricos. NO DEBEN ser copiados. El agente DEBE extraer los valores y nombres reales del documento fuente.**
         ```json
         {
-          "soluciones": [
+          "activos_estabilidad_solucion_estandar": [
             {
-              "solucion": "[ANALITO_EXTRAIDO] - Solucion Muestra",
+              "solucion": "ANALITO_A - Solucion Estandar",
               "data_estabilidad_solucion": [
                 {
-                  "condicion_estabilidad": "[CONDICION_EXTRAIDA]",
-                  "tiempo_estabilidad": "[TIEMPO_INICIAL_EXTRAIDO]",
-                  "promedio_areas": "[VALOR_NUMERICO_PROMEDIO]",
-                  "diferencia_promedios": null,
-                  "criterio_aceptacion": "[CRITERIO_EXTRAIDO_DEL_PROTOCOLO]",
+                  "condicion_estabilidad": "CONDICION_1",
+                  "tiempo_estabilidad": "Tiempo Inicial",
+                  "promedio_areas": 1234.0,
+                  "diferencia_promedios": 0.0,
+                  "criterio_aceptacion": "CRITERIO_DEL_PROTOCOLO",
+                  "conclusion_estabilidad": "Cumple",
                   "data_condicion": [
-                    { "replica": 1, "area": "[VALOR_NUMERICO_REPLICA]" },
-                    { "replica": 2, "area": "[VALOR_NUMERICO_REPLICA]" },
-                    { "replica": 3, "area": "[VALOR_NUMERICO_REPLICA]" }
+                    { "replica": 1, "area": 1230.0 },
+                    { "replica": 2, "area": 1238.5 }
                   ]
                 },
                 {
-                  "condicion_estabilidad": "[CONDICION_EXTRAIDA]",
-                  "tiempo_estabilidad": "[TIEMPO_POSTERIOR_EXTRAIDO]",
-                  "promedio_areas": "[VALOR_NUMERICO_PROMEDIO]",
-                  "diferencia_promedios": "[VALOR_PORCENTUAL_DIF]",
-                  "criterio_aceptacion": "[CRITERIO_EXTRAIDO_DEL_PROTOCOLO]",
+                  "condicion_estabilidad": "CONDICION_2",
+                  "tiempo_estabilidad": "Sample Stability Time 1",
+                  "promedio_areas": 1250.2,
+                  "diferencia_promedios": 1.2,
+                  "criterio_aceptacion": "CRITERIO_DEL_PROTOCOLO",
+                  "conclusion_estabilidad": "Cumple",
                   "data_condicion": [
-                    { "replica": 1, "area": "[VALOR_NUMERICO_REPLICA]" },
-                    { "replica": 2, "area": "[VALOR_NUMERICO_REPLICA]" },
-                    { "replica": 3, "area": "[VALOR_NUMERICO_REPLICA]" }
+                    { "replica": 1, "area": 1251.4 },
+                    { "replica": 2, "area": 1249.0 }
                   ]
                 }
               ]
             },
             {
-              "solucion": "[OTRO_ANALITO_EXTRAIDO] - Solucion Estandar",
+              "solucion": "ANALITO_A - Solucion Muestra",
               "data_estabilidad_solucion": [
                 {
-                  "condicion_estabilidad": "[CONDICION_EXTRAIDA]",
-                  "tiempo_estabilidad": "[TIEMPO_INICIAL_EXTRAIDO]",
-                  "promedio_areas": "[VALOR_NUMERICO_PROMEDIO]",
-                  "diferencia_promedios": null,
-                  "criterio_aceptacion": "[CRITERIO_EXTRAIDO_DEL_PROTOCOLO]",
+                  "condicion_estabilidad": "CONDICION_1",
+                  "tiempo_estabilidad": "Sample Stability Time 1",
+                  "promedio_areas": 980.5,
+                  "diferencia_promedios": 0.5,
+                  "criterio_aceptacion": "CRITERIO_DEL_PROTOCOLO",
+                  "conclusion_estabilidad": "Cumple",
                   "data_condicion": [
-                    { "replica": 1, "area": "[VALOR_NUMERICO_REPLICA]" },
-                    { "replica": 2, "area": "[VALOR_NUMERICO_REPLICA]" }
+                    { "replica": 1, "area": 978.0 },
+                    { "replica": 2, "area": 982.3 },
+                    { "replica": 3, "area": 981.2 }
+                  ]
+                }
+              ]
+            },
+            {
+              "solucion": "ANALITO_B - Solucion Estandar",
+              "data_estabilidad_solucion": [
+                {
+                  "condicion_estabilidad": "CONDICION_1",
+                  "tiempo_estabilidad": "Tiempo Inicial",
+                  "promedio_areas": 2100.0,
+                  "diferencia_promedios": null,
+                  "criterio_aceptacion": "CRITERIO_DEL_PROTOCOLO",
+                  "conclusion_estabilidad": "Pendiente",
+                  "data_condicion": [
+                    { "replica": 1, "area": 2096.0 },
+                    { "replica": 2, "area": 2104.0 }
                   ]
                 }
               ]
             }
           ],
-          "referencia_analitica": "[ID_DEL_DOCUMENTO_FUENTE]",
-          "conclusion_estabilidad_muestra": "[pendiente_validar]"
+          "referencia_analitica": "ID_REPORTE_X; ID_REPORTE_Y",
+          "conclusion_estabilidad_muestra": "Cumple"
         }
         ```
+
   </REGLAS_DE_EXTRACCION_ESTRUCTURADA>
   
     <br>
@@ -1125,7 +1342,7 @@ RULES_SET_8 = """
       - **Propósito:** Evaluar si cada solución y condición mantiene la estabilidad dentro de los criterios del protocolo y preparar la salida.
       - **Entradas:** Objeto JSON del `structured_extraction_agent`.
       - **Pasos del razonamiento:**
-        1.  Itera sobre cada `solucion`.
+        1.  Itera sobre cada entrada de `activos_estabilidad_solucion_estandar` y utiliza `solucion` como etiqueta del analito/tipo de solucion.
         2.  Dentro de cada solución, identifica el valor de referencia (tiempo inicial) para cada condición.
         3.  Si `promedio_areas` o `diferencia_promedios` son `null`, calcúlalos a partir de las réplicas. Si el valor `%di` ya fue extraído, úsalo como `diferencia_promedios`.
         4.  Compara el valor absoluto de `diferencia_promedios` con el umbral numérico del `criterio_aceptacion`.
@@ -1138,11 +1355,11 @@ RULES_SET_8 = """
   
       - **Modelo de salida obligatorio:** `Set8StructuredOutputSupervisor`.
       - **Formato:** único objeto JSON bien formado.
-      - **Integración de datos:** Replica la estructura del `reasoning_agent`, asegurando que `conclusion_estabilidad` y `conclusion_estabilidad_muestra` estén actualizados.
+      - **Integración de datos:** Replica la estructura del `reasoning_agent`, consolidando los valores en `activos_estabilidad_solucion_estandar` y actualizando `conclusion_estabilidad` y `conclusion_estabilidad_muestra`.
       - **Ejemplo de salida final (Estructural - Rellenar con datos reales):**
         ```json
         {
-          "soluciones": [
+          "activos_estabilidad_solucion_estandar": [
             {
               "solucion": "[ANALITO_REAL] - Solucion Estandar",
               "data_estabilidad_solucion": [
