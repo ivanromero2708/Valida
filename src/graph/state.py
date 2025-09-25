@@ -58,17 +58,11 @@ class ValidaState(AgentStateWithStructuredResponse):
     dirs_bitacoras_exactitud: List[str] = Field(..., description="Directorios de las Bitacoras de Exactitud")
     dirs_soportes_cromatograficos_exactitud: List[str] = Field(..., description="Directorios de los Soportes Cromatográficos de Exactitud")
     
-    # Estabilidad de la solución estandar
-    dir_reporte_lims_estabilidad_solucion_estandar: List[str] = Field(..., description="Directorio del reporte LIMS de Estabilidad de la solución estandar")
-    dirs_hoja_trabajo_estabilidad_solucion_estandar: List[str] = Field(..., description="Directorios de las Hojas de Trabajo de Estabilidad de la solución estandar")
-    dirs_bitacoras_estabilidad_solucion_estandar: List[str] = Field(..., description="Directorios de las Bitacoras de Estabilidad de la solución estandar")
-    dirs_soportes_cromatograficos_estabilidad_solucion_estandar: List[str] = Field(..., description="Directorios de los Soportes Cromatográficos de Estabilidad de la solución estandar")
-    
-    # Estabilidad de la solución muestra
-    dir_reporte_lims_estabilidad_solucion_muestra: List[str] = Field(..., description="Directorio del reporte LIMS de Estabilidad de la solución muestra")
-    dirs_hoja_trabajo_estabilidad_solucion_muestra: List[str] = Field(..., description="Directorios de las Hojas de Trabajo de Estabilidad de la solución muestra")
-    dirs_bitacoras_estabilidad_solucion_muestra: List[str] = Field(..., description="Directorios de las Bitacoras de Estabilidad de la solución muestra")
-    dirs_soportes_cromatograficos_estabilidad_solucion_muestra: List[str] = Field(..., description="Directorios de los Soportes Cromatográficos de Estabilidad de la solución muestra")
+    # Estabilidad de la solución
+    dir_reporte_lims_estabilidad_solucion: List[str] = Field(..., description="Directorio del reporte LIMS de Estabilidad de la solución")
+    dirs_hoja_trabajo_estabilidad_solucion: List[str] = Field(..., description="Directorios de las Hojas de Trabajo de Estabilidad de la solución")
+    dirs_bitacoras_estabilidad_solucion: List[str] = Field(..., description="Directorios de las Bitacoras de Estabilidad de la solución")
+    dirs_soportes_cromatograficos_estabilidad_solucion: List[str] = Field(..., description="Directorios de los Soportes Cromatográficos de Estabilidad de la solución")
     
     # Estabilidad de la fase móvil
     dir_reporte_lims_estabilidad_solucion_fase_movil: List[str] = Field(..., description="Directorio del reporte LIMS de Estabilidad de la fase móvil")

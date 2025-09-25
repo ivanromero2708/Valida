@@ -44,6 +44,8 @@ from mistralai.models import SDKError
 from mistralai.extra import response_format_from_pydantic_model
 from pydantic import BaseModel, Field
 
+from src.config.template_config import TEMPLATE_SETS
+
 from src.config.models.set_1 import Set1ExtractionModel
 from src.config.models.set_2 import Set2ExtractionModel
 from src.config.models.set_3 import Set3ExtractionModel
@@ -52,7 +54,6 @@ from src.config.models.set_5 import Set5ExtractionModel
 from src.config.models.set_6 import Set6ExtractionModel
 from src.config.models.set_7 import Set7ExtractionModel
 from src.config.models.set_8 import Set8ExtractionModel
-from src.config.models.set_9 import Set9ExtractionModel
 from src.config.models.set_10 import Set10ExtractionModel
 from src.config.models.set_11 import Set11ExtractionModel
 
@@ -76,8 +77,8 @@ SEP_PAGE = "-----PAGE BREAK-----"
 ValidationModelName = Literal[
     "Set1ExtractionModel", "Set2ExtractionModel", "Set3ExtractionModel", 
     "Set4ExtractionModel", "Set5ExtractionModel", "Set6ExtractionModel", 
-    "Set7ExtractionModel", "Set8ExtractionModel", "Set9ExtractionModel", 
-    "Set10ExtractionModel", "Set11ExtractionModel"
+    "Set7ExtractionModel", "Set8ExtractionModel", "Set10ExtractionModel", 
+    "Set11ExtractionModel"
 ]
 
 
@@ -95,7 +96,6 @@ DOCUMENT_ANNOTATION_MODELS: Dict[str, Type[BaseModel]] = {
     "Set6ExtractionModel": Set6ExtractionModel,
     "Set7ExtractionModel": Set7ExtractionModel,
     "Set8ExtractionModel": Set8ExtractionModel,
-    "Set9ExtractionModel": Set9ExtractionModel,
     "Set10ExtractionModel": Set10ExtractionModel,
     "Set11ExtractionModel": Set11ExtractionModel,
 }
@@ -106,6 +106,8 @@ def get_document_annotation_model(model_name: Optional[ValidationModelName]) -> 
         return None
     
     # Mapeo directo - el Literal ya garantiza que es un nombre válido
+    # TODO Incorporar template sets para tener una versión generalizada de este agente
+    # model = TEMPLATE_SETS[set_name]["data_extraction_model"]
     model = DOCUMENT_ANNOTATION_MODELS.get(model_name)
     if model:
         logger.info(f"[get_document_annotation_model] Usando modelo: {model.__name__}")
@@ -196,7 +198,7 @@ class DocumentExtractor:
                         #pages_markdown = [p.markdown for p in ocr_response.pages if p.markdown.strip()]
                         #markdown_content = f"\n{SEP_PAGE}\n".join(pages_markdown)
                         
-                        # Combinar contenido estructurado y markdown
+                        # Combinar contenido estructurado
                         chunk_result = f"=== STRUCTURED ANNOTATION ===\n{structured_content}\n=== STRUCTURED ANNOTATION ==="
                     else:
                         # Fallback a markdown normal
@@ -415,11 +417,11 @@ class RAGProcessor:
             logger.warning(f"[discover_files] No se encontraron archivos soportados en {directory}")
         return files
 
-    def extract_directory_content(self, directory: str, recursive: bool = True, specific_files: Optional[List[str]] = None) -> str:
+    def extract_directory_content(self, directory: str, recursive: bool = True, specific_files: Optional[List[str]] = None) -> tuple[str, List[str]]:
         files = self.discover_files(directory, recursive, specific_files)
         if not files:
             logger.warning(f"[extract_directory_content] Sin archivos en {directory}")
-            return ""
+            return "", []
 
         logger.info(
             f"[extract_directory_content] Procesando {len(files)} archivo(s) "
@@ -428,11 +430,13 @@ class RAGProcessor:
         )
 
         contents: List[str] = []
+        processed_files: List[str] = []
         for fp in files:
             content = self.extractor.extract_single_document(fp, self.document_annotation_format)
             if content.strip():
                 contents.append(content)
-        return f"\n{SEP_DOCUMENT}\n".join(contents)
+                processed_files.append(fp)
+        return f"\n{SEP_DOCUMENT}\n".join(contents), processed_files
 
     def _create_json_aware_splitter(self) -> RecursiveCharacterTextSplitter:
         """Crea un splitter que considera la estructura JSON para chunking inteligente"""
@@ -459,7 +463,7 @@ class RAGProcessor:
             separators=json_separators,
         )
     
-    def split_documents(self, content: str, directory: str) -> List[Document]:
+    def split_documents(self, content: str, directory: str, processed_files: Optional[List[str]] = None) -> List[Document]:
         if not content.strip():
             return []
 
@@ -479,11 +483,50 @@ class RAGProcessor:
         doc = Document(page_content=content, metadata=base_md)
         chunks = splitter.split_documents([doc])
 
+        # Crear mapeo de archivos procesados para asignar source_dir correcto
+        file_mapping = {}
+        if processed_files:
+            # Dividir el contenido por SEP_DOCUMENT para mapear chunks a archivos
+            content_parts = content.split(f"\n{SEP_DOCUMENT}\n")
+            for i, file_path in enumerate(processed_files):
+                if i < len(content_parts):
+                    # Crear source_dir con directorio + nombre de archivo (sin extensión)
+                    file_name = Path(file_path).stem  # nombre sin extensión
+                    source_dir_with_file = os.path.join(directory, file_name)
+                    file_mapping[i] = source_dir_with_file
+
         # Garantizar que cada chunk tenga AL MENOS una clave en metadata
         fixed: List[Document] = []
         for i, c in enumerate(chunks):
             md = dict(c.metadata or {})
-            md.setdefault("source_dir", directory)
+            
+            # Determinar qué archivo corresponde a este chunk
+            chunk_source_dir = directory  # valor por defecto
+            source_file_name = ""  # nombre del archivo para incluir en el contenido
+            
+            if file_mapping:
+                # Buscar en qué parte del contenido está este chunk
+                chunk_content = c.page_content
+                for file_idx, source_dir_with_file in file_mapping.items():
+                    if file_idx < len(processed_files):
+                        # Si el chunk contiene contenido del archivo, usar su source_dir
+                        content_parts = content.split(f"\n{SEP_DOCUMENT}\n")
+                        if file_idx < len(content_parts) and content_parts[file_idx] in content:
+                            # Verificar si el chunk pertenece a este archivo
+                            if any(part.strip() in chunk_content for part in content_parts[file_idx].split("\n") if part.strip()):
+                                chunk_source_dir = source_dir_with_file
+                                source_file_name = source_dir_with_file
+                                break
+            
+            # Si no se encontró mapeo específico, usar directorio base
+            if not source_file_name:
+                source_file_name = directory
+            
+            # Agregar el nombre completo al contenido del chunk
+            enhanced_content = f"[SOURCE: {source_file_name}]\n\n{c.page_content}"
+            c.page_content = enhanced_content
+            
+            md.setdefault("source_dir", chunk_source_dir)
             md.setdefault("chunk_index", i)
             # Marcar si el chunk contiene contenido estructurado
             if "=== STRUCTURED ANNOTATION ===" in c.page_content:
@@ -561,8 +604,8 @@ class RAGProcessor:
 
     def process_directory(self, directory: str, recursive: bool = True, specific_files: Optional[List[str]] = None) -> Dict[str, Any]:
         try:
-            content = self.extract_directory_content(directory, recursive, specific_files)
-            splits = self.split_documents(content, directory)
+            content, processed_files = self.extract_directory_content(directory, recursive, specific_files)
+            splits = self.split_documents(content, directory, processed_files)
             vectorstore_path = self.create_vectorstore_from_splits(splits, directory)
             
             # Estadísticas adicionales sobre el contenido procesado

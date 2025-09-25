@@ -5,11 +5,10 @@ from src.config.models.set_5 import (Set5ExtractionModel,Set5StructuredOutputSup
 from src.config.models.set_6 import (Set6ExtractionModel,Set6StructuredOutputSupervisor,)
 from src.config.models.set_7 import (Set7ExtractionModel,Set7StructuredOutputSupervisor,)
 from src.config.models.set_8 import (Set8ExtractionModel,Set8StructuredOutputSupervisor,)
-from src.config.models.set_9 import (Set9ExtractionModel,Set9StructuredOutputSupervisor,)
 from src.config.models.set_10 import (Set10ExtractionModel,Set10StructuredOutputSupervisor,)
 from src.config.models.set_11 import (Set11ExtractionModel,Set11StructuredOutputSupervisor,)
 
-from src.config.prompt_sets import (RULES_SET_2,RULES_SET_3,RULES_SET_4,RULES_SET_5,RULES_SET_6,RULES_SET_7,RULES_SET_8,RULES_SET_9,RULES_SET_10,RULES_SET_11)
+from src.config.prompt_sets import (RULES_SET_2,RULES_SET_3,RULES_SET_4,RULES_SET_5,RULES_SET_6,RULES_SET_7,RULES_SET_8,RULES_SET_10,RULES_SET_11)
 
 
 TEMPLATE_SETS_TRIAL = {
@@ -127,35 +126,22 @@ TEMPLATE_SETS_TRIAL = {
         "human_message_prompt": RULES_SET_8,
         "doc_path_list": [
             "dir_protocolo",
-            "dir_reporte_lims_estabilidad_solucion_estandar",
-            "dirs_hoja_trabajo_estabilidad_solucion_estandar",
-            "dirs_bitacoras_estabilidad_solucion_estandar",
-            "dirs_soportes_cromatograficos_estabilidad_solucion_estandar",
+            "dir_reporte_lims_estabilidad_solucion",
+            #"dirs_hoja_trabajo_estabilidad_solucion",
+            #"dirs_bitacoras_estabilidad_solucion",
+            #"dirs_soportes_cromatograficos_estabilidad_solucion",
         ],
         "data_extraction_model": Set8ExtractionModel,
         "structured_output_supervisor": Set8StructuredOutputSupervisor,
-        "tags": ["activos_estabilidad_solucion_estandar", "refencia_estabilidad_solucion_std"],
-    },
-    "Set 9": {
-        "human_message_prompt": RULES_SET_9,
-        "doc_path_list": [
-            "dir_protocolo",
-            "dir_reporte_lims_estabilidad_solucion_muestra",
-            #"dirs_hoja_trabajo_estabilidad_solucion_muestra",
-            #"dirs_bitacoras_estabilidad_solucion_muestra",
-            #"dirs_soportes_cromatograficos_estabilidad_solucion_muestra",
-        ],
-        "data_extraction_model": Set9ExtractionModel,
-        "structured_output_supervisor": Set9StructuredOutputSupervisor,
-        "tags": ["activos_estabilidad_solucion_muestra", "refencia_estabilidad_solucion_mta"],
+        "tags": ["activos_estabilidad_solucion", "referencia_analitica_estabilidad_soluciones"],
     },
     "Set 10": {
         "human_message_prompt": RULES_SET_10,
         "doc_path_list": [
             "dir_protocolo",
-            "dir_reporte_lims_estabilidad_solucion_fase_movil",
-            "dirs_hoja_trabajo_estabilidad_solucion_fase_movil",
-            "dirs_bitacoras_estabilidad_solucion_fase_movil",
+            #"dir_reporte_lims_estabilidad_solucion_fase_movil",
+            #"dirs_hoja_trabajo_estabilidad_solucion_fase_movil",
+            #"dirs_bitacoras_estabilidad_solucion_fase_movil",
             "dirs_soportes_cromatograficos_estabilidad_solucion_fase_movil",
         ],
         "data_extraction_model": Set10ExtractionModel,
@@ -178,5 +164,5 @@ TEMPLATE_SETS_TRIAL = {
 }
 
 TEMPLATE_SETS = {
-    "Set 9": TEMPLATE_SETS_TRIAL["Set 9"]
+    "Set 10": TEMPLATE_SETS_TRIAL["Set 10"]
 }

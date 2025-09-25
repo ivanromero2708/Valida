@@ -3,40 +3,71 @@ from typing import List, Optional
 
 # Variables auxiliares
 
-class DataFaseMovilTiempo(BaseModel):
-    replica: int = Field(..., description="Réplica del dato de validación de la fase movil, es un entero que inicia en 1 hacia adelante, se encuentra reportada en la hoja de trabajo de analisis fisico quimico complementario en la seccion DESARROLLO DEL PROCEDIMIENTO, como replica.")
-    areas_system: float = Field(..., description="Área bajo la curva del pico asociado al dato de validación de la fase movil, se encuentra reportada en la hoja de trabajo de analisis fisico quimico complementario en la seccion DESARROLLO DEL PROCEDIMIENTO, como Area.")
-    tiempo_retencion: float = Field(..., description="Tiempo de retención del ingrediente activo, se encuentra reportado en la hoja de trabajo de analisis fisico quimico complementario en la seccion DESARROLLO DEL PROCEDIMIENTO, como tiempo de retención.")
-    usp_tailing: float = Field(..., description="USP Tailing del ingrediente activo, se encuentra reportado en la hoja de trabajo de analisis fisico quimico complementario en la seccion DESARROLLO DEL PROCEDIMIENTO, como USP tailing.")
-    resolucion: float = Field(..., description="Resolución entre los picos de los ingredientes activos, se encuentra reportado en la hoja de trabajo de analisis fisico quimico complementario en la seccion DESARROLLO DEL PROCEDIMIENTO, como Resolución.")
-    exactitud: float = Field(..., description="factor de Exactitud de las areas del ingrediente activo, se encuentra reportado en la hoja de trabajo de analisis fisico quimico complementario en la seccion DESARROLLO DEL PROCEDIMIENTO, como Exactitud.")
+class DataInyeccion(BaseModel):
+    No: int = Field(..., description="Número consecutivo que identifica el pico en la data cromatográfica recuperada de la inyección.")
+    peak_name: str = Field(..., description="Nombre del pico en la data cromatográfica recuperada de la inyección. Usualmente corresponde al analito de estudio")
+    analito: str = Field(..., description="Nombre del analito asociado al pico. Usualmente corresponde al nombre del pico")
+    retention_time: float = Field(..., description="Tiempo de retención del pico en la data cromatográfica recuperada de la inyección.")
+    area: float = Field(..., description="Área bajo la curva del pico en la data cromatográfica recuperada de la inyección.")
+    cal_amount: Optional[float] = Field(..., description="Cantidad calificada del pico en la data cromatográfica recuperada de la inyección.")
+    resolution: Optional[float] = Field(..., description="Resolución entre los picos de los ingredientes activos en la data cromatográfica recuperada de la inyección.")
+    t_plates_usp: Optional[float] = Field(..., description="T-plates USP del pico en la data cromatográfica recuperada de la inyección.")
+    assymetry: Optional[float] = Field(..., description="Asimetría del pico en la data cromatográfica recuperada de la inyección.")
+    amount: Optional[float] = Field(..., description="Cantidad del pico en la data cromatográfica recuperada de la inyección. Usualmente se acompaña de unidades tales como mg/mL, entre otras")
 
-class DataFaseMovilTiempos(BaseModel):
-    tiempo: str = Field(..., description="Tiempo de validacion de la fase movil, se encuentra reportado en la hoja de trabajo de analisis fisico quimico complementario en la seccion DESARROLLO DEL PROCEDIMIENTO, como Estabilidad Fase Movil Tiempo  inicial, Estabilidad Fase Movil Tiempo 1, Estabilidad Fase Movil Tiempo 2.")
-    promedio_areas_system: float = Field(..., description="Promedio de las areas del sistema, se encuentra reportado en la hoja de trabajo de analisis fisico quimico complementario en la seccion DESARROLLO DEL PROCEDIMIENTO, como Promedio Areas o con una x barra.")
-    promedio_tiempo_retencion: float = Field(..., description="Promedio de tiempo de retencion, se encuentra reportado en la hoja de trabajo de analisis fisico quimico complementario en la seccion DESARROLLO DEL PROCEDIMIENTO, como Promedio Tiempo Retention o con una x barra.")
-    promedio_usp_tailing: float = Field(..., description="Promedio de usp tailing, se encuentra reportado en la hoja de trabajo de analisis fisico quimico complementario en la seccion DESARROLLO DEL PROCEDIMIENTO, como Promedio USP Tailing o con una x barra.")
-    promedio_resolucion: float = Field(..., description="Promedio de resolucion, se encuentra reportado en la hoja de trabajo de analisis fisico quimico complementario en la seccion DESARROLLO DEL PROCEDIMIENTO, como Promedio Resolucion o con una x barra.")
-    rsd_areas_system: float = Field(..., description="RSD de las areas del sistema, se encuentra reportado en la hoja de trabajo de analisis fisico quimico complementario en la seccion DESARROLLO DEL PROCEDIMIENTO, como %RSD o %rsd.")
-    criterio_aceptacion: str = Field(..., description="Criterio de aceptacion para la fase movil")
-    conclusion_areas_system: str = Field(..., description="Conclusion de areas system de la fase movil")
-    conclusion_tiempo_retencion: str = Field(..., description="Conclusion de tiempo de retención de la fase movil")
-    conclusion_usp_tailing: str = Field(..., description="Conclusion de usp tailing de la fase movil")
-    data_fase_movil_tiempo: List[DataFaseMovilTiempo] = Field(..., description="Listado de diccionarios que contiene toda la información relacionada con la validación de la fase movil.")
+class DataChromaEstFM(BaseModel):
+    nombre_muestra: str = Field(..., description="Nombre de la muestra que se analiza en la inyeccion. Puede empezar con 'SST', 'Fase Movil', 'Solucion Estandar', entre otros")
+    #referencia_analitica: str = Field(..., description = "Referencia analitica de la muestra. Usualmente empieza como HT")
+    #dilution_factor: float = Field(..., description="Factor de dilución de la muestra. Usualmente es un número que aparece al lado del strin 'Dilution Factor', o similar")
+    #weight: float = Field(..., description="Peso de la muestra. Usualmente es un número que aparece al lado del strin 'Weight', o similar")
+    #no_inyeccion: int = Field(..., description="Número de la inyección que aparece al lado de un string similar a 'Injection Number', o similar")
+    data_inyecciones: Optional[List[DataInyeccion]] = Field(..., description= "Lista de diccionarios que contiene los picos obtenidos en la data cromatográfica de la inyección")
 
-class EstabilidadFaseMovil(BaseModel):
-    nombre: str = Field(..., description="Nombre del ingrediente activo cuya fase movil esta siendo validada")
-    data_fase_movil_tiempos: List[DataFaseMovilTiempos] = Field(..., description="Listado de diccionarios que contiene toda la información relacionada con la validación de la fase movil.")
+class ExtraccionDaExtraccionArchivoDataTiempo(BaseModel):
+    nombre_archivo: str = Field(..., description= "Nombre del archivo de donde se hará la extracción de datos.. Se puede inferir el tiempo de allí, por eso es importante que lo extraigas")
+    data_estabilidad_fase_movil: List[DataChromaEstFM] = Field(..., description="Listado de diccionarios que contiene toda la información relacionada con la validación de la fase movil.")
 
-# Modelos de datos
+# Extracción de datos
 
 class Set10ExtractionModel(BaseModel):
     """Modelo de validación de datos para Salida estructurada Estabilidad de la fase movil"""
-    activos_fase_movil: List[EstabilidadFaseMovil] = Field(..., description="Listado de diccionarios que contiene toda la información relacionada con la validación del parámetro de estabilidad de la fase movil para cada uno de los ingredientes activos del método")
-    referencia_estabilidad_fase_movil: str= Field(..., description="Referencia analítica del reporte de resultaods de estabilidad de la fase movil")
+    data_bruta_estabilidad_fase_movil: List[ExtraccionDaExtraccionArchivoDataTiempo] = Field(..., description="Listado de diccionarios que contiene toda la información relacionada con la validación de la fase movil.")
 
+# Salida Estructurada
+
+class ReplicaData(BaseModel):
+    """Contiene los datos para una única réplica de la prueba de adecuabilidad."""
+    replica: int = Field(..., description="Número de la réplica (e.g., 1, 2, 3).")
+    areas_system: float = Field(..., description="Valor del área del sistema para esta réplica.")
+    tiempo_retencion: float = Field(..., description="Valor del tiempo de retención para esta réplica.")
+    usp_tailing: float = Field(..., description="Valor de USP Tailing para esta réplica.")
+
+class ResultadosPorTiempo(BaseModel):
+    """Agrupa todos los resultados y conclusiones para un punto de tiempo específico (e.g., Tiempo 0)."""
+    tiempo_label: str = Field(..., description="Etiqueta del punto de tiempo, ej: 'Tiempo 0 (Día 0)' o 'Tiempo 1 (Día 6)'.")
+    replicas_data: List[ReplicaData] = Field(..., description="Lista de datos para cada una de las réplicas.")
+    promedio_areas_system: Optional[float] = Field(None, description="Promedio calculado de las áreas del sistema.")
+    promedio_tiempo_retencion: Optional[float] = Field(None, description="Promedio calculado de los tiempos de retención.")
+    promedio_usp_tailing: Optional[float] = Field(None, description="Promedio calculado de los valores de USP Tailing.")
+    rsd_areas_system: Optional[float] = Field(None, description="RSD (%) calculado para las áreas del sistema.")
+    conclusion_rsd_areas: str = Field("Pendiente", description="Conclusión de si el RSD de las áreas cumple el criterio.")
+    conclusion_tiempo_retencion: str = Field("Pendiente", description="Conclusión de si el tiempo de retención cumple el criterio.")
+    conclusion_usp_tailing: str = Field("Pendiente", description="Conclusión de si el USP Tailing cumple el criterio.")
+
+class CriterioAceptacion(BaseModel):
+    """Define un criterio de aceptación específico para un parámetro."""
+    parametro: str = Field(..., description="Parámetro evaluado, ej: 'RSD de áreas', 'Variación Tiempo de Retención', 'USP Tailing', 'Resolución'.")
+    criterio: str = Field(..., description="Descripción literal del criterio de aceptación, ej: 'debe ser menor o igual a 2.0%'.")
+
+class AnalitoResultados(BaseModel):
+    """Estructura principal que contiene todos los resultados de estabilidad para un único analito."""
+    nombre_analito: str = Field(..., description="Nombre del analito evaluado, ej: 'Acetaminofen'.")
+    resultados_por_tiempo: List[ResultadosPorTiempo] = Field(..., description="Lista de resultados para cada punto de tiempo evaluado.")
+    criterios_aceptacion: List[CriterioAceptacion] = Field(..., description="Lista de los criterios de aceptación aplicables.")
+    conclusion_general_analito: str = Field("Pendiente", description="Conclusión general sobre si el analito cumple con todos los criterios en todos los tiempos.")
 
 class Set10StructuredOutputSupervisor(BaseModel):
-    """Modelo de validación de datos para Salida estructurada Estabilidad de la fase movil"""
-    activos_fase_movil: List[EstabilidadFaseMovil] = Field(..., description="Listado de diccionarios que contiene toda la información relacionada con la validación del parámetro de estabilidad de la fase movil para cada uno de los ingredientes activos del método")
-    referencia_estabilidad_fase_movil: str= Field(..., description="Referencia analítica del reporte de resultaods de estabilidad de la fase movil")
+    """Modelo final para la salida estructurada de la Estabilidad de la Fase Móvil."""
+    titulo_parametro: str = Field(..., description="Título del parámetro de validación, ej: 'Resultados Estabilidad de la Fase Móvil'.")
+    analitos_estabilidad_fasemovil: List[AnalitoResultados] = Field(..., description="Lista de resultados para cada analito encontrado.")
+    referencia_analitica_estabilidad_fasemovil: Optional[str] = Field(None, description="Código de referencia del reporte o análisis, si está disponible (ej. HT...).")

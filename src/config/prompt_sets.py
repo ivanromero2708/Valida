@@ -1029,185 +1029,6 @@ RULES_SET_7 = """
 
 RULES_SET_8 = """
   <REGLAS_DE_EXTRACCION_ESTRUCTURADA>
-    Estas reglas aplican al `structured_extraction_agent`.
-  
-      - **Objetivo General:** Extraer y estructurar el criterio de aceptación y la información de **estabilidad de soluciones** para cada **analito** (SOLO estándar), mediante un proceso en dos fases. SIEMPRE DEBES EJECUTAR LAS 2 FASES.. ES OBLIGATORIO!!
-      - DEBES planificar exhaustivamente antes de cada llamada a una función y reflexionar exhaustivamente sobre los resultados de las llamadas a las funciones anteriores. NO realices todo este proceso haciendo solo llamadas a funciones, ya que esto puede afectar tu capacidad para resolver el problema y pensar de manera perspicaz.
-    -----
-  
-      - **Fase 1: Extracción de criterios de aceptación del protocolo de validación**
-          - **Fuente primaria:** UNICAMENTE EL Documento del **Protocolo de Validación** en vectorstore .parquet.
-          - **Objetivo específico:** Identificar los criterios de aceptación del parámetro estabilidad de las soluciones.
-          - **Plan de acción:**
-            1.  Genera consultas sobre el vectorstore .parquet del protocolo de validación con strings similares a "Criterio de aceptación", "Estabilidad de soluciones", "Solution stability" o equivalentes.
-            2.  Extrae el texto de los criterios de aceptación de la tabla "Criterio de aceptación" del protocolo de validación
-            3.  Registra el string con el criterio de aceptación de acuerdo a lo reportado en el texto extraído.
-  
-    -----
-
-      - **Paso 0: Identificacion de analitos en los reportes**
-          - **Objetivo:** Enumerar cada analito presente en los reportes y datos asociados antes de iniciar la Fase 2.
-          - **Plan de accion:**
-            1.  Recorre encabezados y subtitulos de cada hoja (por ejemplo, "Sample Stability Results") y anota el analito literal y cualquier alias.
-            2.  Construye una lista ordenada `{analito, alias_detectados, referencia_de_pagina}`. Si la lista queda vacia, realiza consultas genericas ("Sample Stability Results", "Valoracion") hasta confirmarla; no avances a la Fase 2 sin este inventario.
-            3.  Usa estos nombres/alias como prefijos en todas las consultas posteriores y como etiqueta en `solucion`.
-
-    -----
-
-      - **Fase 2: Extracción de datos experimentales (hojas de trabajo / LIMS / estabilidad soluciones, entre otros)**
-          - **Fuentes:** Documentos del reporte LIMS o Soluciones, hojas de trabajo analíticas, y data cromatográfica en vectorstore .parquet. Recorre estas fuentes para cada analito antes de cerrar la extracción.
-          - **Objetivo específico:** Extraer todas las réplicas individuales, promedios y diferencias para cada analito, solución (estándar), condición y tiempo reportado.
-          - **Plan de acción:**
-            1.  **Bucle por analito:** Itera sobre la lista generada en el Paso 0 y deja constancia del analito activo antes de lanzar consultas.
-            2.  **Sub-etapa A – Soluciones estándar:** Combina el analito con patrones como "Standard Stability Time", "Initial Standard Stability", "Solucion Estandar R" y "Results". Extrae todas las réplicas (`Solucion Estandar Rn Condicion m`), los promedios (`Promedio Solucion Estandar ...`) y los `%di` o `% similitud`, y construye `data_condicion` con `{replica, area}` numérica.
-            3.  **Consulta iterativa y patrones:** Si obtienes resultados incompletos, amplía las búsquedas con sinónimos ("Results", "Average Area", "%di", "Tiempo 2", "Condition") y combina siempre el analito activo. Aprovecha la data cromatográfica para validar valores faltantes o duplicados.
-            4.  **Normalización de campos:**
-               - `condicion_estabilidad`: literal de la condición ("Condicion 1", "Condicion 2", etc.).
-               - `tiempo_estabilidad`: encabezado del bloque ("Initial Sample Stability", "Sample Stability Time 1", ...).
-               - `data_condicion`: lista de `{replica, area}` en orden de aparición y convertidos a float.
-               - `promedio_areas`: valor numérico del promedio.
-               - `diferencia_promedios`: valor numérico del `%di` o `% similitud` (mantiene signo).
-               - `solucion`: etiqueta formada por el analito y el tipo de solución (ej. "ANALITO_A - Solucion Estandar").
-               - `criterio_aceptacion`: reutiliza el criterio obtenido en la Fase 1.
-          - **Verificación y reintentos obligatorios:**
-            - Tras completar ambas sub-etapas del analito, comprueba que existan réplicas, `promedio_areas` y `diferencia_promedios` para cada condición y tiempo. Si falta algo, relanza consultas en las tres fuentes y documenta el intento.
-            - Si la información sigue ausente, registra el caso en `issues` usando el formato "Analito - Condicion X - Tiempo Y sin dato" y deja el campo en `null` solo cuando el modelo lo permita.
-            - Agrega a `referencia_analitica` todos los identificadores de reporte utilizados (HT..., REP-I&D-...).
-            - Antes de pasar al siguiente analito, asegúrate de que `activos_estabilidad_solucion_estandar` tenga al menos un objeto con `data_estabilidad_solucion`; de lo contrario, explica la ausencia en `issues` tras repetir las consultas.
-
-      **Recordatorio estructural complementario:** Cada entrada de `data_estabilidad_solucion` debe conservar el `criterio_aceptacion` de la Fase 1 y, cuando falte alguna réplica o métrica tras agotar las fuentes, debe documentarse en `issues` (ej.: `issues = ["Analito_A - Condicion 2 - Sample Stability Time 3 sin replicas"]`).
-
-      - **Ejemplo de extracción completa (Set8ExtractionModel):**
-        **ADVERTENCIA: El siguiente ejemplo es ESTRUCTURAL. Todos los valores entre corchetes (ej. "[VALOR_PLACEHOLDER]") son placeholders genéricos. NO DEBEN ser copiados. El agente DEBE extraer los valores y nombres reales del documento fuente.**
-        ```json
-        {
-          "activos_estabilidad_solucion_estandar": [
-            {
-              "solucion": "ANALITO_A - Solucion Estandar",
-              "data_estabilidad_solucion": [
-                {
-                  "condicion_estabilidad": "CONDICION_1",
-                  "tiempo_estabilidad": "Tiempo Inicial",
-                  "promedio_areas": 1234.0,
-                  "diferencia_promedios": 0.0,
-                  "criterio_aceptacion": "CRITERIO_DEL_PROTOCOLO",
-                  "conclusion_estabilidad": "Cumple",
-                  "data_condicion": [
-                    { "replica": 1, "area": "VALOR_REPLICA_1" },
-                    { "replica": 2, "area": "VALOR_REPLICA_2" }
-                  ]
-                },
-                {
-                  "condicion_estabilidad": "CONDICION_2",
-                  "tiempo_estabilidad": "Sample Stability Time 1",
-                  "promedio_areas": "VALOR_PROMEDIO",
-                  "diferencia_promedios": "VALOR_DIFERENCIA_PROMEDIOS",
-                  "criterio_aceptacion": "CRITERIO_DEL_PROTOCOLO",
-                  "conclusion_estabilidad": "Cumple",
-                  "data_condicion": [
-                    { "replica": 1, "area": "VALOR_REPLICA_1" },
-                    { "replica": 2, "area": "VALOR_REPLICA_2" }
-                  ]
-                }
-              ]
-            },
-            {
-              "solucion": "ANALITO_A - Solucion Muestra",
-              "data_estabilidad_solucion": [
-                {
-                  "condicion_estabilidad": "CONDICION_1",
-                  "tiempo_estabilidad": "Sample Stability Time 1",
-                  "promedio_areas": "VALOR_PROMEDIO",
-                  "diferencia_promedios": "VALOR_DIFERENCIA_PROMEDIOS",
-                  "criterio_aceptacion": "CRITERIO_DEL_PROTOCOLO",
-                  "conclusion_estabilidad": "Cumple",
-                  "data_condicion": [
-                    { "replica": 1, "area": "VALOR_REPLICA_1" },
-                    { "replica": 2, "area": "VALOR_REPLICA_2" },
-                    { "replica": 3, "area": "VALOR_REPLICA_3" }
-                  ]
-                }
-              ]
-            },
-            {
-              "solucion": "ANALITO_B - Solucion Estandar",
-              "data_estabilidad_solucion": [
-                {
-                  "condicion_estabilidad": "CONDICION_1",
-                  "tiempo_estabilidad": "Tiempo Inicial",
-                  "promedio_areas": "VALOR_PROMEDIO",
-                  "diferencia_promedios": "VALOR_DIFERENCIA_PROMEDIOS",
-                  "criterio_aceptacion": "CRITERIO_DEL_PROTOCOLO",
-                  "conclusion_estabilidad": "Pendiente",
-                  "data_condicion": [
-                    { "replica": 1, "area": "VALOR_REPLICA_1" },
-                    { "replica": 2, "area": "VALOR_REPLICA_2" }
-                  ]
-                }
-              ]
-            }
-          ],
-          "referencia_analitica": "ID_REPORTE_X; ID_REPORTE_Y",
-          "conclusion_estabilidad_muestra": "Cumple"
-        }
-        ```
-
-  </REGLAS_DE_EXTRACCION_ESTRUCTURADA>
-  
-    <br>
-  
-    <REGLAS_DE_RAZONAMIENTO>
-    Estas reglas aplican al `reasoning_agent`.
-  
-      - **Propósito:** Evaluar si cada solución y condición mantiene la estabilidad dentro de los criterios del protocolo y preparar la salida.
-      - **Entradas:** Objeto JSON del `structured_extraction_agent`.
-      - **Pasos del razonamiento:**
-        1.  Itera sobre cada entrada de `activos_estabilidad_solucion_estandar` y utiliza `solucion` como etiqueta del analito/tipo de solucion.
-        2.  Dentro de cada solución, identifica el valor de referencia (tiempo inicial) para cada condición.
-        3.  Si `promedio_areas` o `diferencia_promedios` son `null`, calcúlalos a partir de las réplicas. Si el valor `%di` ya fue extraído, úsalo como `diferencia_promedios`.
-        4.  Compara el valor absoluto de `diferencia_promedios` con el umbral numérico del `criterio_aceptacion`.
-        5.  Asigna `conclusion_estabilidad` por entrada (`"Cumple"` / `"No Cumple"`).
-        6.  Determina la `conclusion_estabilidad_muestra` global. Será `"Cumple"` solo si **TODAS** las condiciones de **TODAS** las soluciones de tipo "Muestra" cumplen.
-  </REGLAS_DE_RAZONAMIENTO>
-  
-    <REGLAS_DE_SALIDA_SUPERVISOR>
-    Aplica al `supervisor_agent`.
-  
-      - **Modelo de salida obligatorio:** `Set8StructuredOutputSupervisor`.
-      - **Formato:** único objeto JSON bien formado.
-      - **Integración de datos:** Replica la estructura del `reasoning_agent`, consolidando los valores en `activos_estabilidad_solucion_estandar` y actualizando `conclusion_estabilidad` y `conclusion_estabilidad_muestra`.
-      - **Ejemplo de salida final (Estructural - Rellenar con datos reales):**
-        ```json
-        {
-          "activos_estabilidad_solucion_estandar": [
-            {
-              "solucion": "[ANALITO_REAL] - Solucion Estandar",
-              "data_estabilidad_solucion": [
-                {
-                  "condicion_estabilidad": "[CONDICION_REAL]",
-                  "tiempo_estabilidad": "[TIEMPO_REAL]",
-                  "promedio_areas": "[VALOR_NUMERICO_CALCULADO]",
-                  "diferencia_promedios": "[VALOR_PORCENTUAL_CALCULADO]",
-                  "criterio_aceptacion": "[CRITERIO_DEL_PROTOCOLO]",
-                  "conclusion_estabilidad": "[CONCLUSION_RAZONADA]",
-                  "data_condicion": [
-                    { "replica": 1, "area": "[VALOR_NUMERICO_REAL]" },
-                    { "replica": 2, "area": "[VALOR_NUMERICO_REAL]" },
-                    { "replica": 3, "area": "[VALOR_NUMERICO_REAL]" }
-                  ]
-                }
-              ]
-            }
-          ],
-          "referencia_analitica_estabilidad_estandar": "[ID_REAL_DEL_REPORTE]",
-          "conclusion_estabilidad_estandar": "[CONCLUSION_FINAL_RAZONADA]"
-        }
-        ```
-  </REGLAS_DE_SALIDA_SUPERVISOR>
-"""
-
-RULES_SET_9 = """
-  <REGLAS_DE_EXTRACCION_ESTRUCTURADA>
   Estas reglas aplican al `structured_extraction_agent`.
 
     - **Objetivo General:** Extraer y estructurar el criterio de aceptación y la información de **estabilidad de soluciones de estandar y muestra** para cada **analito**, mediante un proceso en dos fases. SIEMPRE DEBES EJECUTAR LAS 2 FASES.. ES OBLIGATORIO!!
@@ -1220,7 +1041,7 @@ RULES_SET_9 = """
         - **Objetivo específico:** Identificar los criterios de aceptación del parámetro estabilidad de las soluciones.
         - **Plan de acción:**
           1.  Genera consultas sobre el vectorstore .parquet del protocolo de validación con strings similares a "Criterio de aceptación de Estabilidad de soluciones".
-          2.  Extrae el texto de los criterios de aceptación de la tabla "Criterio de aceptación" del protocolo de validación
+          2.  Extrae el texto más completo y descriptivo que encuentres en los chunks de los criterios de aceptación de la tabla "Criterio de aceptación" de la estabilidad de las soluciones del protocolo de validación.
           3.  Registra el string con el criterio de aceptación de acuerdo a lo reportado en el texto extraído.
         - **Ejemplo de salida :**
         ```json
@@ -1235,7 +1056,7 @@ RULES_SET_9 = """
         - **Fuentes:** Documento del reporte LIMS o Soluciones en vectorstore .parquet.
         - **Objetivo:** Enumerar cada analito presente en los reportes y datos asociados antes de iniciar la Fase 2.
         - **Plan de acción:**
-          1.  Recorre encabezados y subtitulos de cada hoja (por ejemplo, "Sample Stability Results") y anota el analito literal y cualquier alias. Para ello genera consultas en el vectostore .parquet de los documentos reporte usando strings similares a "Sample Stability Results".
+          1.  Recorre los chunks de datos extraidos del reporte LIMS o Soluciones en vectorstore .parquet con la clave "analito". Anota cada uno de los analitos que identifiques en estos chunks
           2.  Construye una lista ordenada de analitos.
         - **Ejemplo de salida :**
         ```json
@@ -1258,11 +1079,11 @@ RULES_SET_9 = """
           - **Objetivo específico:** Extraer todas las réplicas individuales, promedios y diferencias para cada analito, solución, condición y tiempo reportado.
           - **Plan de acción:**
             1.  **Bucle por analito:** Itera sobre la lista generada de analitos en la fase 2 y deja constancia del analito activo antes de lanzar consultas. Ejecuta los siguientes pasos por cada una de las etapas de esta lista.. Siempre dejando claramente en un mensaje de texto lo que pudiste extraer.
-              1.1 Genera al menos 10 consultas sobre el vectorsore .parquet del reporte de Estabilidad de las Soluciones, que combinen el nombre del analito activo con patrones como "Sample Stability", "Results", "Solucion Muestra", y "Solución Estandar".
+              1.1 Genera al menos 20 consultas sobre el vectorsore .parquet del reporte de Estabilidad de las Soluciones, que combinen el nombre del analito activo con patrones como "tipo_solucion", "condicion_estabilidad", "tiempo_estabilidad", "Solucion_Muestra", y "Solucion_Estandar".
               1.2 Del texto recuperado, identifica un listado de las soluciones que tiene este analito, esto es, si tiene "Solucion Muestra" y/o "Solucion Estandar".
-              1.3 Por cada solucion, esto es, si es "Solucion Estandar" y/o "Solucion Muestra" identifica, cuantos tiempos tiene y cuales son, por ejemplo "Initial Sample", "Tiempo 1", "Tiempo 2", etc.
-              1.4 Por cada solucion ("Solucion Estandar" y/o "Solucion Muestra") y cada tiempo ("Initial Sample", "Tiempo 1", "Tiempo 2", etc.) identifica, bajo cuantas condiciones fueron evaluadas, esto es, si tiene "Condicion 1", "Condicion 2", etc.
-              1.5 Por cada solucion ("Solucion Estandar" y/o "Solucion Muestra") y cada tiempo ("Initial Sample", "Tiempo 1", "Tiempo 2", etc.) y cada condicion ("Condicion 1", "Condicion 2", etc.) identifica, cuantas réplicas se reportaron, esto es, si tiene "Solucion Muestra Rn Condicion m", "Solucion Muestra Rn Condicion n", etc.
+              1.3 Por cada solucion, esto es, si es "Solucion Estandar" y/o "Solucion Muestra" identifica, cuantos tiempos tiene y cuales son.
+              1.4 Por cada solucion ("Solucion Estandar" y/o "Solucion Muestra") y cada tiempo ("Initial Sample", "Tiempo 1", "Tiempo 2", etc.) identifica, bajo cuantas condiciones fueron evaluadas.
+              1.5 Por cada solucion ("Solucion Estandar" y/o "Solucion Muestra") y cada tiempo ("Initial Sample", "Tiempo 1", "Tiempo 2", etc.) y cada condicion ("Condicion 1", "Condicion 2", etc.) identifica, cuantas réplicas se reportaron.
               1.6 Por cada solucion ("Solucion Estandar" y/o "Solucion Muestra") y cada tiempo ("Initial Sample", "Tiempo 1", "Tiempo 2", etc.) y cada condicion ("Condicion 1", "Condicion 2", etc.) y por cada replica, identifica el valor del resultado de Area indicado en el reporte.
               1.7 Por cada solucion ("Solucion Estandar" y/o "Solucion Muestra") y cada tiempo ("Initial Sample", "Tiempo 1", "Tiempo 2", etc.) identifica el promedio de los datos de la solucion bajo las diferentes condiciones que fueron evaluadas las muestras.
               1.8 Por cada solucion ("Solucion Estandar" y/o "Solucion Muestra") y cada tiempo ("Initial Sample", "Tiempo 1", "Tiempo 2", etc.) identifica el %di o % similitud de los datos de la solucion bajo las diferentes condiciones que fueron evaluadas las muestras.
@@ -1275,48 +1096,103 @@ RULES_SET_9 = """
             {
               "activos_estabilidad_solucion": [
                 {
-                  "analito": "ANALITO_A",
-                  "tipo_solucion": "Solucion Muestra" o "Solucion Estandar"
-                  "condicion_estabilidad": "CONDICION_1",
-                  "tiempo_estabilidad": "Tiempo Inicial",
-                  "promedio_areas": ["VALOR_PROMEDIO"],
-                  "diferencia_promedios": ["VALOR_DIFERENCIA_PROMEDIOS"],
-                  "criterio_aceptacion": "CRITERIO_DEL_PROTOCOLO",
-                  "data_condicion": [
-                      { "replica": 1, "area": "VALOR_REPLICA_1" },
-                      { "replica": 2, "area": "VALOR_REPLICA_2" }
+                  "solucion": "SOLUCION_MUESTRA_ANALITO_A",
+                  "tipo_solucion": "Solucion_Muestra",
+                  "data_estabilidad_solucion": [
+                    {
+                      "analito": "NOMBRE_ANALITO_A",
+                      "condicion_estabilidad": "CONDICION_INICIAL",
+                      "tiempo_estabilidad": "TIEMPO_CERO",
+                      "promedio_areas": "VALOR_NUMERICO_1",
+                      "diferencia_promedios": "VALOR_NUMERICO_CALCULADO_1",
+                      "data_condicion": [
+                        {
+                          "replica": 1,
+                          "area": "VALOR_NUMERICO_REPLICA_1A"
+                        },
+                        {
+                          "replica": 2,
+                          "area": "VALOR_NUMERICO_REPLICA_1B"
+                        }
+                      ],
+                      "referencia_analitica": "CODIGO_REFERENCIA_HT_1"
+                    },
+                    {
+                      "analito": "NOMBRE_ANALITO_A",
+                      "condicion_estabilidad": "CONDICION_A_TIEMPO_1",
+                      "tiempo_estabilidad": "TIEMPO_UNO",
+                      "promedio_areas": "VALOR_NUMERICO_2",
+                      "diferencia_promedios": "VALOR_NUMERICO_CALCULADO_2",
+                      "data_condicion": [
+                        {
+                          "replica": 1,
+                          "area": "VALOR_NUMERICO_REPLICA_2A"
+                        },
+                        {
+                          "replica": 2,
+                          "area": "VALOR_NUMERICO_REPLICA_2B"
+                        }
+                      ],
+                      "referencia_analitica": "CODIGO_REFERENCIA_HT_1"
+                    }
                   ],
-                  "referencia_analitica": "HT..."
+                  "criterios_validacion": [
+                    {
+                      "parametro": "DIFERENCIA_PORCENTUAL",
+                      "criterio_aceptacion": "VALOR_CRITERIO_NUMERICO"
+                    }
+                  ]
                 },
                 {
-                  "analito": "ANALITO_A",
-                  "tipo_solucion": "Solucion Muestra" o "Solucion Estandar"
-                  "condicion_estabilidad": "CONDICION_2",
-                  "tiempo_estabilidad": "Tiempo 1",
-                  "promedio_areas": ["VALOR_PROMEDIO"],
-                  "diferencia_promedios": ["VALOR_DIFERENCIA_PROMEDIOS"],
-                  "criterio_aceptacion": "CRITERIO_DEL_PROTOCOLO",
-                  "data_condicion": [
-                      { "replica": 1, "area": "VALOR_REPLICA_1" },
-                      { "replica": 2, "area": "VALOR_REPLICA_2" }
+                  "solucion": "SOLUCION_ESTANDAR_ANALITO_B",
+                  "tipo_solucion": "Solucion_Estandar",
+                  "data_estabilidad_solucion": [
+                    {
+                      "analito": "NOMBRE_ANALITO_B",
+                      "condicion_estabilidad": "CONDICION_INICIAL",
+                      "tiempo_estabilidad": "TIEMPO_CERO",
+                      "promedio_areas": "VALOR_NUMERICO_3",
+                      "diferencia_promedios": "VALOR_NUMERICO_CALCULADO_3",
+                      "data_condicion": [
+                        {
+                          "replica": 1,
+                          "area": "VALOR_NUMERICO_REPLICA_3A"
+                        },
+                        {
+                          "replica": 2,
+                          "area": "VALOR_NUMERICO_REPLICA_3B"
+                        }
+                      ],
+                      "referencia_analitica": "CODIGO_REFERENCIA_HT_2"
+                    },
+                    {
+                      "analito": "NOMBRE_ANALITO_B",
+                      "condicion_estabilidad": "CONDICION_B_TIEMPO_1",
+                      "tiempo_estabilidad": "TIEMPO_UNO",
+                      "promedio_areas": "VALOR_NUMERICO_4",
+                      "diferencia_promedios": "VALOR_NUMERICO_CALCULADO_4",
+                      "data_condicion": [
+                        {
+                          "replica": 1,
+                          "area": "VALOR_NUMERICO_REPLICA_4A"
+                        },
+                        {
+                          "replica": 2,
+                          "area": "VALOR_NUMERICO_REPLICA_4B"
+                        }
+                      ],
+                      "referencia_analitica": "CODIGO_REFERENCIA_HT_2"
+                    }
                   ],
-                  "referencia_analitica": "HT..."
-                },
-                {
-                  "analito": "ANALITO_B",
-                  "tipo_solucion": "Solucion Muestra" o "Solucion Estandar"
-                  "condicion_estabilidad": "CONDICION_2",
-                  "tiempo_estabilidad": "Tiempo 2",
-                  "promedio_areas": ["VALOR_PROMEDIO"],
-                  "diferencia_promedios": ["VALOR_DIFERENCIA_PROMEDIOS"],
-                  "criterio_aceptacion": "CRITERIO_DEL_PROTOCOLO",
-                  "data_condicion": [
-                      { "replica": 1, "area": "VALOR_REPLICA_1" },
-                      { "replica": 2, "area": "VALOR_REPLICA_2" }
-                  ],
-                  "referencia_analitica": "HT..."
+                  "criterios_validacion": [
+                    {
+                      "parametro": "DIFERENCIA_PORCENTUAL",
+                      "criterio_aceptacion": "VALOR_CRITERIO_NUMERICO"
+                    }
+                  ]
                 }
-              ]
+              ],
+              "referencia_analitica_estabilidad_soluciones": "CODIGO_REFERENCIA_GENERAL_HT"
             }
             ```
   </REGLAS_DE_EXTRACCION_ESTRUCTURADA>
@@ -1326,7 +1202,7 @@ RULES_SET_9 = """
   <REGLAS_DE_RAZONAMIENTO>
   Estas reglas aplican al `reasoning_agent`.
 
-    - **Propósito:** Verificar la estabilidad de cada solución de muestra frente a los criterios del protocolo y preparar la salida conforme al modelo `Set9StructuredOutputSupervisor`.
+    - **Propósito:** Verificar la estabilidad de cada solución de muestra frente a los criterios del protocolo y preparar la salida conforme al modelo `Set8StructuredOutputSupervisor`.
     - **Herramientas restringidas:** No utilices `linealidad_tool`; está prohibida para este conjunto.
     - **Entradas:** Objeto JSON generado por el `structured_extraction_agent`.
     - **Pasos del razonamiento:**
@@ -1343,7 +1219,7 @@ RULES_SET_9 = """
   <REGLAS_DE_SALIDA_SUPERVISOR>
   Aplica al `supervisor_agent`.
 
-    - **Modelo de salida obligatorio:** `Set9StructuredOutputSupervisor`.
+    - **Modelo de salida obligatorio:** `Set8StructuredOutputSupervisor`.
     - **Formato:** Un solo objeto JSON bien formado sin texto extra tras el razonamiento.
     - **Integración de datos:**
       - Replica los bloques de `data_estabilidad_solucion` con los valores finales y conclusiones.
@@ -1351,201 +1227,305 @@ RULES_SET_9 = """
       - No añadas campos nuevos; reporta únicamente los definidos en el modelo.
     - **Ejemplo de salida final del supervisor:**
       ```json
-            {
-              "activos_estabilidad_solucion": [
-                {
-                  "analito": "ANALITO_A",
-                  "tipo_solucion": "Solucion Muestra" o "Solucion Estandar"
-                  "solucion": "SOLUCION_A", # Aquí indica si es solución estandar o muestra y el nombre del analito
-                  "condicion_estabilidad": "CONDICION_1",
-                  "tiempo_estabilidad": "Tiempo Inicial",
-                  "promedio_areas": ["VALOR_PROMEDIO"],
-                  "diferencia_promedios": ["VALOR_DIFERENCIA_PROMEDIOS"],
-                  "criterio_aceptacion": "CRITERIO_DEL_PROTOCOLO",
-                  "data_condicion": [
-                      { "replica": 1, "area": "VALOR_REPLICA_1" },
-                      { "replica": 2, "area": "VALOR_REPLICA_2" }
-                  ],
-                  "referencia_analitica": "HT..."
-                },
-                {
-                  "analito": "ANALITO_A",
-                  "tipo_solucion": "Solucion Muestra" o "Solucion Estandar",
-                  "solucion": "SOLUCION_A", # Aquí indica si es solución estandar o muestra y el nombre del analito
-                  "condicion_estabilidad": "CONDICION_2",
-                  "tiempo_estabilidad": "Tiempo 1",
-                  "promedio_areas": ["VALOR_PROMEDIO"],
-                  "diferencia_promedios": ["VALOR_DIFERENCIA_PROMEDIOS"],
-                  "criterio_aceptacion": "CRITERIO_DEL_PROTOCOLO",
-                  "data_condicion": [
-                      { "replica": 1, "area": "VALOR_REPLICA_1" },
-                      { "replica": 2, "area": "VALOR_REPLICA_2" }
-                  ],
-                  "referencia_analitica": "HT..."
-                },
-                {
-                  "analito": "ANALITO_B",
-                  "tipo_solucion": "Solucion Muestra" o "Solucion Estandar",
-                  "solucion": "SOLUCION_B", # Aquí indica si es solución estandar o muestra y el nombre del analito
-                  "condicion_estabilidad": "CONDICION_2",
-                  "tiempo_estabilidad": "Tiempo 2",
-                  "promedio_areas": ["VALOR_PROMEDIO"],
-                  "diferencia_promedios": ["VALOR_DIFERENCIA_PROMEDIOS"],
-                  "criterio_aceptacion": "CRITERIO_DEL_PROTOCOLO",
-                  "data_condicion": [
-                      { "replica": 1, "area": "VALOR_REPLICA_1" },
-                      { "replica": 2, "area": "VALOR_REPLICA_2" }
-                  ],
-                  "referencia_analitica": "HT..."
-                }
-              ]
-            }
-            ```
+      {
+        "activos_estabilidad_solucion": [
+          {
+            "solucion": "SOLUCION_MUESTRA_ANALITO_A",
+            "tipo_solucion": "Solucion_Muestra",
+            "data_estabilidad_solucion": [
+              {
+                "analito": "NOMBRE_ANALITO_A",
+                "condicion_estabilidad": "CONDICION_INICIAL",
+                "tiempo_estabilidad": "TIEMPO_CERO",
+                "promedio_areas": "VALOR_NUMERICO_1",
+                "diferencia_promedios": "VALOR_NUMERICO_CALCULADO_1",
+                "data_condicion": [
+                  {
+                    "replica": 1,
+                    "area": "VALOR_NUMERICO_REPLICA_1A"
+                  },
+                  {
+                    "replica": 2,
+                    "area": "VALOR_NUMERICO_REPLICA_1B"
+                  }
+                ],
+                "referencia_analitica": "CODIGO_REFERENCIA_HT_1"
+              },
+              {
+                "analito": "NOMBRE_ANALITO_A",
+                "condicion_estabilidad": "CONDICION_A_TIEMPO_1",
+                "tiempo_estabilidad": "TIEMPO_UNO",
+                "promedio_areas": "VALOR_NUMERICO_2",
+                "diferencia_promedios": "VALOR_NUMERICO_CALCULADO_2",
+                "data_condicion": [
+                  {
+                    "replica": 1,
+                    "area": "VALOR_NUMERICO_REPLICA_2A"
+                  },
+                  {
+                    "replica": 2,
+                    "area": "VALOR_NUMERICO_REPLICA_2B"
+                  }
+                ],
+                "referencia_analitica": "CODIGO_REFERENCIA_HT_1"
+              }
+            ],
+            "criterios_validacion": [
+              {
+                "parametro": "DIFERENCIA_PORCENTUAL",
+                "criterio_aceptacion": "VALOR_CRITERIO_NUMERICO"
+              }
+            ]
+          },
+          {
+            "solucion": "SOLUCION_ESTANDAR_ANALITO_B",
+            "tipo_solucion": "Solucion_Estandar",
+            "data_estabilidad_solucion": [
+              {
+                "analito": "NOMBRE_ANALITO_B",
+                "condicion_estabilidad": "CONDICION_INICIAL",
+                "tiempo_estabilidad": "TIEMPO_CERO",
+                "promedio_areas": "VALOR_NUMERICO_3",
+                "diferencia_promedios": "VALOR_NUMERICO_CALCULADO_3",
+                "data_condicion": [
+                  {
+                    "replica": 1,
+                    "area": "VALOR_NUMERICO_REPLICA_3A"
+                  },
+                  {
+                    "replica": 2,
+                    "area": "VALOR_NUMERICO_REPLICA_3B"
+                  }
+                ],
+                "referencia_analitica": "CODIGO_REFERENCIA_HT_2"
+              },
+              {
+                "analito": "NOMBRE_ANALITO_B",
+                "condicion_estabilidad": "CONDICION_B_TIEMPO_1",
+                "tiempo_estabilidad": "TIEMPO_UNO",
+                "promedio_areas": "VALOR_NUMERICO_4",
+                "diferencia_promedios": "VALOR_NUMERICO_CALCULADO_4",
+                "data_condicion": [
+                  {
+                    "replica": 1,
+                    "area": "VALOR_NUMERICO_REPLICA_4A"
+                  },
+                  {
+                    "replica": 2,
+                    "area": "VALOR_NUMERICO_REPLICA_4B"
+                  }
+                ],
+                "referencia_analitica": "CODIGO_REFERENCIA_HT_2"
+              }
+            ],
+            "criterios_validacion": [
+              {
+                "parametro": "DIFERENCIA_PORCENTUAL",
+                "criterio_aceptacion": "VALOR_CRITERIO_NUMERICO"
+              }
+            ]
+          }
+        ],
+        "referencia_analitica_estabilidad_soluciones": "CODIGO_REFERENCIA_GENERAL_HT",
+        "conclusion_estabilidad_soluciones": "CONCLUSION_GENERADA_AUTOMATICAMENTE_SOBRE_SI_LOS_DATOS_DE_AMBOS_ANALITOS_CUMPLEN_O_NO_CON_LOS_CRITERIOS"
+      }
+      ```
   </REGLAS_DE_SALIDA_SUPERVISOR>
 """
 
-
-
 RULES_SET_10 = """
-
   <REGLAS_DE_EXTRACCION_ESTRUCTURADA>
   Estas reglas aplican al `structured_extraction_agent`.
 
-    - **Objetivo General:** Extraer y estructurar la información de **estabilidad de la fase móvil** por API en dos fases diferenciadas, siguiendo el modelo `Set10ExtractionModel`.
+  - **Objetivo General:** Extraer y estructurar los datos de la **Adecuabilidad del Sistema** para el parámetro de **Estabilidad de la Fase Móvil**, poblando un modelo que replique la tabla de resultados final. El proceso se divide en tres fases obligatorias.
+
+  - **Planificación Exhaustiva:** DEBES planificar cuidadosamente antes de cada búsqueda y reflexionar sobre los resultados. No te apresures a llamar funciones; comprende los datos primero.
 
   -----
 
-    - **Fase 1: Extracción de criterios del protocolo de validación**
-
-        - **Fuente primaria:** Sección de **Estabilidad de la fase móvil** del Protocolo de Validación.
-        - **Objetivo específico:** Identificar límites aceptables para las métricas controladas (áreas del sistema, tiempo de retención, USP tailing, resolución, exactitud) y las condiciones evaluadas por tiempo.
-        - **Plan de acción:**
-          1.  Ubica tablas o listas con factores como "Tiempo inicial", "Tiempo 1", "Tiempo 2" y los parámetros asociados.
-          2.  Extrae los umbrales individuales (ej.: `%RSD <= 2.0%`, `|Delta Rt| <= 2.0%`, `USP tailing <= 2.0`, `Resolución >= 2.0`) y cualquier instrucción sobre réplicas.
-          3.  Registra la literalidad en `criterio_aceptacion` para cada combinación API/tiempo descrita en el protocolo.
-        - **Salida esperada Fase 1 (ejemplo sintético):**
-          ```json
-          {
-            "activos_fase_movil": [
-              {
-                "nombre": "[API_1]",
-                "data_fase_movil_tiempos": [
-                  {
-                    "tiempo": "Estabilidad Fase Movil Tiempo inicial",
-                    "criterio_aceptacion": "Areas: %RSD <= 2.0%; |Delta Rt| <= 2.0%; USP tailing <= 2.0; Resolucion >= 2.0."
-                  }
-                ]
-              }
-            ],
-            "referencia_estabilidad_fase_movil": "[ID_PROTOCOLO]"
-          }
-          ```
+  - **Fase 1: Identificar Analitos y Puntos de Tiempo**
+      - **Fuentes:** Documentos de resultados (ej. reportes cromatográficos).
+      - **Objetivo:** Determinar los analitos evaluados y los puntos de tiempo correspondientes a cada archivo.
+      - **Plan de acción:**
+          1.  Escanea los documentos para identificar los nombres de los picos (`Peak Name`) en las tablas de resultados cromatográficos. Crea una lista única de analitos.
+          2.  Asocia cada documento a un punto de tiempo. Revisa los nombres del documento que esta en el chunk al final de la ruta que tiene un string similar a "SOURCE:....". De aquí puedes extraer strings como T0, T1, T2, etc.. que serán los tiempos
+      - **Ejemplo de Salida (Conceptual):**
+          - Analitos: ["[NOMBRE_ANALITO_1]", "[NOMBRE_ANALITO_2]"]
+          - Tiempos: {"Tiempo 0": "[NOMBRE_ARCHIVO_1].pdf", "Tiempo 1": "[NOMBRE_ARCHIVO_2].pdf"}
 
   -----
 
-    - **Fase 2: Extracción de datos experimentales (hojas de trabajo / LIMS)**
-
-        - **Fuentes:** Hojas de trabajo analíticas y reportes crudos del **LIMS** relacionados con la estabilidad de la fase móvil.
-        - **Objetivo específico:** Registrar las réplicas y estadísticas reportadas para cada tiempo evaluado y API.
-        - **Plan de acción:**
-          1.  Identifica tablas con encabezados "Estabilidad Fase Movil Tiempo ..." y columnas para réplicas (1..n) con áreas, tiempo de retención, USP tailing, resolución y exactitud.
-          2.  Para cada API y tiempo, agrega un bloque en `data_fase_movil_tiempos` incorporando las réplicas en `data_fase_movil_tiempo`.
-          3.  Transcribe los promedios (`promedio_*`) y `rsd_areas_system` exactamente como aparecen. Si el reporte no los provee, deja el campo en `null` y anótalo en la trazabilidad para cálculo posterior.
-          4.  Mantén `conclusion_areas_system`, `conclusion_tiempo_retencion` y `conclusion_usp_tailing` como `[pendiente_validar]` hasta que el razonamiento los resuelva.
-          5.  Extrae la `referencia_estabilidad_fase_movil` (código de corrida o identificador de reporte) para la raíz del objeto.
-        - **Normalización y control de calidad:**
-          - Usa punto decimal; `replica` debe ser entero.
-          - Respeta los nombres de tiempos y APIs tal como aparecen.
-          - Documenta cualquier exclusión de réplicas o limpieza en las notas de trazabilidad.
-        - **Trazabilidad obligatoria (registro interno, no en la salida):** `source_document`, `page_or_span`, `query_used`, `confidence`, `cleaning_notes`.
-        - **Control adicional:** Prioriza corridas más recientes/completas cuando existan duplicados y deja evidencia de la decisión.
-
-  -----
-
-    - **Ejemplo de extracción completa (Set10ExtractionModel):**
+  - **Fase 2: Extracción de Datos de Réplicas por Analito y Tiempo**
+      - **Fuentes:** Documentos de resultados.
+      - **Objetivo:** Extraer los datos brutos de cada réplica para cada analito en cada punto de tiempo.
+      - **Plan de acción:**
+          1.  **Itera por cada analito** identificado en la Fase 1. Vas a hacer como mínimo 20 consultas.
+          2.  **Itera por cada punto de tiempo** ("Tiempo 0", "Tiempo 1").
+          3.  Para la combinación actual de `analito` y `tiempo`, localiza las inyecciones de la **"SST Solucion Estandar Mixto 1"**. Estas son tus réplicas.
+          4.  Para cada inyección (réplica), extrae los siguientes valores correspondientes a la fila del analito activo:
+              - **`areas_system`**: El valor de la columna "Area".
+              - **`tiempo_retencion`**: El valor de la columna "Retention Time".
+              - **`usp_tailing`**: El valor de la columna "Asymmetry" (es el equivalente en los reportes de Chromeleon).
+          5.  Estructura esta información siguiendo el modelo `AnalitoResultados` y sus sub-modelos. En esta fase, los campos de promedios, RSD y conclusiones deben dejarse como `null` o "Pendiente".
+      - Ejemplo:
       ```json
       {
-        "activos_fase_movil": [
+        "data_bruta_estabilidad_fase_movil": [
           {
-            "nombre": "[API_1]",
-            "data_fase_movil_tiempos": [
+            "nombre_archivo": "[NOMBRE_ARCHIVO_TIEMPO_1].pdf",
+            "data_estabilidad_fase_movil": [
               {
-                "tiempo": "Estabilidad Fase Movil Tiempo inicial",
-                "promedio_areas_system": 520000.0,
-                "promedio_tiempo_retencion": 6.20,
-                "promedio_usp_tailing": 1.25,
-                "promedio_resolucion": 2.10,
-                "rsd_areas_system": 0.85,
-                "criterio_aceptacion": "Areas: %RSD <= 2.0%; |Delta Rt| <= 2.0%; USP tailing <= 2.0; Resolucion >= 2.0.",
-                "conclusion_areas_system": "[pendiente_validar]",
-                "conclusion_tiempo_retencion": "[pendiente_validar]",
-                "conclusion_usp_tailing": "[pendiente_validar]",
-                "data_fase_movil_tiempo": [
-                  { "replica": 1, "areas_system": 519500.0, "tiempo_retencion": 6.18, "usp_tailing": 1.24, "resolucion": 2.08, "exactitud": 99.7 },
-                  { "replica": 2, "areas_system": 520300.0, "tiempo_retencion": 6.21, "usp_tailing": 1.26, "resolucion": 2.12, "exactitud": 100.1 },
-                  { "replica": 3, "areas_system": 520200.0, "tiempo_retencion": 6.21, "usp_tailing": 1.25, "resolucion": 2.10, "exactitud": 100.0 }
+                "nombre_muestra": "[Solucion Estandar Mixto Rep 1]",
+                "data_inyecciones": [
+                  {
+                    "No": 1,
+                    "peak_name": "[NOMBRE_ANALITO_1]",
+                    "analito": "[NOMBRE_ANALITO_1]",
+                    "retention_time": "[VALOR_NUMERICO]",
+                    "area": "[VALOR_NUMERICO]",
+                    "cal_amount": null,
+                    "resolution": null,
+                    "t_plates_usp": "[VALOR_NUMERICO]",
+                    "assymetry": "[VALOR_NUMERICO]",
+                    "amount": "[VALOR_NUMERICO]"
+                  },
+                  {
+                    "No": 2,
+                    "peak_name": "[NOMBRE_ANALITO_2]",
+                    "analito": "[NOMBRE_ANALITO_2]",
+                    "retention_time": "[VALOR_NUMERICO]",
+                    "area": "[VALOR_NUMERICO]",
+                    "cal_amount": null,
+                    "resolution": "[VALOR_NUMERICO]",
+                    "t_plates_usp": "[VALOR_NUMERICO]",
+                    "assymetry": "[VALOR_NUMERICO]",
+                    "amount": "[VALOR_NUMERICO]"
+                  }
                 ]
               },
               {
-                "tiempo": "Estabilidad Fase Movil Tiempo 1",
-                "promedio_areas_system": 515800.0,
-                "promedio_tiempo_retencion": 6.22,
-                "promedio_usp_tailing": 1.28,
-                "promedio_resolucion": 2.05,
-                "rsd_areas_system": 1.05,
-                "criterio_aceptacion": "Areas: %RSD <= 2.0%; |Delta Rt| <= 2.0%; USP tailing <= 2.0; Resolucion >= 2.0.",
-                "conclusion_areas_system": "[pendiente_validar]",
-                "conclusion_tiempo_retencion": "[pendiente_validar]",
-                "conclusion_usp_tailing": "[pendiente_validar]",
-                "data_fase_movil_tiempo": [
-                  { "replica": 1, "areas_system": 515500.0, "tiempo_retencion": 6.21, "usp_tailing": 1.27, "resolucion": 2.04, "exactitud": 99.8 },
-                  { "replica": 2, "areas_system": 516000.0, "tiempo_retencion": 6.23, "usp_tailing": 1.28, "resolucion": 2.05, "exactitud": 100.0 },
-                  { "replica": 3, "areas_system": 515900.0, "tiempo_retencion": 6.23, "usp_tailing": 1.29, "resolucion": 2.06, "exactitud": 100.2 }
+                "nombre_muestra": "[Solucion Estandar Mixto Rep 2]",
+                "data_inyecciones": [
+                  {
+                    "No": 1,
+                    "peak_name": "[NOMBRE_ANALITO_1]",
+                    "analito": "[NOMBRE_ANALITO_1]",
+                    "retention_time": "[VALOR_NUMERICO]",
+                    "area": "[VALOR_NUMERICO]",
+                    "cal_amount": null,
+                    "resolution": null,
+                    "t_plates_usp": "[VALOR_NUMERICO]",
+                    "assymetry": "[VALOR_NUMERICO]",
+                    "amount": "[VALOR_NUMERICO]"
+                  },
+                  {
+                    "No": 2,
+                    "peak_name": "[NOMBRE_ANALITO_2]",
+                    "analito": "[NOMBRE_ANALITO_2]",
+                    "retention_time": "[VALOR_NUMERICO]",
+                    "area": "[VALOR_NUMERICO]",
+                    "cal_amount": null,
+                    "resolution": "[VALOR_NUMERICO]",
+                    "t_plates_usp": "[VALOR_NUMERICO]",
+                    "assymetry": "[VALOR_NUMERICO]",
+                    "amount": "[VALOR_NUMERICO]"
+                  }
                 ]
               }
             ]
           },
           {
-            "nombre": "[API_2]",
-            "data_fase_movil_tiempos": [
+            "nombre_archivo": "[NOMBRE_ARCHIVO_TIEMPO_2].pdf",
+            "data_estabilidad_fase_movil": [
               {
-                "tiempo": "Estabilidad Fase Movil Tiempo inicial",
-                "promedio_areas_system": 480500.0,
-                "promedio_tiempo_retencion": 5.10,
-                "promedio_usp_tailing": 1.18,
-                "promedio_resolucion": 2.30,
-                "rsd_areas_system": 0.92,
-                "criterio_aceptacion": "Areas: %RSD <= 2.0%; |Delta Rt| <= 2.0%; USP tailing <= 2.0; Resolucion >= 2.0.",
-                "conclusion_areas_system": "[pendiente_validar]",
-                "conclusion_tiempo_retencion": "[pendiente_validar]",
-                "conclusion_usp_tailing": "[pendiente_validar]",
-                "data_fase_movil_tiempo": [
-                  { "replica": 1, "areas_system": 480200.0, "tiempo_retencion": 5.09, "usp_tailing": 1.17, "resolucion": 2.29, "exactitud": 99.6 },
-                  { "replica": 2, "areas_system": 480600.0, "tiempo_retencion": 5.10, "usp_tailing": 1.18, "resolucion": 2.31, "exactitud": 99.8 },
-                  { "replica": 3, "areas_system": 480700.0, "tiempo_retencion": 5.11, "usp_tailing": 1.19, "resolucion": 2.30, "exactitud": 100.0 }
-                ]
-              },
-              {
-                "tiempo": "Estabilidad Fase Movil Tiempo 2",
-                "promedio_areas_system": 475900.0,
-                "promedio_tiempo_retencion": 5.12,
-                "promedio_usp_tailing": 1.23,
-                "promedio_resolucion": 2.18,
-                "rsd_areas_system": 1.20,
-                "criterio_aceptacion": "Areas: %RSD <= 2.0%; |Delta Rt| <= 2.0%; USP tailing <= 2.0; Resolucion >= 2.0.",
-                "conclusion_areas_system": "[pendiente_validar]",
-                "conclusion_tiempo_retencion": "[pendiente_validar]",
-                "conclusion_usp_tailing": "[pendiente_validar]",
-                "data_fase_movil_tiempo": [
-                  { "replica": 1, "areas_system": 475600.0, "tiempo_retencion": 5.11, "usp_tailing": 1.22, "resolucion": 2.17, "exactitud": 99.5 },
-                  { "replica": 2, "areas_system": 476100.0, "tiempo_retencion": 5.12, "usp_tailing": 1.23, "resolucion": 2.18, "exactitud": 99.7 },
-                  { "replica": 3, "areas_system": 476000.0, "tiempo_retencion": 5.13, "usp_tailing": 1.24, "resolucion": 2.19, "exactitud": 99.9 }
+                "nombre_muestra": "[Solucion Muestra Mixto Rep 1]",
+                "data_inyecciones": [
+                  {
+                    "No": 1,
+                    "peak_name": "[NOMBRE_ANALITO_1]",
+                    "analito": "[NOMBRE_ANALITO_1]",
+                    "retention_time": "[VALOR_NUMERICO]",
+                    "area": "[VALOR_NUMERICO]",
+                    "cal_amount": "[VALOR_NUMERICO]",
+                    "resolution": null,
+                    "t_plates_usp": "[VALOR_NUMERICO]",
+                    "assymetry": "[VALOR_NUMERICO]",
+                    "amount": "[VALOR_NUMERICO]"
+                  },
+                  {
+                    "No": 2,
+                    "peak_name": "[NOMBRE_ANALITO_2]",
+                    "analito": "[NOMBRE_ANALITO_2]",
+                    "retention_time": "[VALOR_NUMERICO]",
+                    "area": "[VALOR_NUMERICO]",
+                    "cal_amount": "[VALOR_NUMERICO]",
+                    "resolution": "[VALOR_NUMERICO]",
+                    "t_plates_usp": "[VALOR_NUMERICO]",
+                    "assymetry": "[VALOR_NUMERICO]",
+                    "amount": "[VALOR_NUMERICO]"
+                  }
                 ]
               }
             ]
           }
+        ]
+      }
+      ```
+
+  -----
+
+  - **Fase 3: Extracción de Criterios de Aceptación**
+      - **Fuente Primaria:** La imagen proporcionada o una sección similar en los documentos fuente.
+      - **Objetivo:** Capturar los criterios literales para la validación.
+      - **Plan de acción:**
+          1.  Busca una sección o tabla titulada **"Criterio de aceptación"**.
+          2.  Extrae cada regla textual y clasifícala por el parámetro que evalúa.
+          3.  Puebla la lista `criterios_aceptacion` en el modelo.
+
+  - **Ejemplo de Salida de Extracción (Modelo `Set10StructuredOutput` parcialmente poblado):**
+      ```json
+      {
+        "titulo_parametro": "Resultados Estabilidad de la Fase Móvil",
+        "analitos": [
+          {
+            "nombre_analito": "[NOMBRE_ANALITO_1]",
+            "resultados_por_tiempo": [
+              {
+                "tiempo_label": "[ETIQUETA_TIEMPO_0]",
+                "replicas_data": [
+                  { "replica": 1, "areas_system": "[VALOR_NUMERICO]", "tiempo_retencion": "[VALOR_NUMERICO]", "usp_tailing": "[VALOR_NUMERICO]" },
+                  { "replica": 2, "areas_system": "[VALOR_NUMERICO]", "tiempo_retencion": "[VALOR_NUMERICO]", "usp_tailing": "[VALOR_NUMERICO]" }
+                ],
+                "promedio_areas_system": null,
+                "promedio_tiempo_retencion": null,
+                "promedio_usp_tailing": null,
+                "rsd_areas_system": null,
+                "conclusion_rsd_areas": "Pendiente",
+                "conclusion_tiempo_retencion": "Pendiente",
+                "conclusion_usp_tailing": "Pendiente"
+              },
+              {
+                "tiempo_label": "[ETIQUETA_TIEMPO_1]",
+                "replicas_data": [
+                  { "replica": 1, "areas_system": "[VALOR_NUMERICO]", "tiempo_retencion": "[VALOR_NUMERICO]", "usp_tailing": "[VALOR_NUMERICO]" }
+                ],
+                "promedio_areas_system": null,
+                "promedio_tiempo_retencion": null,
+                "promedio_usp_tailing": null,
+                "rsd_areas_system": null,
+                "conclusion_rsd_areas": "Pendiente",
+                "conclusion_tiempo_retencion": "Pendiente",
+                "conclusion_usp_tailing": "Pendiente"
+              }
+            ],
+            "criterios_aceptacion": [
+              { "parametro": "[NOMBRE_PARAMETRO_1]", "criterio": "[DESCRIPCION_CRITERIO_1]" },
+              { "parametro": "[NOMBRE_PARAMETRO_2]", "criterio": "[DESCRIPCION_CRITERIO_2]" }
+            ],
+            "conclusion_general_analito": "Pendiente"
+          }
         ],
-        "referencia_estabilidad_fase_movil": "[HTA_FASE_MOVIL]"
+        "referencia_analitica": "[CODIGO_REFERENCIA_HT]"
       }
       ```
   </REGLAS_DE_EXTRACCION_ESTRUCTURADA>
@@ -1555,20 +1535,22 @@ RULES_SET_10 = """
   <REGLAS_DE_RAZONAMIENTO>
   Estas reglas aplican al `reasoning_agent`.
 
-    - **Propósito:** Evaluar la estabilidad de la fase móvil por API frente a los criterios del protocolo y preparar la salida `Set10StructuredOutputSupervisor`.
-    - **Herramientas restringidas:** No utilices `linealidad_tool`; está expresamente prohibida aquí.
-    - **Entradas:** Objeto JSON emitido por el `structured_extraction_agent`.
-    - **Pasos del razonamiento:**
-      1.  Identifica, para cada API, el tiempo de referencia (usualmente "Tiempo inicial") para comparar variaciones.
-      2.  Completa cualquier estadístico faltante (`promedio_*`, `rsd_areas_system`) a partir de los datos de réplica; documenta el método de cálculo.
-      3.  Calcula el % de variación de `tiempo_retencion` y `usp_tailing` respecto al tiempo inicial; registra el resultado previo a comparar.
-      4.  Evalúa `rsd_areas_system`, las variaciones de tiempo y USP tailing, y cualquier otro parámetro requerido (resolución, exactitud) contra el criterio literal.
-      5.  Define `conclusion_areas_system`, `conclusion_tiempo_retencion` y `conclusion_usp_tailing` para cada bloque (`"Cumple"` / `"No Cumple"`). Explica todo incumplimiento y su magnitud.
-      6.  Confirma que `criterio_aceptacion` se mantenga íntegro y que la referencia utilizada esté registrada para la salida final.
-      7.  Resume en la narrativa cualquier riesgo o dato limítrofe para informar al supervisor.
-    - **Mini-ejemplo (orden recomendado):**
-      - `[API_1] Tiempo 1`: rsd_areas=1.05% (<=2.0%), delta Rt=0.32% (<=2.0%), USP tailing=1.28 (<=2.0) -> todas las conclusiones = "Cumple".
-      - `[API_2] Tiempo 2`: rsd_areas=1.20% (<=2.0%), delta Rt=0.39% (<=2.0%), USP tailing=1.23 (<=2.0), resolución=2.18 (>=2.0) -> Cumple.
+  - **Propósito:** Calcular las estadísticas, aplicar los criterios de aceptación y determinar las conclusiones para cada parámetro y analito, poblando completamente el modelo `Set10StructuredOutput`.
+  - **Entradas:** Objeto JSON generado por el `structured_extraction_agent`.
+  - **Pasos del razonamiento:**
+      1.  **Itera por cada analito** en la lista `analitos`.
+      2.  **Itera por cada `resultados_por_tiempo`** dentro de ese analito.
+      3.  **Calcular Estadísticas:**
+          - Usa los valores en `replicas_data` para calcular: `promedio_areas_system`, `promedio_tiempo_retencion`, `promedio_usp_tailing`.
+          - Calcula el `rsd_areas_system` (RSD en porcentaje).
+          - Actualiza estos campos en el objeto `resultados_por_tiempo`.
+      4.  **Aplicar Criterios y Concluir:**
+          - **RSD de Áreas:** Compara el `rsd_areas_system` calculado con el umbral del criterio. Define `conclusion_rsd_areas` como "Cumple" o "No Cumple".
+          - **USP Tailing:** Compara el `promedio_usp_tailing` con su criterio. Define `conclusion_usp_tailing` como "Cumple" o "No Cumple".
+          - **Tiempo de Retención:** Compara los promedios entre tiempos si el criterio lo exige. Define `conclusion_tiempo_retencion`.
+      5.  **Conclusión General:** Una vez evaluados todos los tiempos para un analito, determina la `conclusion_general_analito`. Será "Cumple" solo si todas las conclusiones individuales son "Cumple".
+      6.  **Narrativa:** Antes de la salida, resume los cálculos clave. Ej: "Para [NOMBRE_ANALITO_1] en [ETIQUETA_TIEMPO_0], el RSD de áreas fue [VALOR_CALCULADO]%, que cumple el criterio de '[CRITERIO]%', por lo tanto Cumple."
+
   </REGLAS_DE_RAZONAMIENTO>
 
   <br>
@@ -1576,101 +1558,60 @@ RULES_SET_10 = """
   <REGLAS_DE_SALIDA_SUPERVISOR>
   Aplica al `supervisor_agent`.
 
-    - **Modelo de salida obligatorio:** `Set10StructuredOutputSupervisor`.
-    - **Formato:** Un solo objeto JSON bien formado; no agregar texto tras el razonamiento.
-    - **Integración de datos:**
-      - Replica los bloques de `data_fase_movil_tiempos` incorporando los valores calculados y las conclusiones finales.
-      - Mantén `criterio_aceptacion` literal y `referencia_estabilidad_fase_movil` en la raíz.
-      - No agregues campos adicionales; respeta el modelo.
-    - **Ejemplo de salida final del supervisor:**
+  - **Modelo de salida obligatorio:** `Set10StructuredOutput`.
+  - **Formato:** Un único objeto JSON bien formado y completo, sin texto adicional.
+  - **Integración de datos:**
+      - El objeto final debe contener todos los datos extraídos, los valores calculados y las conclusiones finales generadas por el `reasoning_agent`.
+      - No añadas campos que no estén definidos en el modelo `Set10StructuredOutput`.
+  - **Ejemplo de Salida Final del Supervisor (Data-Agnóstico):**
       ```json
       {
-        "activos_fase_movil": [
+        "titulo_parametro": "Resultados Estabilidad de la Fase Móvil",
+        "analitos": [
           {
-            "nombre": "[API_1]",
-            "data_fase_movil_tiempos": [
+            "nombre_analito": "[NOMBRE_ANALITO_1]",
+            "resultados_por_tiempo": [
               {
-                "tiempo": "Estabilidad Fase Movil Tiempo inicial",
-                "promedio_areas_system": 520000.0,
-                "promedio_tiempo_retencion": 6.20,
-                "promedio_usp_tailing": 1.25,
-                "promedio_resolucion": 2.10,
-                "rsd_areas_system": 0.85,
-                "criterio_aceptacion": "Areas: %RSD <= 2.0%; |Delta Rt| <= 2.0%; USP tailing <= 2.0; Resolucion >= 2.0.",
-                "conclusion_areas_system": "Cumple",
-                "conclusion_tiempo_retencion": "Cumple",
-                "conclusion_usp_tailing": "Cumple",
-                "data_fase_movil_tiempo": [
-                  { "replica": 1, "areas_system": 519500.0, "tiempo_retencion": 6.18, "usp_tailing": 1.24, "resolucion": 2.08, "exactitud": 99.7 },
-                  { "replica": 2, "areas_system": 520300.0, "tiempo_retencion": 6.21, "usp_tailing": 1.26, "resolucion": 2.12, "exactitud": 100.1 },
-                  { "replica": 3, "areas_system": 520200.0, "tiempo_retencion": 6.21, "usp_tailing": 1.25, "resolucion": 2.10, "exactitud": 100.0 }
-                ]
+                "tiempo_label": "[ETIQUETA_TIEMPO_0]",
+                "replicas_data": [
+                  { "replica": 1, "areas_system": "[VALOR_NUMERICO]", "tiempo_retencion": "[VALOR_NUMERICO]", "usp_tailing": "[VALOR_NUMERICO]" },
+                  { "replica": 2, "areas_system": "[VALOR_NUMERICO]", "tiempo_retencion": "[VALOR_NUMERICO]", "usp_tailing": "[VALOR_NUMERICO]" },
+                  { "replica": 3, "areas_system": "[VALOR_NUMERICO]", "tiempo_retencion": "[VALOR_NUMERICO]", "usp_tailing": "[VALOR_NUMERICO]" }
+                ],
+                "promedio_areas_system": "[VALOR_CALCULADO]",
+                "promedio_tiempo_retencion": "[VALOR_CALCULADO]",
+                "promedio_usp_tailing": "[VALOR_CALCULADO]",
+                "rsd_areas_system": "[VALOR_CALCULADO]",
+                "conclusion_rsd_areas": "[CONCLUSION_PARAMETRO]",
+                "conclusion_tiempo_retencion": "[CONCLUSION_PARAMETRO]",
+                "conclusion_usp_tailing": "[CONCLUSION_PARAMETRO]"
               },
               {
-                "tiempo": "Estabilidad Fase Movil Tiempo 1",
-                "promedio_areas_system": 515800.0,
-                "promedio_tiempo_retencion": 6.22,
-                "promedio_usp_tailing": 1.28,
-                "promedio_resolucion": 2.05,
-                "rsd_areas_system": 1.05,
-                "criterio_aceptacion": "Areas: %RSD <= 2.0%; |Delta Rt| <= 2.0%; USP tailing <= 2.0; Resolucion >= 2.0.",
-                "conclusion_areas_system": "Cumple",
-                "conclusion_tiempo_retencion": "Cumple",
-                "conclusion_usp_tailing": "Cumple",
-                "data_fase_movil_tiempo": [
-                  { "replica": 1, "areas_system": 515500.0, "tiempo_retencion": 6.21, "usp_tailing": 1.27, "resolucion": 2.04, "exactitud": 99.8 },
-                  { "replica": 2, "areas_system": 516000.0, "tiempo_retencion": 6.23, "usp_tailing": 1.28, "resolucion": 2.05, "exactitud": 100.0 },
-                  { "replica": 3, "areas_system": 515900.0, "tiempo_retencion": 6.23, "usp_tailing": 1.29, "resolucion": 2.06, "exactitud": 100.2 }
-                ]
+                "tiempo_label": "[ETIQUETA_TIEMPO_1]",
+                "replicas_data": [
+                  { "replica": 1, "areas_system": "[VALOR_NUMERICO]", "tiempo_retencion": "[VALOR_NUMERICO]", "usp_tailing": "[VALOR_NUMERICO]" },
+                  { "replica": 2, "areas_system": "[VALOR_NUMERICO]", "tiempo_retencion": "[VALOR_NUMERICO]", "usp_tailing": "[VALOR_NUMERICO]" }
+                ],
+                "promedio_areas_system": "[VALOR_CALCULADO]",
+                "promedio_tiempo_retencion": "[VALOR_CALCULADO]",
+                "promedio_usp_tailing": "[VALOR_CALCULADO]",
+                "rsd_areas_system": "[VALOR_CALCULADO]",
+                "conclusion_rsd_areas": "[CONCLUSION_PARAMETRO]",
+                "conclusion_tiempo_retencion": "[CONCLUSION_PARAMETRO]",
+                "conclusion_usp_tailing": "[CONCLUSION_PARAMETRO]"
               }
-            ]
-          },
-          {
-            "nombre": "[API_2]",
-            "data_fase_movil_tiempos": [
-              {
-                "tiempo": "Estabilidad Fase Movil Tiempo inicial",
-                "promedio_areas_system": 480500.0,
-                "promedio_tiempo_retencion": 5.10,
-                "promedio_usp_tailing": 1.18,
-                "promedio_resolucion": 2.30,
-                "rsd_areas_system": 0.92,
-                "criterio_aceptacion": "Areas: %RSD <= 2.0%; |Delta Rt| <= 2.0%; USP tailing <= 2.0; Resolucion >= 2.0.",
-                "conclusion_areas_system": "Cumple",
-                "conclusion_tiempo_retencion": "Cumple",
-                "conclusion_usp_tailing": "Cumple",
-                "data_fase_movil_tiempo": [
-                  { "replica": 1, "areas_system": 480200.0, "tiempo_retencion": 5.09, "usp_tailing": 1.17, "resolucion": 2.29, "exactitud": 99.6 },
-                  { "replica": 2, "areas_system": 480600.0, "tiempo_retencion": 5.10, "usp_tailing": 1.18, "resolucion": 2.31, "exactitud": 99.8 },
-                  { "replica": 3, "areas_system": 480700.0, "tiempo_retencion": 5.11, "usp_tailing": 1.19, "resolucion": 2.30, "exactitud": 100.0 }
-                ]
-              },
-              {
-                "tiempo": "Estabilidad Fase Movil Tiempo 2",
-                "promedio_areas_system": 475900.0,
-                "promedio_tiempo_retencion": 5.12,
-                "promedio_usp_tailing": 1.23,
-                "promedio_resolucion": 2.18,
-                "rsd_areas_system": 1.20,
-                "criterio_aceptacion": "Areas: %RSD <= 2.0%; |Delta Rt| <= 2.0%; USP tailing <= 2.0; Resolucion >= 2.0.",
-                "conclusion_areas_system": "Cumple",
-                "conclusion_tiempo_retencion": "Cumple",
-                "conclusion_usp_tailing": "Cumple",
-                "data_fase_movil_tiempo": [
-                  { "replica": 1, "areas_system": 475600.0, "tiempo_retencion": 5.11, "usp_tailing": 1.22, "resolucion": 2.17, "exactitud": 99.5 },
-                  { "replica": 2, "areas_system": 476100.0, "tiempo_retencion": 5.12, "usp_tailing": 1.23, "resolucion": 2.18, "exactitud": 99.7 },
-                  { "replica": 3, "areas_system": 476000.0, "tiempo_retencion": 5.13, "usp_tailing": 1.24, "resolucion": 2.19, "exactitud": 99.9 }
-                ]
-              }
-            ]
+            ],
+            "criterios_aceptacion": [
+              { "parametro": "[NOMBRE_PARAMETRO_1]", "criterio": "[DESCRIPCION_LITERAL_CRITERIO_1]" },
+              { "parametro": "[NOMBRE_PARAMETRO_2]", "criterio": "[DESCRIPCION_LITERAL_CRITERIO_2]" }
+            ],
+            "conclusion_general_analito": "[CONCLUSION_GENERAL]"
           }
         ],
-        "referencia_estabilidad_fase_movil": "[HTA_FASE_MOVIL]"
+        "referencia_analitica": "[CODIGO_REFERENCIA_HT]"
       }
       ```
-    - **Recordatorio estricto:** Justifica en el razonamiento todos los cálculos y comparaciones antes de emitir el JSON final.
   </REGLAS_DE_SALIDA_SUPERVISOR>
-
 """
 
 
