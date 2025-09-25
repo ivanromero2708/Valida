@@ -141,9 +141,9 @@ TEMPLATE_SETS_TRIAL = {
         "doc_path_list": [
             "dir_protocolo",
             "dir_reporte_lims_estabilidad_solucion_muestra",
-            "dirs_hoja_trabajo_estabilidad_solucion_muestra",
-            "dirs_bitacoras_estabilidad_solucion_muestra",
-            "dirs_soportes_cromatograficos_estabilidad_solucion_muestra",
+            #"dirs_hoja_trabajo_estabilidad_solucion_muestra",
+            #"dirs_bitacoras_estabilidad_solucion_muestra",
+            #"dirs_soportes_cromatograficos_estabilidad_solucion_muestra",
         ],
         "data_extraction_model": Set9ExtractionModel,
         "structured_output_supervisor": Set9StructuredOutputSupervisor,

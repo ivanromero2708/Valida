@@ -10,6 +10,7 @@ Requisitos:
 - mistralai>=1.5.0 (MISTRAL_API_KEY)
 - langchain, langchain_community, langchain_openai
 - pandas, openpyxl, xlrd, scikit-learn, pyarrow
+- PyPDF2 (para conteo de páginas)
 - OPENAI_API_KEY
 """
 
@@ -21,7 +22,7 @@ import time
 import uuid
 from collections import Counter
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Type
+from typing import Any, Dict, List, Optional, Literal, Type
 
 import pandas as pd
 from langchain.schema import Document
@@ -40,7 +41,21 @@ from langchain_core.tools import BaseTool, ToolException
 from langchain_openai import OpenAIEmbeddings
 from mistralai import Mistral
 from mistralai.models import SDKError
+from mistralai.extra import response_format_from_pydantic_model
 from pydantic import BaseModel, Field
+
+from src.config.models.set_1 import Set1ExtractionModel
+from src.config.models.set_2 import Set2ExtractionModel
+from src.config.models.set_3 import Set3ExtractionModel
+from src.config.models.set_4 import Set4ExtractionModel
+from src.config.models.set_5 import Set5ExtractionModel
+from src.config.models.set_6 import Set6ExtractionModel
+from src.config.models.set_7 import Set7ExtractionModel
+from src.config.models.set_8 import Set8ExtractionModel
+from src.config.models.set_9 import Set9ExtractionModel
+from src.config.models.set_10 import Set10ExtractionModel
+from src.config.models.set_11 import Set11ExtractionModel
+
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -56,6 +71,49 @@ ALL_EXTENSIONS: List[str] = [e for lst in SUPPORTED_EXTENSIONS.values() for e in
 SEP_DOCUMENT = "=====DOCUMENT BREAK====="
 SEP_SHEET = "-----SHEET BREAK-----"
 SEP_PAGE = "-----PAGE BREAK-----"
+
+# Tipo alias para los modelos de validación
+ValidationModelName = Literal[
+    "Set1ExtractionModel", "Set2ExtractionModel", "Set3ExtractionModel", 
+    "Set4ExtractionModel", "Set5ExtractionModel", "Set6ExtractionModel", 
+    "Set7ExtractionModel", "Set8ExtractionModel", "Set9ExtractionModel", 
+    "Set10ExtractionModel", "Set11ExtractionModel"
+]
+
+
+# =============================================================================
+# MAPEO DE STRINGS A MODELOS PYDANTIC DE VALIDACIÓN
+# =============================================================================
+
+# Mapeo de strings a modelos Pydantic del sistema de validación
+DOCUMENT_ANNOTATION_MODELS: Dict[str, Type[BaseModel]] = {
+    "Set1ExtractionModel": Set1ExtractionModel,
+    "Set2ExtractionModel": Set2ExtractionModel,
+    "Set3ExtractionModel": Set3ExtractionModel,
+    "Set4ExtractionModel": Set4ExtractionModel,
+    "Set5ExtractionModel": Set5ExtractionModel,
+    "Set6ExtractionModel": Set6ExtractionModel,
+    "Set7ExtractionModel": Set7ExtractionModel,
+    "Set8ExtractionModel": Set8ExtractionModel,
+    "Set9ExtractionModel": Set9ExtractionModel,
+    "Set10ExtractionModel": Set10ExtractionModel,
+    "Set11ExtractionModel": Set11ExtractionModel,
+}
+
+def get_document_annotation_model(model_name: Optional[ValidationModelName]) -> Optional[Type[BaseModel]]:
+    """Obtener modelo Pydantic desde nombre exacto del modelo"""
+    if not model_name:
+        return None
+    
+    # Mapeo directo - el Literal ya garantiza que es un nombre válido
+    model = DOCUMENT_ANNOTATION_MODELS.get(model_name)
+    if model:
+        logger.info(f"[get_document_annotation_model] Usando modelo: {model.__name__}")
+        return model
+    
+    # Esto no debería pasar con Literal, pero por seguridad
+    logger.error(f"[get_document_annotation_model] Error interno: modelo '{model_name}' no encontrado en mapeo")
+    return None
 
 
 def _create_mistral_client() -> Mistral:
@@ -73,6 +131,9 @@ class RAGPipelineInput(BaseModel):
     specific_files: Optional[List[str]] = Field(
         None, description="Nombres de archivos específicos a procesar"
     )
+    document_annotation_model: Optional[ValidationModelName] = Field(
+        None, description="Modelo Pydantic para Document Annotations (estructura JSON de salida)"
+    )
 
 
 class DocumentExtractor:
@@ -81,36 +142,134 @@ class DocumentExtractor:
         with open(path, "rb") as f:
             return base64.b64encode(f.read()).decode()
 
-    def _extract_pdf_via_mistral_ocr(self, path_doc: str, ocr_model: str = "mistral-ocr-latest", retries: int = 3) -> str:
+    def _extract_pdf_via_document_annotations(self, path_doc: str, document_annotation_format: Optional[Type[BaseModel]] = None, ocr_model: str = "mistral-ocr-latest", retries: int = 3) -> str:
+        """Extrae PDF usando Document Annotations de Mistral con segmentación de 8 páginas"""
         client = _create_mistral_client()
         b64_pdf = self._file_to_base64(path_doc)
-
-        for attempt in range(1, retries + 1):
+        
+        # Obtener número total de páginas usando PyPDF como fallback
+        total_pages = self._get_pdf_page_count(path_doc)
+        logger.info(f"[Document Annotations] PDF tiene {total_pages} páginas: {path_doc}")
+        
+        # Segmentar en chunks de 8 páginas (límite de Document Annotations)
+        page_chunks = []
+        for start_page in range(0, total_pages, 8):
+            end_page = min(start_page + 8, total_pages)
+            page_range = list(range(start_page, end_page))
+            page_chunks.append(page_range)
+        
+        logger.info(f"[Document Annotations] Procesando {len(page_chunks)} segmentos de páginas")
+        
+        all_results = []
+        for chunk_idx, page_range in enumerate(page_chunks):
+            logger.info(f"[Document Annotations] Procesando segmento {chunk_idx + 1}/{len(page_chunks)}: páginas {page_range[0]}-{page_range[-1]}")
+            
+            for attempt in range(1, retries + 1):
+                try:
+                    # Preparar parámetros para la llamada OCR
+                    ocr_params = {
+                        "model": ocr_model,
+                        "pages": page_range,
+                        "document": {
+                            "type": "document_url",
+                            "document_url": f"data:application/pdf;base64,{b64_pdf}"
+                        },
+                        "include_image_base64": False,
+                    }
+                    
+                    # Agregar document_annotation_format si se proporciona
+                    if document_annotation_format:
+                        ocr_params["document_annotation_format"] = response_format_from_pydantic_model(document_annotation_format)
+                    
+                    ocr_response = client.ocr.process(**ocr_params)
+                    
+                    # Procesar respuesta
+                    if document_annotation_format and hasattr(ocr_response, 'document_annotation') and ocr_response.document_annotation:
+                        # Si hay document annotation, convertir JSON a string
+                        json_content = ocr_response.document_annotation
+                        if isinstance(json_content, str):
+                            structured_content = json_content
+                        else:
+                            structured_content = json.dumps(json_content, ensure_ascii=False, indent=2)
+                        
+                        # También incluir el markdown de las páginas
+                        #pages_markdown = [p.markdown for p in ocr_response.pages if p.markdown.strip()]
+                        #markdown_content = f"\n{SEP_PAGE}\n".join(pages_markdown)
+                        
+                        # Combinar contenido estructurado y markdown
+                        chunk_result = f"=== STRUCTURED ANNOTATION ===\n{structured_content}\n=== STRUCTURED ANNOTATION ==="
+                    else:
+                        # Fallback a markdown normal
+                        pages_markdown = [p.markdown for p in ocr_response.pages if p.markdown.strip()]
+                        chunk_result = f"\n{SEP_PAGE}\n".join(pages_markdown)
+                    
+                    if chunk_result.strip():
+                        all_results.append(chunk_result)
+                        logger.info(f"[Document Annotations] Segmento {chunk_idx + 1} extraído: {len(chunk_result)} chars")
+                    break
+                    
+                except SDKError as e:
+                    if attempt == retries or getattr(e, "status_code", 0) < 500:
+                        logger.error(f"[Document Annotations] Error SDK en segmento {chunk_idx + 1}, intento {attempt}: {e}")
+                        if attempt == retries:
+                            # Fallback a OCR básico para este segmento
+                            fallback_result = self._extract_pdf_segment_basic_ocr(path_doc, page_range, ocr_model)
+                            if fallback_result.strip():
+                                all_results.append(fallback_result)
+                        continue
+                    time.sleep(2 ** (attempt - 1))
+                except Exception as e:
+                    logger.warning(f"[Document Annotations] Error en segmento {chunk_idx + 1}, intento {attempt}: {e}")
+                    if attempt == retries:
+                        # Fallback a OCR básico para este segmento
+                        fallback_result = self._extract_pdf_segment_basic_ocr(path_doc, page_range, ocr_model)
+                        if fallback_result.strip():
+                            all_results.append(fallback_result)
+                    else:
+                        time.sleep(2 ** (attempt - 1))
+        
+        final_result = f"\n{SEP_DOCUMENT}\n".join(all_results)
+        logger.info(f"[Document Annotations] PDF completo extraído: {len(final_result)} chars")
+        return final_result
+    
+    def _get_pdf_page_count(self, path_doc: str) -> int:
+        """Obtiene el número de páginas del PDF usando PyPDF"""
+        try:
+            from PyPDF2 import PdfReader
+            reader = PdfReader(path_doc)
+            return len(reader.pages)
+        except Exception:
             try:
-                ocr_response = client.ocr.process(
-                    model=ocr_model,
-                    document={
-                        "type": "document_url",
-                        "document_url": f"data:application/pdf;base64,{b64_pdf}"
-                    },
-                    include_image_base64=False,
-                )
-                pages_markdown: List[str] = [p.markdown for p in ocr_response.pages]
-                result = f"\n{SEP_PAGE}\n".join(pages_markdown)
-                if result.strip():
-                    logger.info(f"[OCR Mistral] PDF extraído: {len(result)} chars")
-                return result
-            except SDKError as e:
-                if attempt == retries or getattr(e, "status_code", 0) < 500:
-                    raise
-                time.sleep(2 ** (attempt - 1))
-            except Exception:
-                if attempt == retries:
-                    raise
-                time.sleep(2 ** (attempt - 1))
-        return ""
+                # Fallback usando PyPDFLoader de langchain
+                pages = PyPDFLoader(path_doc).load()
+                return len(pages)
+            except Exception as e:
+                logger.warning(f"[_get_pdf_page_count] No se pudo determinar páginas de {path_doc}: {e}")
+                return 50  # Valor por defecto conservador
+    
+    def _extract_pdf_segment_basic_ocr(self, path_doc: str, page_range: List[int], ocr_model: str) -> str:
+        """Fallback para extraer un segmento de PDF usando OCR básico"""
+        try:
+            client = _create_mistral_client()
+            b64_pdf = self._file_to_base64(path_doc)
+            
+            ocr_response = client.ocr.process(
+                model=ocr_model,
+                pages=page_range,
+                document={
+                    "type": "document_url",
+                    "document_url": f"data:application/pdf;base64,{b64_pdf}"
+                },
+                include_image_base64=False,
+            )
+            
+            pages_markdown = [p.markdown for p in ocr_response.pages if p.markdown.strip()]
+            return f"\n{SEP_PAGE}\n".join(pages_markdown)
+        except Exception as e:
+            logger.error(f"[_extract_pdf_segment_basic_ocr] Error en páginas {page_range}: {e}")
+            return ""
 
-    def extract_pdf(self, path_doc: str) -> str:
+    def extract_pdf(self, path_doc: str, document_annotation_format: Optional[Type[BaseModel]] = None) -> str:
         try:
             logger.info(f"[PDF] Intentando PyPDF: {path_doc}")
             pages = PyPDFLoader(path_doc).load()
@@ -121,8 +280,8 @@ class DocumentExtractor:
         except Exception as e:
             logger.warning(f"[PDF] PyPDF falló para {path_doc}: {e}")
 
-        logger.info(f"[PDF] Intentando OCR Mistral: {path_doc}")
-        return self._extract_pdf_via_mistral_ocr(path_doc)
+        logger.info(f"[PDF] Intentando Document Annotations Mistral: {path_doc}")
+        return self._extract_pdf_via_document_annotations(path_doc, document_annotation_format)
 
     def extract_image(self, path_doc: str, ocr_model: str = "mistral-ocr-latest", retries: int = 3) -> str:
         client = _create_mistral_client()
@@ -197,11 +356,11 @@ class DocumentExtractor:
             raise ValueError(f"No se pudo extraer contenido de {path_doc}")
         return f"\n{SEP_SHEET}\n".join(sheets)
 
-    def extract_single_document(self, path_doc: str) -> str:
+    def extract_single_document(self, path_doc: str, document_annotation_format: Optional[Type[BaseModel]] = None) -> str:
         ext = Path(path_doc).suffix.lower()
         try:
             if ext in SUPPORTED_EXTENSIONS["pdf"]:
-                return self.extract_pdf(path_doc)
+                return self.extract_pdf(path_doc, document_annotation_format)
             if ext in SUPPORTED_EXTENSIONS["word"]:
                 return self.extract_word(path_doc)
             if ext in SUPPORTED_EXTENSIONS["excel"]:
@@ -215,9 +374,10 @@ class DocumentExtractor:
 
 
 class RAGProcessor:
-    def __init__(self, chunk_size: int = 2000, chunk_overlap: int = 250):
+    def __init__(self, chunk_size: int = 2000, chunk_overlap: int = 250, document_annotation_format: Optional[Type[BaseModel]] = None):
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
+        self.document_annotation_format = document_annotation_format
         self.extractor = DocumentExtractor()
 
     def discover_files(self, directory: str, recursive: bool = True, specific_files: Optional[List[str]] = None) -> List[str]:
@@ -269,21 +429,50 @@ class RAGProcessor:
 
         contents: List[str] = []
         for fp in files:
-            content = self.extractor.extract_single_document(fp)
+            content = self.extractor.extract_single_document(fp, self.document_annotation_format)
             if content.strip():
                 contents.append(content)
         return f"\n{SEP_DOCUMENT}\n".join(contents)
 
-    # ⬇️ FIX: añadimos directory para poder setear metadatos base
+    def _create_json_aware_splitter(self) -> RecursiveCharacterTextSplitter:
+        """Crea un splitter que considera la estructura JSON para chunking inteligente"""
+        # Separadores optimizados para contenido JSON y estructurado
+        json_separators = [
+            SEP_DOCUMENT,
+            "=== STRUCTURED ANNOTATION ===",
+            "=== MARKDOWN CONTENT ===",
+            SEP_SHEET,
+            SEP_PAGE,
+            "\n\n",
+            "\n}",  # Final de objetos JSON
+            "},",   # Separación entre objetos JSON
+            "\n]",  # Final de arrays JSON
+            "],",   # Separación entre arrays JSON
+            "\n",
+            " ",
+            ""
+        ]
+        
+        return RecursiveCharacterTextSplitter(
+            chunk_size=self.chunk_size,
+            chunk_overlap=self.chunk_overlap,
+            separators=json_separators,
+        )
+    
     def split_documents(self, content: str, directory: str) -> List[Document]:
         if not content.strip():
             return []
 
-        splitter = RecursiveCharacterTextSplitter(
-            chunk_size=self.chunk_size,
-            chunk_overlap=self.chunk_overlap,
-            separators=[SEP_DOCUMENT, SEP_SHEET, SEP_PAGE, "\n\n", "\n", " ", ""],
-        )
+        # Usar splitter optimizado para JSON si hay contenido estructurado
+        if "=== STRUCTURED ANNOTATION ===" in content:
+            logger.info("[split_documents] Detectado contenido estructurado, usando chunking JSON-aware")
+            splitter = self._create_json_aware_splitter()
+        else:
+            splitter = RecursiveCharacterTextSplitter(
+                chunk_size=self.chunk_size,
+                chunk_overlap=self.chunk_overlap,
+                separators=[SEP_DOCUMENT, SEP_SHEET, SEP_PAGE, "\n\n", "\n", " ", ""],
+            )
 
         # Metadatos base para evitar struct vacío en parquet
         base_md = {"source_dir": directory}
@@ -296,6 +485,13 @@ class RAGProcessor:
             md = dict(c.metadata or {})
             md.setdefault("source_dir", directory)
             md.setdefault("chunk_index", i)
+            # Marcar si el chunk contiene contenido estructurado
+            if "=== STRUCTURED ANNOTATION ===" in c.page_content:
+                md["content_type"] = "structured_annotation"
+            elif "=== MARKDOWN CONTENT ===" in c.page_content:
+                md["content_type"] = "markdown_content"
+            else:
+                md["content_type"] = "standard"
             c.metadata = md
             fixed.append(c)
 
@@ -366,12 +562,23 @@ class RAGProcessor:
     def process_directory(self, directory: str, recursive: bool = True, specific_files: Optional[List[str]] = None) -> Dict[str, Any]:
         try:
             content = self.extract_directory_content(directory, recursive, specific_files)
-            splits = self.split_documents(content, directory)  # ⬅️ pasa directory
+            splits = self.split_documents(content, directory)
             vectorstore_path = self.create_vectorstore_from_splits(splits, directory)
+            
+            # Estadísticas adicionales sobre el contenido procesado
+            content_stats = {
+                "total_chunks": len(splits),
+                "structured_chunks": len([c for c in splits if c.metadata.get("content_type") == "structured_annotation"]),
+                "markdown_chunks": len([c for c in splits if c.metadata.get("content_type") == "markdown_content"]),
+                "standard_chunks": len([c for c in splits if c.metadata.get("content_type") == "standard"]),
+                "has_document_annotations": self.document_annotation_format is not None
+            }
+            
             return {
                 "directory": directory,
                 "vectorstore_path": vectorstore_path,
                 "chunks_count": len(splits),
+                "content_stats": content_stats,
                 "status": "success",
             }
         except Exception as e:
@@ -387,8 +594,9 @@ class RAGProcessor:
 class RAGPipelineTool(BaseTool):
     name: str = "rag_pipeline_tool"
     description: str = (
-        "Procesa un directorio o archivo (PDF/Word/Excel/Imágenes), extrae texto, chunk-ea, "
-        "vectoriza y genera un vectorstore persistente (.parquet). Devuelve JSON."
+        "Procesa un directorio o archivo (PDF/Word/Excel/Imágenes) usando Document Annotations de Mistral "
+        "para extracción estructurada, chunk-ea con soporte JSON-aware, vectoriza y genera un "
+        "vectorstore persistente (.parquet). Soporta modelos Pydantic para anotaciones estructuradas. Devuelve JSON."
     )
     args_schema: Type[BaseModel] = RAGPipelineInput
     return_direct: bool = False
@@ -401,6 +609,7 @@ class RAGPipelineTool(BaseTool):
         chunk_overlap: int = 250,
         recursive: bool = True,
         specific_files: Optional[List[str]] = None,
+        document_annotation_model: Optional[ValidationModelName] = None,
         run_manager: Optional[CallbackManagerForToolRun] = None,
     ) -> str:
         if not directory:
@@ -429,7 +638,14 @@ class RAGPipelineTool(BaseTool):
         else:
             work_directory = directory
 
-        processor = RAGProcessor(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+        # Convertir string a modelo Pydantic
+        document_annotation_format = get_document_annotation_model(document_annotation_model)
+        
+        processor = RAGProcessor(
+            chunk_size=chunk_size, 
+            chunk_overlap=chunk_overlap,
+            document_annotation_format=document_annotation_format
+        )
 
         try:
             logger.info(f"[RAGPipelineTool] Procesando: {work_directory}")
@@ -462,6 +678,7 @@ class RAGPipelineTool(BaseTool):
         chunk_overlap: int = 250,
         recursive: bool = True,
         specific_files: Optional[List[str]] = None,
+        document_annotation_model: Optional[ValidationModelName] = None,
         run_manager: Optional[AsyncCallbackManagerForToolRun] = None,
     ) -> str:
         import asyncio
@@ -473,5 +690,6 @@ class RAGPipelineTool(BaseTool):
             chunk_overlap,
             recursive,
             specific_files,
+            document_annotation_model,
             run_manager.get_sync() if run_manager else None,
         )

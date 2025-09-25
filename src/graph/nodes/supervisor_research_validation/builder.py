@@ -6,7 +6,6 @@ from src.graph.nodes.supervisor_research_validation.state import SupervisorResea
 from src.graph.state import SupervisorResearchValidationOutput
 from src.agents.create_supervisor import make_supervisor
 from src.agents.create_react_agent import make_react_agent
-from src.config.models.index_agent import IndexAgentResponse
 from src.config.configuration import Configuration
 
 
@@ -47,7 +46,7 @@ class SupervisorResearchValidation:
         )
         structured_extraction_agent = await make_react_agent(
             structured_extraction_config, 
-            response_format=configurable.get("data_extraction_model", None)
+            #response_format=configurable.get("data_extraction_model", None)
         )
         
         # Crear reasoning agent

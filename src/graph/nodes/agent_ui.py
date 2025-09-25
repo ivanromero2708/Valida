@@ -71,7 +71,8 @@ class AgentUI:
                                 content= self.human_message_prompt.format(
                                     reglas_extraccion_razonamiento=template_sets[set_name]["human_message_prompt"],
                                     tags=template_sets[set_name]["tags"],
-                                    doc_path_list=self.build_doc_path_list(state, set_name)
+                                    doc_path_list=self.build_doc_path_list(state, set_name),
+                                    data_extraction_model=template_sets[set_name]["data_extraction_model"],
                                 )
                             )
                         ],
