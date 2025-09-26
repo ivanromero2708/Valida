@@ -32,7 +32,7 @@ class DataChromaEstFM(BaseModel):
 class ExtraccionDaExtraccionArchivoDataTiempo(BaseModel):
     nombre_archivo: str = Field(..., description= "Nombre del archivo de donde se hará la extracción de datos.. Se puede inferir el tiempo de allí, por eso es importante que lo extraigas")
     data_estabilidad_fase_movil: List[DataChromaEstFM] = Field(..., description="Listado de diccionarios que contiene toda la información relacionada con la validación de la fase movil.")
-    criterios_validacion: List[CriterioValidacion] = Field(..., description="Lista de criterios de aceptación de las pruebas de validación presentes en el protocolo de validación")
+    criterios_validacion: Optional[List[CriterioValidacion]] = Field(None, description="Lista de criterios de aceptación de las pruebas de validación presentes en el protocolo de validación")
 
 # Extracción de datos
 

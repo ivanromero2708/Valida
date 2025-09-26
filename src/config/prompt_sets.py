@@ -1345,10 +1345,10 @@ RULES_SET_10 = """
   
   - **Fase 1: Extracción de criterios de aceptación del protocolo de validación**
         - **Fuente primaria:** Documento del **Protocolo de Validación** en vectorstore .parquet.
-        - **Objetivo específico:** Identificar los criterios de aceptación del parámetro estabilidad de las soluciones.
+        - **Objetivo específico:** Identificar los criterios de aceptación del parámetro estabilidad de la fase movil.
         - **Plan de acción:**
           1.  Genera consultas sobre el vectorstore .parquet del protocolo de validación con strings similares a "Criterio de aceptación de Estabilidad fase movil".
-          2.  Extrae el texto más completo y descriptivo que encuentres en los chunks de los criterios de aceptación de la tabla "Criterio de aceptación" de la estabilidad de las fases moviles del protocolo de validación.
+          2.  Extrae el texto más completo y descriptivo que encuentres en los chunks de los criterios de aceptación de la tabla "Criterio de aceptación" de la estabilidad de las fases moviles del protocolo de validación. Esto, cuando aplique. Si no encuentras simplemente dejalo vacío o null.
           3.  Registra el string con el criterio de aceptación de acuerdo a lo reportado en el texto extraído.
         - **Ejemplo de salida :**
         ```json
@@ -1365,9 +1365,15 @@ RULES_SET_10 = """
       - **Plan de acción:**
         0. Lista los archivos de la data cromatográfica en vectorstore .parquet.
         1. **Bucle por archivo:** Mi sugerencia es que generes un llamado al structured extraction agent para cada archivo vectorstore .parquet. Itera sobre la lista de archivos vectorstore .parquet. VAS A REALIZAR ESTE PROCESO DE INVESTIGACIÓN PROFUNDA UN VECTORSTORE .PARQUET A LA VEZ. Cada archivo se refiere a un tiempo específico. Ejecuta los siguientes pasos por cada una de los vectostore .parquet exceptuando el protocolo. Siempre dejando claramente en un mensaje de texto lo que pudiste extraer.
-          1.1 Genera suficientes consultas (al menos 5) sobre el vectorsore .parquet en el que estas iterando actualmente. Las consultas deben tener las siguientes claves (UNA A LA VEZ.. NO TODAS): "[SOURCE...", "peak_name", "retention_time", "area", "cal_amount", "resolution", "t_plates_usp", "assymetry", "amount".
-          1.2 De la consulta "[SOURCE..." vas a extraer el nombre del archivo. 
-          1.3.  Para cada chunk, vas a identificar cada pico y extrae los siguientes valores correspondientes a la fila del analito activo:
+          1.1 Genera suficientes consultas sobre el vectorsore .parquet en el que estas iterando actualmente. Las consultas deben tener las siguientes claves (UNA A LA VEZ.. NO TODAS EN EL MISMO QUERY): "[SOURCE...", y "peak_name".
+          1.2 De la consulta "[SOURCE..." vas a extraer el nombre del archivo.
+          1.3 Vas a identificar ESTOS DATOS de los encabezados de TODAS LAS tablas de las inyecciones:
+              - nombre_muestra:Nombre de la muestra que se analiza en la inyeccion. Puede empezar con 'SST', 'Fase Movil', 'Solucion Estandar', entre otros
+              - referencia_analitica: Referencia analitica de la muestra. Usualmente empieza como HT.
+              - dilution_factor: Factor de dilución de la muestra. Usualmente es un número que aparece al lado del strin 'Dilution Factor', o similar
+              - weight: Peso de la muestra. Usualmente es un número que aparece al lado del strin 'Weight', o similar
+              - no_inyeccion: Número de la inyección que aparece al lado de un string similar a 'Injection Number', o similar
+          1.4.  Para cada chunk, vas a identificar TODOS LOS PICOS y extraer los siguientes valores correspondientes a la fila del analito activo:
               - No: Número consecutivo que identifica el pico en la data cromatográfica recuperada de la inyección.
               - peak_name: Nombre del pico en la data cromatográfica recuperada de la inyección. Usualmente corresponde al analito de estudio
               - analito: Nombre del analito asociado al pico. Usualmente corresponde al nombre del pico
