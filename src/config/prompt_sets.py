@@ -1335,7 +1335,7 @@ RULES_SET_8 = """
 
 RULES_SET_10 = """
   <REGLAS_DE_EXTRACCION_ESTRUCTURADA>
-  Estas reglas aplican al `structured_extraction_agent`. SOLO LE DEBES PASAR ESTE PLAN DE 2 FASES A EL.
+  Estas reglas aplican al `structured_extraction_agent`. SOLO LE DEBES PASAR ESTE PLAN DE FASES A EL.
 
   - **Objetivo General:** Extraer y estructurar los datos para el parámetro de **Estabilidad de la Fase Móvil**, poblando un modelo que replique la tabla de resultados final.
 
@@ -1365,8 +1365,9 @@ RULES_SET_10 = """
       - **Plan de acción:**
         0. Lista los archivos de la data cromatográfica en vectorstore .parquet.
         1. **Bucle por archivo:** Mi sugerencia es que generes un llamado al structured extraction agent para cada archivo vectorstore .parquet. Itera sobre la lista de archivos vectorstore .parquet. VAS A REALIZAR ESTE PROCESO DE INVESTIGACIÓN PROFUNDA UN VECTORSTORE .PARQUET A LA VEZ. Cada archivo se refiere a un tiempo específico. Ejecuta los siguientes pasos por cada una de los vectostore .parquet exceptuando el protocolo. Siempre dejando claramente en un mensaje de texto lo que pudiste extraer.
-          1.1 Genera al menos las suficientes consultas (al menos 20) sobre el vectorsore .parquet en el que estas iterando actualmente. Las consultas deben tener las siguientes claves (UNA A LA VEZ.. NO TODAS): "peak_name", "retention_time", "area", "cal_amount", "resolution", "t_plates_usp", "assymetry", "amount". Espero puedas recuperar al menos 30 chunks por cada consulta.
-          1.2.  Para cada chunk, vas a identificar cada pico y extrae los siguientes valores correspondientes a la fila del analito activo:
+          1.1 Genera al menos las suficientes consultas (al menos 20) sobre el vectorsore .parquet en el que estas iterando actualmente. Las consultas deben tener las siguientes claves (UNA A LA VEZ.. NO TODAS): "[SOURCE...", "peak_name", "retention_time", "area", "cal_amount", "resolution", "t_plates_usp", "assymetry", "amount". Espero puedas recuperar al menos 30 chunks por cada consulta.
+          1.2 De la consulta "[SOURCE..." vas a extraer el nombre del archivo. 
+          1.3.  Para cada chunk, vas a identificar cada pico y extrae los siguientes valores correspondientes a la fila del analito activo:
               - No: Número consecutivo que identifica el pico en la data cromatográfica recuperada de la inyección.
               - peak_name: Nombre del pico en la data cromatográfica recuperada de la inyección. Usualmente corresponde al analito de estudio
               - analito: Nombre del analito asociado al pico. Usualmente corresponde al nombre del pico
@@ -1377,8 +1378,8 @@ RULES_SET_10 = """
               - t_plates_usp: T-plates USP del pico en la data cromatográfica recuperada de la inyección.
               - assymetry: Asimetría del pico en la data cromatográfica recuperada de la inyección.
               - amount: Cantidad del pico en la data cromatográfica recuperada de la inyección. Usualmente se acompaña de unidades tales como mg/mL, entre otras
-          1.3 Consolida en un mensaje los resultados extraidos por el archivo (O el tiempo, preferiblemente el tiempo) y sigue con el siguiente archivo en la búsqueda. DEBES EJECUTAR LAS BÚSQUEDAS CON EL SIGUIENTE archivo CON EL MISMO NIVEL DE RIGUROSIDAD QUE LO HICISTE CON ESTE.. NO OMITAS NINGUNA INSTRUCCION RELEVANTE PARA ENSAMBLAR LAS CONSULTAS O PARA EXTRAER LA DATA.
-          1.4 LA ITERACIÓN DEBES CONTINUARLA HASTA EXTRAER TODOS LOS DATOS.
+          1.4 Consolida en un mensaje los resultados extraidos por el archivo (O el tiempo, preferiblemente el tiempo) y sigue con el siguiente archivo en la búsqueda. DEBES EJECUTAR LAS BÚSQUEDAS CON EL SIGUIENTE archivo CON EL MISMO NIVEL DE RIGUROSIDAD QUE LO HICISTE CON ESTE.. NO OMITAS NINGUNA INSTRUCCION RELEVANTE PARA ENSAMBLAR LAS CONSULTAS O PARA EXTRAER LA DATA.
+          1.5 LA ITERACIÓN DEBES CONTINUARLA HASTA EXTRAER TODOS LOS DATOS.
       - Ejemplo:
       ```json
       {

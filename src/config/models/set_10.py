@@ -1,5 +1,10 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List, Optional, Literal
+
+# Protocolo de validación
+class CriterioValidacion(BaseModel):
+    parametro: Literal["Linealidad", "Exactitud del método (Recuperación)", "Precisión del sistema", "Precisión del método (´Repetibilidad)", "Precisión intermedia", "Precisión del método (Reproducibilidad)", "Rango (Intervalo)", "Robustez del método", "Estabilidad analítica de las soluciones", "Estabilidad analítica de la fase móvil"] = Field(..., description="Nombre del parametro de validación")
+    criterio_aceptacion: str = Field(..., description="Descripción de texto del criterio de aceptación del parámetro en el protocolo de validación")
 
 # Variables auxiliares
 
@@ -8,7 +13,7 @@ class DataInyeccion(BaseModel):
     peak_name: str = Field(..., description="Nombre del pico en la data cromatográfica recuperada de la inyección. Usualmente corresponde al analito de estudio")
     analito: str = Field(..., description="Nombre del analito asociado al pico. Usualmente corresponde al nombre del pico")
     retention_time: float = Field(..., description="NÚMERO EXACTO CON TODOS LOS DECIMALES DEL Tiempo de retención del pico en la data cromatográfica recuperada de la inyección.")
-    area: float = Field(..., description="NÚMERO EXACTO CON TODOS LOS DECIMALES DEL Área bajo la curva del pico en la data cromatográfica recuperada de la inyección.")
+    area: float = Field(..., description="NÚMERO EXACTO CON TODOS LOS DECIMALES DEL Área bajo la curva del pico en la data cromatográfica recuperada de la inyección. Insisto, este número tiene decimales.. debes extraerlos en formato XXXXX.XXXXX")
     cal_amount: Optional[float] = Field(..., description="Cantidad calificada del pico en la data cromatográfica recuperada de la inyección.")
     resolution: Optional[float] = Field(..., description="Resolución entre los picos de los ingredientes activos en la data cromatográfica recuperada de la inyección.")
     t_plates_usp: Optional[float] = Field(..., description="T-plates USP del pico en la data cromatográfica recuperada de la inyección.")
@@ -22,6 +27,7 @@ class DataChromaEstFM(BaseModel):
     #weight: float = Field(..., description="Peso de la muestra. Usualmente es un número que aparece al lado del strin 'Weight', o similar")
     #no_inyeccion: int = Field(..., description="Número de la inyección que aparece al lado de un string similar a 'Injection Number', o similar")
     data_inyecciones: Optional[List[DataInyeccion]] = Field(..., description= "Lista de diccionarios que contiene los picos obtenidos en la data cromatográfica de la inyección")
+    criterios_validacion: List[CriterioValidacion] = Field(..., description="Lista de criterios de aceptación de las pruebas de validación presentes en el protocolo de validación")
 
 class ExtraccionDaExtraccionArchivoDataTiempo(BaseModel):
     nombre_archivo: str = Field(..., description= "Nombre del archivo de donde se hará la extracción de datos.. Se puede inferir el tiempo de allí, por eso es importante que lo extraigas")
