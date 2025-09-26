@@ -145,7 +145,7 @@ class DocumentExtractor:
             return base64.b64encode(f.read()).decode()
 
     def _extract_pdf_via_document_annotations(self, path_doc: str, document_annotation_format: Optional[Type[BaseModel]] = None, ocr_model: str = "mistral-ocr-latest", retries: int = 3) -> str:
-        """Extrae PDF usando Document Annotations de Mistral con segmentación de 4 páginas"""
+        """Extrae PDF usando Document Annotations de Mistral con segmentación de 2 páginas"""
         client = _create_mistral_client()
         b64_pdf = self._file_to_base64(path_doc)
         
@@ -153,10 +153,10 @@ class DocumentExtractor:
         total_pages = self._get_pdf_page_count(path_doc)
         logger.info(f"[Document Annotations] PDF tiene {total_pages} páginas: {path_doc}")
         
-        # Segmentar en chunks de 4 páginas (límite de Document Annotations)
+        # Segmentar en chunks de 2 páginas (límite de Document Annotations)
         page_chunks = []
-        for start_page in range(0, total_pages, 4):
-            end_page = min(start_page + 4, total_pages)
+        for start_page in range(0, total_pages, 7):
+            end_page = min(start_page + 7, total_pages)
             page_range = list(range(start_page, end_page))
             page_chunks.append(page_range)
         

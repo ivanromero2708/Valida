@@ -25,7 +25,7 @@ class Configuration(BaseModel):
         ], 
         {"__template_metadata__": {"kind": "llm"}},
     ] = Field(
-        default="openai/gpt-4.1-mini",
+        default="openai/gpt-5-mini",
         description="El modelo de lenguaje a usar para el agente.",
         json_schema_extra={"langgraph_nodes": ["document_research_supervisor"]},
     )
@@ -52,7 +52,7 @@ class Configuration(BaseModel):
         ], 
         {"__template_metadata__": {"kind": "llm"}},
     ] = Field(
-        default="openai/gpt-4.1-mini",
+        default="openai/gpt-5-mini",
         description="El modelo de lenguaje a usar para el agente.",
         json_schema_extra={"langgraph_nodes": ["index_agent"]},
     )
@@ -87,7 +87,7 @@ class Configuration(BaseModel):
         ], 
         {"__template_metadata__": {"kind": "llm"}},
     ] = Field(
-        default="openai/gpt-4.1-mini",
+        default="openai/gpt-5-mini",
         description="El modelo de lenguaje a usar para el agente.",
         json_schema_extra={"langgraph_nodes": ["structured_extraction_agent"]},
     )
@@ -122,7 +122,7 @@ class Configuration(BaseModel):
         ], 
         {"__template_metadata__": {"kind": "llm"}},
     ] = Field(
-        default="openai/gpt-4.1-mini",
+        default="openai/gpt-5-mini",
         description="El modelo de lenguaje a usar para el agente.",
         json_schema_extra={"langgraph_nodes": ["reasoning_agent"]},
     )
