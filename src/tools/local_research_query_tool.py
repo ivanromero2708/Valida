@@ -75,8 +75,9 @@ def local_research_query_tool(query: str, persist_path: str) -> str:
             logger.warning("Single document retrieval failed: %s", e)
             relevant_docs = None
     else:
-        # 4. Secuencia de degradación para múltiples documentos: MMR(15) → MMR(n_samples) → similarity(4→1)
+        # 4. Secuencia de degradación para múltiples documentos: MMR(40) → MMR(15) → MMR(n_samples) → similarity(4→1)
         search_plans = [
+            ("mmr", 40),
             ("mmr", 15),
             ("mmr", n_samples),
             ("similarity", min(4, n_samples)),

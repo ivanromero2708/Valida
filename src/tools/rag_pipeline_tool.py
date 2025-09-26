@@ -127,7 +127,7 @@ def _create_mistral_client() -> Mistral:
 
 class RAGPipelineInput(BaseModel):
     directory: str = Field(..., description="Ruta a directorio o archivo local")
-    chunk_size: int = Field(2000, description="Tamaño de chunk")
+    chunk_size: int = Field(6000, description="Tamaño de chunk")
     chunk_overlap: int = Field(250, description="Overlap entre chunks")
     recursive: bool = Field(True, description="Buscar archivos en subdirectorios")
     specific_files: Optional[List[str]] = Field(
@@ -377,7 +377,7 @@ class DocumentExtractor:
 
 
 class RAGProcessor:
-    def __init__(self, chunk_size: int = 4000, chunk_overlap: int = 250, document_annotation_format: Optional[Type[BaseModel]] = None):
+    def __init__(self, chunk_size: int = 6000, chunk_overlap: int = 250, document_annotation_format: Optional[Type[BaseModel]] = None):
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         self.document_annotation_format = document_annotation_format
@@ -444,8 +444,6 @@ class RAGProcessor:
         # Separadores optimizados para contenido JSON y estructurado
         json_separators = [
             SEP_DOCUMENT,
-            "=== STRUCTURED ANNOTATION ===",
-            "=== MARKDOWN CONTENT ===",
             SEP_SHEET,
             SEP_PAGE,
             "\n\n",
@@ -476,7 +474,7 @@ class RAGProcessor:
             splitter = RecursiveCharacterTextSplitter(
                 chunk_size=self.chunk_size,
                 chunk_overlap=self.chunk_overlap,
-                separators=[SEP_DOCUMENT, SEP_SHEET, SEP_PAGE, "\n\n", "\n", " ", ""],
+                separators=[SEP_DOCUMENT, SEP_SHEET, SEP_PAGE, "\n\n", "\n"],
             )
 
         # Metadatos base para evitar struct vacío en parquet
@@ -649,7 +647,7 @@ class RAGPipelineTool(BaseTool):
     def _run(
         self,
         directory: str,
-        chunk_size: int = 2000,
+        chunk_size: int = 6000,
         chunk_overlap: int = 250,
         recursive: bool = True,
         specific_files: Optional[List[str]] = None,
@@ -718,7 +716,7 @@ class RAGPipelineTool(BaseTool):
     async def _arun(
         self,
         directory: str,
-        chunk_size: int = 2000,
+        chunk_size: int = 6000,
         chunk_overlap: int = 250,
         recursive: bool = True,
         specific_files: Optional[List[str]] = None,

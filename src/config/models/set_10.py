@@ -27,11 +27,12 @@ class DataChromaEstFM(BaseModel):
     weight: float = Field(..., description="Peso de la muestra. Usualmente es un número que aparece al lado del strin 'Weight', o similar")
     no_inyeccion: int = Field(..., description="Número de la inyección que aparece al lado de un string similar a 'Injection Number', o similar")
     data_inyecciones: Optional[List[DataInyeccion]] = Field(..., description= "Lista de diccionarios que contiene los picos obtenidos en la data cromatográfica de la inyección")
-    criterios_validacion: List[CriterioValidacion] = Field(..., description="Lista de criterios de aceptación de las pruebas de validación presentes en el protocolo de validación")
+    
 
 class ExtraccionDaExtraccionArchivoDataTiempo(BaseModel):
     nombre_archivo: str = Field(..., description= "Nombre del archivo de donde se hará la extracción de datos.. Se puede inferir el tiempo de allí, por eso es importante que lo extraigas")
     data_estabilidad_fase_movil: List[DataChromaEstFM] = Field(..., description="Listado de diccionarios que contiene toda la información relacionada con la validación de la fase movil.")
+    criterios_validacion: List[CriterioValidacion] = Field(..., description="Lista de criterios de aceptación de las pruebas de validación presentes en el protocolo de validación")
 
 # Extracción de datos
 

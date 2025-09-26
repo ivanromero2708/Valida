@@ -1360,81 +1360,124 @@ RULES_SET_10 = """
   -----
 
   - **Fase 2: Extracción de Datos de Picos por cada Archivo de la data cromatográfica**
-      **Objetivo Principal:**
-      Tu tarea es procesar un conjunto de documentos de validación cromatográfica. Debes extraer de manera precisa y estructurada los datos de cada archivo y consolidarlos en un formato JSON específico.
-
-      **Proceso General:**
-
-      1.  **Identificar Archivos:** Primero, identifica todos los archivos de datos cromatográficos (`.parquet` o similar) y el archivo del protocolo de validación.
-      2.  **Procesar Archivo por Archivo:** Ejecuta el siguiente plan de extracción para cada archivo de datos cromatográficos de manera individual.
-
-      -----
-
-      **Plan de Extracción Detallado (por cada archivo):**
-
-      **1. Extracción de Metadatos del Archivo:**
-
-        * **Nombre del Archivo:** Identifica y extrae el nombre completo del archivo que estás procesando actualmente. Este será el valor para `nombre_archivo`. Normalmente esta en la parte final del string "[SOURCE...".
-
-      **2. Extracción de Datos de Inyecciones (`data_estabilidad_fase_movil`):**
-      Busca en el documento cada bloque de datos que corresponda a una inyección o muestra. Para cada una, extrae la siguiente información para poblar un objeto `DataChromaEstFM`:
-
-        * `nombre_muestra`: El nombre identificador de la muestra (ej. "Solucion Estandar Mixto Rep 1").
-        * `referencia_analitica`: La referencia del analito (ej. "HT...").
-        * `dilution_factor`: El valor numérico asociado al factor de dilución.
-        * `weight`: El valor numérico del peso.
-        * `no_inyeccion`: El número de la inyección.
-        * `criterios_validacion`: Del documento del protocolo, extrae todos los parámetros de validación y sus correspondientes criterios de aceptación. Debes crear una lista de objetos `CriterioValidacion`.
-        * `data_inyecciones`: Dentro de cada muestra, localiza la tabla o lista de picos detectados. Para **cada pico** en esa tabla, extrae los siguientes campos para crear un objeto `DataInyeccion`:
-            * `No`: El número secuencial del pico.
-            * `peak_name`: El nombre del pico.
-            * `analito`: El nombre del analito (usualmente igual a `peak_name`).
-            * `retention_time`: El tiempo de retención **numérico exacto, con todos sus decimales**.
-            * `area`: El área bajo la curva **numérica exacta, con todos sus decimales**.
-            * `cal_amount`: El valor numérico de `cal_amount`.
-            * `resolution`: El valor numérico de la resolución.
-            * `t_plates_usp`: El valor numérico de `t_plates_usp`.
-            * `assymetry`: El valor numérico de la asimetría.
-            * `amount`: El valor numérico de la cantidad.
-
-      -----
-
-      **Formato de Salida Final:**
-
-      Al finalizar el procesamiento de **cada archivo**, debes presentar el resultado consolidado en un único bloque de código JSON. La estructura **debe seguir estrictamente** el siguiente modelo `ExtraccionDaExtraccionArchivoDataTiempo`. No incluyas texto explicativo adicional, solo el JSON.
-
+      - **Fuentes:** TODOS los Documentos de data cromatográfica en vectorstore .parquet.
+      - **Objetivo:** Extraer los datos brutos de cada uno de las inyecciones (Peak name, Area, T plates USP, Asymmetry, entre otros) de CADA UNO de los archivos.
+      - **Plan de acción:**
+        0. Lista los archivos de la data cromatográfica en vectorstore .parquet.
+        1. **Bucle por archivo:** Mi sugerencia es que generes un llamado al structured extraction agent para cada archivo vectorstore .parquet. Itera sobre la lista de archivos vectorstore .parquet. VAS A REALIZAR ESTE PROCESO DE INVESTIGACIÓN PROFUNDA UN VECTORSTORE .PARQUET A LA VEZ. Cada archivo se refiere a un tiempo específico. Ejecuta los siguientes pasos por cada una de los vectostore .parquet exceptuando el protocolo. Siempre dejando claramente en un mensaje de texto lo que pudiste extraer.
+          1.1 Genera suficientes consultas (al menos 5) sobre el vectorsore .parquet en el que estas iterando actualmente. Las consultas deben tener las siguientes claves (UNA A LA VEZ.. NO TODAS): "[SOURCE...", "peak_name", "retention_time", "area", "cal_amount", "resolution", "t_plates_usp", "assymetry", "amount".
+          1.2 De la consulta "[SOURCE..." vas a extraer el nombre del archivo. 
+          1.3.  Para cada chunk, vas a identificar cada pico y extrae los siguientes valores correspondientes a la fila del analito activo:
+              - No: Número consecutivo que identifica el pico en la data cromatográfica recuperada de la inyección.
+              - peak_name: Nombre del pico en la data cromatográfica recuperada de la inyección. Usualmente corresponde al analito de estudio
+              - analito: Nombre del analito asociado al pico. Usualmente corresponde al nombre del pico
+              - retention_time: NÚMERO EXACTO CON TODOS LOS DECIMALES DEL Tiempo de retención del pico en la data cromatográfica recuperada de la inyección.
+              - area: NÚMERO EXACTO CON TODOS LOS DECIMALES DEL Área bajo la curva del pico en la data cromatográfica recuperada de la inyección.
+              - cal_amount: Cantidad calificada del pico en la data cromatográfica recuperada de la inyección.
+              - resolution: Resolución entre los picos de los ingredientes activos en la data cromatográfica recuperada de la inyección.
+              - t_plates_usp: T-plates USP del pico en la data cromatográfica recuperada de la inyección.
+              - assymetry: Asimetría del pico en la data cromatográfica recuperada de la inyección.
+              - amount: Cantidad del pico en la data cromatográfica recuperada de la inyección. Usualmente se acompaña de unidades tales como mg/mL, entre otras
+          1.4 Consolida en un mensaje los resultados extraidos por el archivo (O el tiempo, preferiblemente el tiempo) y sigue con el siguiente archivo en la búsqueda. DEBES EJECUTAR LAS BÚSQUEDAS CON EL SIGUIENTE archivo CON EL MISMO NIVEL DE RIGUROSIDAD QUE LO HICISTE CON ESTE.. NO OMITAS NINGUNA INSTRUCCION RELEVANTE PARA ENSAMBLAR LAS CONSULTAS O PARA EXTRAER LA DATA.
+          1.5 LA ITERACIÓN DEBES CONTINUARLA HASTA EXTRAER TODOS LOS DATOS.
+      - Ejemplo:
       ```json
       {
-        "nombre_archivo": "NOMBRE_DEL_ARCHIVO_PROCESADO.pdf",
-        "data_estabilidad_fase_movil": [
+        "data_bruta_estabilidad_fase_movil": [
           {
-            "nombre_muestra": "Solucion Estandar Mixto Rep 1",
-            "referencia_analitica": "HT-XXX-YYY",
-            "dilution_factor": 1.0,
-            "weight": 100.5,
-            "no_inyeccion": 1,
-            "data_inyecciones": [
+            "nombre_archivo": "[NOMBRE_ARCHIVO_TIEMPO_1].pdf",
+            "data_estabilidad_fase_movil": [
               {
-                "No": 1,
-                "peak_name": "NOMBRE_ANALITO_1",
-                "analito": "NOMBRE_ANALITO_1",
-                "retention_time": 4.12345,
-                "area": 123456.789,
-                "cal_amount": null,
-                "resolution": 2.1,
-                "t_plates_usp": 8500.0,
-                "assymetry": 1.15,
-                "amount": 50.12
-              }
-            ],
-            "criterios_validacion": [
-              {
-                "parametro": "Linealidad",
-                "criterio_aceptacion": "El coeficiente de correlación (r) debe ser ≥ 0.995."
+                "nombre_muestra": "[Solucion Estandar Mixto Rep 1]",
+                "data_inyecciones": [
+                  {
+                    "No": 1,
+                    "peak_name": "[NOMBRE_ANALITO_1]",
+                    "analito": "[NOMBRE_ANALITO_1]",
+                    "retention_time": "[VALOR_NUMERICO]",
+                    "area": "[VALOR_NUMERICO]",
+                    "cal_amount": null,
+                    "resolution": null,
+                    "t_plates_usp": "[VALOR_NUMERICO]",
+                    "assymetry": "[VALOR_NUMERICO]",
+                    "amount": "[VALOR_NUMERICO]"
+                  },
+                  {
+                    "No": 2,
+                    "peak_name": "[NOMBRE_ANALITO_2]",
+                    "analito": "[NOMBRE_ANALITO_2]",
+                    "retention_time": "[VALOR_NUMERICO]",
+                    "area": "[VALOR_NUMERICO]",
+                    "cal_amount": null,
+                    "resolution": "[VALOR_NUMERICO]",
+                    "t_plates_usp": "[VALOR_NUMERICO]",
+                    "assymetry": "[VALOR_NUMERICO]",
+                    "amount": "[VALOR_NUMERICO]"
+                  }
+                ]
               },
               {
-                  "parametro": "Precisión del sistema",
-                  "criterio_aceptacion": "El %DSR del área y del tiempo de retención de las inyecciones debe ser ≤ 2.0%."
+                "nombre_muestra": "[Solucion Estandar Mixto Rep 2]",
+                "data_inyecciones": [
+                  {
+                    "No": 1,
+                    "peak_name": "[NOMBRE_ANALITO_1]",
+                    "analito": "[NOMBRE_ANALITO_1]",
+                    "retention_time": "[VALOR_NUMERICO]",
+                    "area": "[VALOR_NUMERICO]",
+                    "cal_amount": null,
+                    "resolution": null,
+                    "t_plates_usp": "[VALOR_NUMERICO]",
+                    "assymetry": "[VALOR_NUMERICO]",
+                    "amount": "[VALOR_NUMERICO]"
+                  },
+                  {
+                    "No": 2,
+                    "peak_name": "[NOMBRE_ANALITO_2]",
+                    "analito": "[NOMBRE_ANALITO_2]",
+                    "retention_time": "[VALOR_NUMERICO]",
+                    "area": "[VALOR_NUMERICO]",
+                    "cal_amount": null,
+                    "resolution": "[VALOR_NUMERICO]",
+                    "t_plates_usp": "[VALOR_NUMERICO]",
+                    "assymetry": "[VALOR_NUMERICO]",
+                    "amount": "[VALOR_NUMERICO]"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "nombre_archivo": "[NOMBRE_ARCHIVO_TIEMPO_2].pdf",
+            "data_estabilidad_fase_movil": [
+              {
+                "nombre_muestra": "[Solucion Muestra Mixto Rep 1]",
+                "data_inyecciones": [
+                  {
+                    "No": 1,
+                    "peak_name": "[NOMBRE_ANALITO_1]",
+                    "analito": "[NOMBRE_ANALITO_1]",
+                    "retention_time": "[VALOR_NUMERICO]",
+                    "area": "[VALOR_NUMERICO]",
+                    "cal_amount": "[VALOR_NUMERICO]",
+                    "resolution": null,
+                    "t_plates_usp": "[VALOR_NUMERICO]",
+                    "assymetry": "[VALOR_NUMERICO]",
+                    "amount": "[VALOR_NUMERICO]"
+                  },
+                  {
+                    "No": 2,
+                    "peak_name": "[NOMBRE_ANALITO_2]",
+                    "analito": "[NOMBRE_ANALITO_2]",
+                    "retention_time": "[VALOR_NUMERICO]",
+                    "area": "[VALOR_NUMERICO]",
+                    "cal_amount": "[VALOR_NUMERICO]",
+                    "resolution": "[VALOR_NUMERICO]",
+                    "t_plates_usp": "[VALOR_NUMERICO]",
+                    "assymetry": "[VALOR_NUMERICO]",
+                    "amount": "[VALOR_NUMERICO]"
+                  }
+                ]
               }
             ]
           }
