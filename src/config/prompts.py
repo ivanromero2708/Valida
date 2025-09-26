@@ -141,15 +141,15 @@ index_prompt = """
    Descripción: Procesa un directorio o archivo (PDF/Word/Excel/Imágenes) usando Document Annotations de Mistral para extracción, realiza chunking con soporte JSON-aware, vectoriza y genera un vectorstore persistente (.parquet). Devuelve un JSON con los resultados.
    I/O:
    - Input (JSON): {{
-      "directory": string,
+      "directory": string, // Ruta COMPLETA del archivo o directorio a procesar
       "chunk_size": int,
       "chunk_overlap": int,
       "recursive": bool,
       "specific_files": Optional[List[str]],
-      "document_annotation_model": Optional[string] // Nombre del modelo Pydantic para extracción estructurada (ej: "Set9ExtractionModel")
+      "document_annotation_model": Optional[string] // Nombre del modelo Pydantic para extracción estructurada (ej: "Set10ExtractionModel")
    }}
    - Output (string JSON): {{
-      "directory": "<dir>",
+      "directory": "<ruta_completa>",
       "vectorstore_path": "<ruta.parquet>|null",
       "chunks_count": int,
    }}
@@ -157,7 +157,7 @@ index_prompt = """
 
    <method>
    1) Normaliza <LISTA_DOCS> a una lista de strings. Si está vacía, ve a <failure_handling>.
-   2) Para cada ruta en <LISTA_DOCS>, prepara una llamada a `rag_pipeline_tool`, extrayendo el directorio padre y el nombre del archivo. Incluye el `document_annotation_model` en la llamada si fue proporcionado.
+   2) Para cada ruta en <LISTA_DOCS>, prepara una llamada a `rag_pipeline_tool` usando la ruta COMPLETA del archivo tal como viene (NO extraigas directorio padre). Incluye el `document_annotation_model` en la llamada si fue proporcionado.
    3) Ejecuta TODAS las llamadas a la herramienta en PARALELO.
    4) ESPERA a que TODAS las llamadas respondan.
    5) Consolida las respuestas REALES de la herramienta, parseando cada JSON devuelto.

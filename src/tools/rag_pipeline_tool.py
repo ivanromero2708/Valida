@@ -145,7 +145,7 @@ class DocumentExtractor:
             return base64.b64encode(f.read()).decode()
 
     def _extract_pdf_via_document_annotations(self, path_doc: str, document_annotation_format: Optional[Type[BaseModel]] = None, ocr_model: str = "mistral-ocr-latest", retries: int = 3) -> str:
-        """Extrae PDF usando Document Annotations de Mistral con segmentación de 8 páginas"""
+        """Extrae PDF usando Document Annotations de Mistral con segmentación de 4 páginas"""
         client = _create_mistral_client()
         b64_pdf = self._file_to_base64(path_doc)
         
@@ -153,10 +153,10 @@ class DocumentExtractor:
         total_pages = self._get_pdf_page_count(path_doc)
         logger.info(f"[Document Annotations] PDF tiene {total_pages} páginas: {path_doc}")
         
-        # Segmentar en chunks de 8 páginas (límite de Document Annotations)
+        # Segmentar en chunks de 4 páginas (límite de Document Annotations)
         page_chunks = []
-        for start_page in range(0, total_pages, 8):
-            end_page = min(start_page + 8, total_pages)
+        for start_page in range(0, total_pages, 4):
+            end_page = min(start_page + 4, total_pages)
             page_range = list(range(start_page, end_page))
             page_chunks.append(page_range)
         
@@ -376,7 +376,7 @@ class DocumentExtractor:
 
 
 class RAGProcessor:
-    def __init__(self, chunk_size: int = 2000, chunk_overlap: int = 250, document_annotation_format: Optional[Type[BaseModel]] = None):
+    def __init__(self, chunk_size: int = 4000, chunk_overlap: int = 250, document_annotation_format: Optional[Type[BaseModel]] = None):
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         self.document_annotation_format = document_annotation_format

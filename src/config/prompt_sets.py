@@ -1335,38 +1335,50 @@ RULES_SET_8 = """
 
 RULES_SET_10 = """
   <REGLAS_DE_EXTRACCION_ESTRUCTURADA>
-  Estas reglas aplican al `structured_extraction_agent`.
+  Estas reglas aplican al `structured_extraction_agent`. SOLO LE DEBES PASAR ESTE PLAN DE 2 FASES A EL.
 
-  - **Objetivo General:** Extraer y estructurar los datos de la **Adecuabilidad del Sistema** para el parámetro de **Estabilidad de la Fase Móvil**, poblando un modelo que replique la tabla de resultados final. El proceso se divide en tres fases obligatorias.
+  - **Objetivo General:** Extraer y estructurar los datos para el parámetro de **Estabilidad de la Fase Móvil**, poblando un modelo que replique la tabla de resultados final.
 
-  - **Planificación Exhaustiva:** DEBES planificar cuidadosamente antes de cada búsqueda y reflexionar sobre los resultados. No te apresures a llamar funciones; comprende los datos primero.
+  - DEBES planificar exhaustivamente antes de cada llamada a una función y reflexionar exhaustivamente sobre los resultados de las llamadas a las funciones anteriores. NO realices todo este proceso haciendo solo llamadas a funciones, ya que esto puede afectar tu capacidad para resolver el problema y pensar de manera perspicaz.
+
+  -----
+  
+  - **Fase 1: Extracción de criterios de aceptación del protocolo de validación**
+        - **Fuente primaria:** Documento del **Protocolo de Validación** en vectorstore .parquet.
+        - **Objetivo específico:** Identificar los criterios de aceptación del parámetro estabilidad de las soluciones.
+        - **Plan de acción:**
+          1.  Genera consultas sobre el vectorstore .parquet del protocolo de validación con strings similares a "Criterio de aceptación de Estabilidad fase movil".
+          2.  Extrae el texto más completo y descriptivo que encuentres en los chunks de los criterios de aceptación de la tabla "Criterio de aceptación" de la estabilidad de las fases moviles del protocolo de validación.
+          3.  Registra el string con el criterio de aceptación de acuerdo a lo reportado en el texto extraído.
+        - **Ejemplo de salida :**
+        ```json
+        {
+            "criterio_aceptacion": "CRITERIO_DEL_PROTOCOLO"
+        }
+        ```
 
   -----
 
-  - **Fase 1: Identificar Analitos y Puntos de Tiempo**
-      - **Fuentes:** Documentos de resultados (ej. reportes cromatográficos).
-      - **Objetivo:** Determinar los analitos evaluados y los puntos de tiempo correspondientes a cada archivo.
+  - **Fase 2: Extracción de Datos de Picos por cada Archivo de la data cromatográfica**
+      - **Fuentes:** TODOS los Documentos de data cromatográfica en vectorstore .parquet.
+      - **Objetivo:** Extraer los datos brutos de cada uno de las inyecciones (Peak name, Area, T plates USP, Asymmetry, entre otros) de CADA UNO de los archivos.
       - **Plan de acción:**
-          1.  Escanea los documentos para identificar los nombres de los picos (`Peak Name`) en las tablas de resultados cromatográficos. Crea una lista única de analitos.
-          2.  Asocia cada documento a un punto de tiempo. Revisa los nombres del documento que esta en el chunk al final de la ruta que tiene un string similar a "SOURCE:....". De aquí puedes extraer strings como T0, T1, T2, etc.. que serán los tiempos
-      - **Ejemplo de Salida (Conceptual):**
-          - Analitos: ["[NOMBRE_ANALITO_1]", "[NOMBRE_ANALITO_2]"]
-          - Tiempos: {"Tiempo 0": "[NOMBRE_ARCHIVO_1].pdf", "Tiempo 1": "[NOMBRE_ARCHIVO_2].pdf"}
-
-  -----
-
-  - **Fase 2: Extracción de Datos de Réplicas por Analito y Tiempo**
-      - **Fuentes:** Documentos de resultados.
-      - **Objetivo:** Extraer los datos brutos de cada réplica para cada analito en cada punto de tiempo.
-      - **Plan de acción:**
-          1.  **Itera por cada analito** identificado en la Fase 1. Vas a hacer como mínimo 20 consultas.
-          2.  **Itera por cada punto de tiempo** ("Tiempo 0", "Tiempo 1").
-          3.  Para la combinación actual de `analito` y `tiempo`, localiza las inyecciones de la **"SST Solucion Estandar Mixto 1"**. Estas son tus réplicas.
-          4.  Para cada inyección (réplica), extrae los siguientes valores correspondientes a la fila del analito activo:
-              - **`areas_system`**: El valor de la columna "Area".
-              - **`tiempo_retencion`**: El valor de la columna "Retention Time".
-              - **`usp_tailing`**: El valor de la columna "Asymmetry" (es el equivalente en los reportes de Chromeleon).
-          5.  Estructura esta información siguiendo el modelo `AnalitoResultados` y sus sub-modelos. En esta fase, los campos de promedios, RSD y conclusiones deben dejarse como `null` o "Pendiente".
+        0. Lista los archivos de la data cromatográfica en vectorstore .parquet.
+        1. **Bucle por archivo:** Mi sugerencia es que generes un llamado al structured extraction agent para cada archivo vectorstore .parquet. Itera sobre la lista de archivos vectorstore .parquet. VAS A REALIZAR ESTE PROCESO DE INVESTIGACIÓN PROFUNDA UN VECTORSTORE .PARQUET A LA VEZ. Cada archivo se refiere a un tiempo específico. Ejecuta los siguientes pasos por cada una de los vectostore .parquet exceptuando el protocolo. Siempre dejando claramente en un mensaje de texto lo que pudiste extraer.
+          1.1 Genera al menos las suficientes consultas (al menos 20) sobre el vectorsore .parquet en el que estas iterando actualmente. Las consultas deben tener las siguientes claves (UNA A LA VEZ.. NO TODAS): "peak_name", "retention_time", "area", "cal_amount", "resolution", "t_plates_usp", "assymetry", "amount". Espero puedas recuperar al menos 30 chunks por cada consulta.
+          1.2.  Para cada chunk, vas a identificar cada pico y extrae los siguientes valores correspondientes a la fila del analito activo:
+              - No: Número consecutivo que identifica el pico en la data cromatográfica recuperada de la inyección.
+              - peak_name: Nombre del pico en la data cromatográfica recuperada de la inyección. Usualmente corresponde al analito de estudio
+              - analito: Nombre del analito asociado al pico. Usualmente corresponde al nombre del pico
+              - retention_time: NÚMERO EXACTO CON TODOS LOS DECIMALES DEL Tiempo de retención del pico en la data cromatográfica recuperada de la inyección.
+              - area: NÚMERO EXACTO CON TODOS LOS DECIMALES DEL Área bajo la curva del pico en la data cromatográfica recuperada de la inyección.
+              - cal_amount: Cantidad calificada del pico en la data cromatográfica recuperada de la inyección.
+              - resolution: Resolución entre los picos de los ingredientes activos en la data cromatográfica recuperada de la inyección.
+              - t_plates_usp: T-plates USP del pico en la data cromatográfica recuperada de la inyección.
+              - assymetry: Asimetría del pico en la data cromatográfica recuperada de la inyección.
+              - amount: Cantidad del pico en la data cromatográfica recuperada de la inyección. Usualmente se acompaña de unidades tales como mg/mL, entre otras
+          1.3 Consolida en un mensaje los resultados extraidos por el archivo (O el tiempo, preferiblemente el tiempo) y sigue con el siguiente archivo en la búsqueda. DEBES EJECUTAR LAS BÚSQUEDAS CON EL SIGUIENTE archivo CON EL MISMO NIVEL DE RIGUROSIDAD QUE LO HICISTE CON ESTE.. NO OMITAS NINGUNA INSTRUCCION RELEVANTE PARA ENSAMBLAR LAS CONSULTAS O PARA EXTRAER LA DATA.
+          1.4 LA ITERACIÓN DEBES CONTINUARLA HASTA EXTRAER TODOS LOS DATOS.
       - Ejemplo:
       ```json
       {
@@ -1469,63 +1481,6 @@ RULES_SET_10 = """
             ]
           }
         ]
-      }
-      ```
-
-  -----
-
-  - **Fase 3: Extracción de Criterios de Aceptación**
-      - **Fuente Primaria:** La imagen proporcionada o una sección similar en los documentos fuente.
-      - **Objetivo:** Capturar los criterios literales para la validación.
-      - **Plan de acción:**
-          1.  Busca una sección o tabla titulada **"Criterio de aceptación"**.
-          2.  Extrae cada regla textual y clasifícala por el parámetro que evalúa.
-          3.  Puebla la lista `criterios_aceptacion` en el modelo.
-
-  - **Ejemplo de Salida de Extracción (Modelo `Set10StructuredOutput` parcialmente poblado):**
-      ```json
-      {
-        "titulo_parametro": "Resultados Estabilidad de la Fase Móvil",
-        "analitos": [
-          {
-            "nombre_analito": "[NOMBRE_ANALITO_1]",
-            "resultados_por_tiempo": [
-              {
-                "tiempo_label": "[ETIQUETA_TIEMPO_0]",
-                "replicas_data": [
-                  { "replica": 1, "areas_system": "[VALOR_NUMERICO]", "tiempo_retencion": "[VALOR_NUMERICO]", "usp_tailing": "[VALOR_NUMERICO]" },
-                  { "replica": 2, "areas_system": "[VALOR_NUMERICO]", "tiempo_retencion": "[VALOR_NUMERICO]", "usp_tailing": "[VALOR_NUMERICO]" }
-                ],
-                "promedio_areas_system": null,
-                "promedio_tiempo_retencion": null,
-                "promedio_usp_tailing": null,
-                "rsd_areas_system": null,
-                "conclusion_rsd_areas": "Pendiente",
-                "conclusion_tiempo_retencion": "Pendiente",
-                "conclusion_usp_tailing": "Pendiente"
-              },
-              {
-                "tiempo_label": "[ETIQUETA_TIEMPO_1]",
-                "replicas_data": [
-                  { "replica": 1, "areas_system": "[VALOR_NUMERICO]", "tiempo_retencion": "[VALOR_NUMERICO]", "usp_tailing": "[VALOR_NUMERICO]" }
-                ],
-                "promedio_areas_system": null,
-                "promedio_tiempo_retencion": null,
-                "promedio_usp_tailing": null,
-                "rsd_areas_system": null,
-                "conclusion_rsd_areas": "Pendiente",
-                "conclusion_tiempo_retencion": "Pendiente",
-                "conclusion_usp_tailing": "Pendiente"
-              }
-            ],
-            "criterios_aceptacion": [
-              { "parametro": "[NOMBRE_PARAMETRO_1]", "criterio": "[DESCRIPCION_CRITERIO_1]" },
-              { "parametro": "[NOMBRE_PARAMETRO_2]", "criterio": "[DESCRIPCION_CRITERIO_2]" }
-            ],
-            "conclusion_general_analito": "Pendiente"
-          }
-        ],
-        "referencia_analitica": "[CODIGO_REFERENCIA_HT]"
       }
       ```
   </REGLAS_DE_EXTRACCION_ESTRUCTURADA>
