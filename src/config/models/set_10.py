@@ -22,10 +22,10 @@ class DataInyeccion(BaseModel):
 
 class DataChromaEstFM(BaseModel):
     nombre_muestra: str = Field(..., description="Nombre de la muestra que se analiza en la inyeccion. Puede empezar con 'SST', 'Fase Movil', 'Solucion Estandar', entre otros")
-    #referencia_analitica: str = Field(..., description = "Referencia analitica de la muestra. Usualmente empieza como HT")
-    #dilution_factor: float = Field(..., description="Factor de dilución de la muestra. Usualmente es un número que aparece al lado del strin 'Dilution Factor', o similar")
-    #weight: float = Field(..., description="Peso de la muestra. Usualmente es un número que aparece al lado del strin 'Weight', o similar")
-    #no_inyeccion: int = Field(..., description="Número de la inyección que aparece al lado de un string similar a 'Injection Number', o similar")
+    referencia_analitica: str = Field(..., description = "Referencia analitica de la muestra. Usualmente empieza como HT")
+    dilution_factor: float = Field(..., description="Factor de dilución de la muestra. Usualmente es un número que aparece al lado del strin 'Dilution Factor', o similar")
+    weight: float = Field(..., description="Peso de la muestra. Usualmente es un número que aparece al lado del strin 'Weight', o similar")
+    no_inyeccion: int = Field(..., description="Número de la inyección que aparece al lado de un string similar a 'Injection Number', o similar")
     data_inyecciones: Optional[List[DataInyeccion]] = Field(..., description= "Lista de diccionarios que contiene los picos obtenidos en la data cromatográfica de la inyección")
     criterios_validacion: List[CriterioValidacion] = Field(..., description="Lista de criterios de aceptación de las pruebas de validación presentes en el protocolo de validación")
 

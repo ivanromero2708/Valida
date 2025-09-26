@@ -155,7 +155,7 @@ class DocumentExtractor:
         
         # Segmentar en chunks de num_batch_pages páginas (límite de Document Annotations)
         page_chunks = []
-        num_batch_pages = 4
+        num_batch_pages = 7
         for start_page in range(0, total_pages, num_batch_pages):
             end_page = min(start_page + num_batch_pages, total_pages)
             page_range = list(range(start_page, end_page))
