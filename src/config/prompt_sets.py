@@ -1365,7 +1365,7 @@ RULES_SET_10 = """
       - **Plan de acción:**
         0. Lista los archivos de la data cromatográfica en vectorstore .parquet.
         1. **Bucle por archivo:** Mi sugerencia es que generes un llamado al structured extraction agent para cada archivo vectorstore .parquet. Itera sobre la lista de archivos vectorstore .parquet. VAS A REALIZAR ESTE PROCESO DE INVESTIGACIÓN PROFUNDA UN VECTORSTORE .PARQUET A LA VEZ. Cada archivo se refiere a un tiempo específico. Ejecuta los siguientes pasos por cada una de los vectostore .parquet exceptuando el protocolo. Siempre dejando claramente en un mensaje de texto lo que pudiste extraer.
-          1.1 Genera suficientes consultas sobre el vectorsore .parquet en el que estas iterando actualmente. Las consultas deben tener las siguientes claves (UNA A LA VEZ.. NO TODAS EN EL MISMO QUERY): "[SOURCE...", y "peak_name".
+          1.1 Genera suficientes consultas sobre el vectorsore .parquet en el que estas iterando actualmente. Las consultas deben tener las siguientes claves (UNA A LA VEZ.. NO TODAS EN EL MISMO QUERY): "[SOURCE...",  "peak_name".
           1.2 De la consulta "[SOURCE..." vas a extraer el nombre del archivo.
           1.3 Vas a identificar ESTOS DATOS de los encabezados de TODAS LAS tablas de las inyecciones:
               - nombre_muestra:Nombre de la muestra que se analiza en la inyeccion. Puede empezar con 'SST', 'Fase Movil', 'Solucion Estandar', entre otros
@@ -1373,7 +1373,7 @@ RULES_SET_10 = """
               - dilution_factor: Factor de dilución de la muestra. Usualmente es un número que aparece al lado del strin 'Dilution Factor', o similar
               - weight: Peso de la muestra. Usualmente es un número que aparece al lado del strin 'Weight', o similar
               - no_inyeccion: Número de la inyección que aparece al lado de un string similar a 'Injection Number', o similar
-          1.4.  Para cada chunk, vas a identificar TODOS LOS PICOS y extraer los siguientes valores correspondientes a la fila del analito activo:
+          1.4.  Vas a extraer la siguiente información de TODOS LOS PICOS :
               - No: Número consecutivo que identifica el pico en la data cromatográfica recuperada de la inyección.
               - peak_name: Nombre del pico en la data cromatográfica recuperada de la inyección. Usualmente corresponde al analito de estudio
               - analito: Nombre del analito asociado al pico. Usualmente corresponde al nombre del pico

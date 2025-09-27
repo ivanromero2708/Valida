@@ -46,7 +46,7 @@ class SupervisorResearchValidation:
         )
         structured_extraction_agent = await make_react_agent(
             structured_extraction_config, 
-            #response_format=configurable.get("data_extraction_model", None)
+            response_format=configurable.get("data_extraction_model", None)
         )
         
         # Crear reasoning agent
