@@ -20,6 +20,7 @@ import json
 import logging
 import time
 import uuid
+import re
 from collections import Counter
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Literal, Type
@@ -54,7 +55,7 @@ from src.config.models.set_5 import Set5ExtractionModel
 from src.config.models.set_6 import Set6ExtractionModel
 from src.config.models.set_7 import Set7ExtractionModel
 from src.config.models.set_8 import Set8ExtractionModel
-from src.config.models.set_10 import Set10ExtractionModel
+from src.config.models.set_10 import Set10ExtractionModel, Set10BoxDetector
 from src.config.models.set_11 import Set11ExtractionModel
 
 
@@ -96,7 +97,7 @@ DOCUMENT_ANNOTATION_MODELS: Dict[str, Type[BaseModel]] = {
     "Set6ExtractionModel": Set6ExtractionModel,
     "Set7ExtractionModel": Set7ExtractionModel,
     "Set8ExtractionModel": Set8ExtractionModel,
-    "Set10ExtractionModel": Set10ExtractionModel,
+    "Set10ExtractionModel": (Set10ExtractionModel, Set10BoxDetector),
     "Set11ExtractionModel": Set11ExtractionModel,
 }
 
@@ -127,7 +128,7 @@ def _create_mistral_client() -> Mistral:
 
 class RAGPipelineInput(BaseModel):
     directory: str = Field(..., description="Ruta a directorio o archivo local")
-    chunk_size: int = Field(6000, description="Tamaño de chunk")
+    chunk_size: int = Field(20000, description="Tamaño de chunk")
     chunk_overlap: int = Field(250, description="Overlap entre chunks")
     recursive: bool = Field(True, description="Buscar archivos en subdirectorios")
     specific_files: Optional[List[str]] = Field(
@@ -155,7 +156,7 @@ class DocumentExtractor:
         
         # Segmentar en chunks de num_batch_pages páginas (límite de Document Annotations)
         page_chunks = []
-        num_batch_pages = 7
+        num_batch_pages = 8
         for start_page in range(0, total_pages, num_batch_pages):
             end_page = min(start_page + num_batch_pages, total_pages)
             page_range = list(range(start_page, end_page))
@@ -177,7 +178,8 @@ class DocumentExtractor:
                             "type": "document_url",
                             "document_url": f"data:application/pdf;base64,{b64_pdf}"
                         },
-                        "include_image_base64": False,
+                        "include_image_base64": True,
+                        "image_min_size": 200,
                     }
                     
                     # Agregar document_annotation_format si se proporciona
@@ -377,7 +379,7 @@ class DocumentExtractor:
 
 
 class RAGProcessor:
-    def __init__(self, chunk_size: int = 6000, chunk_overlap: int = 250, document_annotation_format: Optional[Type[BaseModel]] = None):
+    def __init__(self, chunk_size: int = 20000, chunk_overlap: int = 250, document_annotation_format: Optional[Type[BaseModel]] = None):
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         self.document_annotation_format = document_annotation_format
@@ -466,21 +468,42 @@ class RAGProcessor:
         if not content.strip():
             return []
 
-        # Usar splitter optimizado para JSON si hay contenido estructurado
-        if "=== STRUCTURED ANNOTATION ===" in content:
-            logger.info("[split_documents] Detectado contenido estructurado, usando chunking JSON-aware")
-            splitter = self._create_json_aware_splitter()
+        base_md = {"source_dir": directory}
+        has_structured_annotations = "=== STRUCTURED ANNOTATION ===" in content
+
+        if has_structured_annotations:
+            logger.info("[split_documents] Detectado contenido estructurado, preservando bloques JSON completos")
+            structured_pattern = re.compile(r"(=== STRUCTURED ANNOTATION ===\\s*\\{.*?\\}\\s*=== STRUCTURED ANNOTATION ===)", re.DOTALL)
+            plain_splitter = RecursiveCharacterTextSplitter(
+                chunk_size=self.chunk_size,
+                chunk_overlap=self.chunk_overlap,
+                separators=[SEP_DOCUMENT, SEP_SHEET, SEP_PAGE, "\n\n", "\n"],
+            )
+
+            chunks: List[Document] = []
+            last_end = 0
+            for match in structured_pattern.finditer(content):
+                prefix = content[last_end:match.start()]
+                if prefix.strip():
+                    doc_prefix = Document(page_content=prefix, metadata=dict(base_md))
+                    chunks.extend(plain_splitter.split_documents([doc_prefix]))
+
+                block_text = match.group(0).strip()
+                chunks.append(Document(page_content=block_text, metadata=dict(base_md)))
+                last_end = match.end()
+
+            suffix = content[last_end:]
+            if suffix.strip():
+                doc_suffix = Document(page_content=suffix, metadata=dict(base_md))
+                chunks.extend(plain_splitter.split_documents([doc_suffix]))
         else:
             splitter = RecursiveCharacterTextSplitter(
                 chunk_size=self.chunk_size,
                 chunk_overlap=self.chunk_overlap,
                 separators=[SEP_DOCUMENT, SEP_SHEET, SEP_PAGE, "\n\n", "\n"],
             )
-
-        # Metadatos base para evitar struct vacío en parquet
-        base_md = {"source_dir": directory}
-        doc = Document(page_content=content, metadata=base_md)
-        chunks = splitter.split_documents([doc])
+            doc = Document(page_content=content, metadata=dict(base_md))
+            chunks = splitter.split_documents([doc])
 
         # Crear mapeo de archivos procesados para asignar source_dir correcto
         file_mapping = {}
@@ -647,7 +670,7 @@ class RAGPipelineTool(BaseTool):
     def _run(
         self,
         directory: str,
-        chunk_size: int = 6000,
+        chunk_size: int = 20000,
         chunk_overlap: int = 250,
         recursive: bool = True,
         specific_files: Optional[List[str]] = None,
@@ -716,7 +739,7 @@ class RAGPipelineTool(BaseTool):
     async def _arun(
         self,
         directory: str,
-        chunk_size: int = 6000,
+        chunk_size: int = 20000,
         chunk_overlap: int = 250,
         recursive: bool = True,
         specific_files: Optional[List[str]] = None,
