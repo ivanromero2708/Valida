@@ -97,6 +97,7 @@ class OPReasoningParallelization:
                                     content= self.human_message_prompt.format(
                                     reglas_razonamiento=template_sets[set_name]["human_message_prompt"],
                                     tags=template_sets[set_name]["tags"],
+                                    criterios_validacion =self._get_context_data_json_str(state, "Protocolo"), 
                                     context_data_json_str=self._get_context_data_json_str(state, set_name),
                                     structured_output_supervisor=template_sets[set_name]["structured_output_supervisor"],
                                 )
@@ -107,6 +108,6 @@ class OPReasoningParallelization:
                     "set_name": set_name,
                 }
             )
-            for set_name in self.template_sets.keys()
+            for set_name in self.template_sets.keys() if set_name != "Protocolo"
         ]
     )

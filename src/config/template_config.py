@@ -7,11 +7,20 @@ from src.config.models.set_7 import (Set7ExtractionModel,Set7StructuredOutputSup
 from src.config.models.set_8 import (Set8ExtractionModel,Set8StructuredOutputSupervisor,)
 from src.config.models.set_10 import (Set10ExtractionModel,Set10StructuredOutputSupervisor,)
 from src.config.models.set_11 import (Set11ExtractionModel,Set11StructuredOutputSupervisor,)
+from src.config.models.protocolo import ParametrosValidacion
 
 from src.config.prompt_sets import (RULES_SET_2,RULES_SET_3,RULES_SET_4,RULES_SET_5,RULES_SET_6,RULES_SET_7,RULES_SET_8,RULES_SET_10,RULES_SET_11)
 
 
 TEMPLATE_SETS_TRIAL = {
+    "Protocolo": {
+        "human_message_prompt": "",
+        "doc_path_list": [
+            "dir_protocolo",
+        ],
+        "data_extraction_model": ParametrosValidacion,
+        "tags": ["criterios_validacion"],
+    },
     "Set 2": {
         "human_message_prompt": RULES_SET_2,
         "doc_path_list": [
@@ -60,7 +69,7 @@ TEMPLATE_SETS_TRIAL = {
     "Set 3": {
         "human_message_prompt": RULES_SET_3,
         "doc_path_list": [
-            "dir_protocolo",
+            #"dir_protocolo",
             "dir_reporte_lims_linealidad",
             "dirs_hoja_trabajo_linealidad",
             "dirs_bitacoras_linealidad",
@@ -164,5 +173,6 @@ TEMPLATE_SETS_TRIAL = {
 }
 
 TEMPLATE_SETS = {
+    "Protocolo": TEMPLATE_SETS_TRIAL["Protocolo"],
     "Set 3": TEMPLATE_SETS_TRIAL["Set 3"]
 }

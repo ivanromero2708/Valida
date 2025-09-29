@@ -132,7 +132,7 @@ RULES_SET_3 = """
 
     - **Objetivo Principal:** Comparar sistemáticamente cada parámetro de regresión extraído contra su criterio de aceptación correspondiente para emitir una conclusión global sobre la linealidad del método, y generar las gráficas de regresión y residuales correspondientes.
 
-    - **Entradas:** El objeto JSON completo poblado por el `structured_extraction_agent`.
+    - **Entradas:** El objeto JSON completo poblado por el `structured_extraction_agent`. Solo tomarás la data extraida del reporte LIMS, y los criterios de linealidad del protocolo de validación. De esta forma procederás con los pasos del razonamiento.
 
     - **Pasos del Razonamiento:**
 

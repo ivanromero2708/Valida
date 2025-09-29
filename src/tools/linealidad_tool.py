@@ -78,21 +78,6 @@ class LinearidadInput(BaseModel):
         description="Nombre del analito para títulos de gráficos"
     )
 
-    @validator('area_pico')
-    def validar_longitudes_iguales(cls, v, values):
-        """Valida que concentracion y area_pico tengan la misma longitud."""
-        if 'concentracion' in values and len(v) != len(values['concentracion']):
-            raise ValueError("Las listas de concentracion y area_pico deben tener la misma longitud")
-        return v
-
-    @validator('concentracion', 'area_pico')
-    def validar_valores_positivos(cls, v):
-        """Valida que todos los valores sean positivos."""
-        if any(val <= 0 for val in v):
-            raise ValueError("Todos los valores deben ser positivos")
-        return v
-
-
 class LinearidadCalculator:
     """Clase para realizar cálculos de linealidad."""
     
@@ -366,31 +351,6 @@ class LinearidadTool(BaseTool):
             respuesta = {
                 "regresion_png_path": plots_info["regresion_png_path"],
                 "residuales_png_path": plots_info["residuales_png_path"],
-                #"status": "success",
-                #"timestamp": datetime.now().isoformat(),
-                #"input_data": {
-                #    "n_puntos": len(concentracion),
-                #    "concentracion_min": float(min(concentracion)),
-                #    "concentracion_max": float(max(concentracion)),
-                #    "nombre_analito": nombre_analito
-                #},
-                #"resultados_regresion": {
-                #    "pendiente_m": resultados["pendiente_m"],
-                #    "intercepto_b": resultados["intercepto_b"],
-                #    "r2": resultados["r2"],
-                #    "ecuacion": resultados["ecuacion"]
-                #},
-                #"analisis_residuales": resultados["residuales_stats"],
-                #"rsd_por_nivel_pct": resultados["rsd_por_nivel_pct"],
-                #"datos_predichos": {
-                #    "y_predicho": resultados["y_predicho"],
-                #    "residuales": resultados["residuales"]
-                #},                
-                #"criterios_aceptacion": {
-                #    "r2_minimo": 0.995,
-                #    "r2_cumple": resultados["r2"] >= 0.995,
-                #    "residuales_max_absoluto": resultados["residuales_stats"]["max_absoluto"]
-                #}
             }
             
             logger.info(f"[LinearidadTool] Análisis completado exitosamente. R² = {resultados['r2']:.6f}")
