@@ -174,5 +174,5 @@ TEMPLATE_SETS_TRIAL = {
 
 TEMPLATE_SETS = {
     "Protocolo": TEMPLATE_SETS_TRIAL["Protocolo"],
-    "Set 4": TEMPLATE_SETS_TRIAL["Set 4"]
+    "Set 5": TEMPLATE_SETS_TRIAL["Set 5"]
 }
