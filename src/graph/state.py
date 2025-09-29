@@ -3,6 +3,10 @@ from typing import Annotated, List, Dict, Any
 from pydantic import Field, BaseModel
 import operator
 
+class IndexNodeOutput(BaseModel):
+    document_name: str  # Solo el nombre del archivo, sin ruta
+    extracted_content: Any  # Instancia del modelo Pydantic data_extraction_model
+
 class SupervisorResearchValidationOutput(BaseModel):
     set_name: str = Field(..., description="Name of the tag set")
     context_for_set: Dict[str, Any] = Field(..., description="Context for the tag set")
@@ -75,6 +79,8 @@ class ValidaState(AgentStateWithStructuredResponse):
     dirs_hoja_trabajo_robustez: List[str] = Field(..., description="Directorios de las Hojas de Trabajo de Robustez")
     dirs_bitacoras_robustez: List[str] = Field(..., description="Directorios de las Bitacoras de Robustez")
     dirs_soportes_cromatograficos_robustez: List[str] = Field(..., description="Directorios de los Soportes Cromatográficos de Robustez")
+    
+    extraction_content: Annotated[List[IndexNodeOutput], operator.add]
     
     context_for_render: Annotated[List[SupervisorResearchValidationOutput], operator.add]
     fname_out: str = Field(..., description="Nombre del archivo de salida")

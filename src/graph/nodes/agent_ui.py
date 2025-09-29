@@ -28,6 +28,8 @@ class AgentUI:
     
     def __init__(self):
         self.human_message_prompt = HUMAN_MESSAGE_PROMPT
+        # Mantener una referencia explícita en la instancia, según lo solicitado
+        self.template_sets = TEMPLATE_SETS
     
     def _state_get(self, state: ValidaState, key: str, default: Any = "") -> Any:
         """Obtiene valores del state soportando dict o atributos."""
@@ -38,7 +40,7 @@ class AgentUI:
     
     @traceable
     def build_doc_path_list(self, state: ValidaState, set_name: str) -> list[str]:
-        cfg = template_sets.get(set_name, {})
+        cfg = self.template_sets.get(set_name, {})
         keys: list[str] = cfg.get("doc_path_list", [])
         paths: list[str] = []
 
@@ -57,33 +59,22 @@ class AgentUI:
         return unique_paths
     
     @traceable
-    def run(self, state: ValidaState, config: RunnableConfig) -> Command[Literal["supervisor_research_validation"]]:
+    def run(self, state: ValidaState, config: RunnableConfig) -> Command[Literal["index_node"]]:
         return Command(
             update= {
                 "messages": [HumanMessage(content="Inicio de proceso de investigación en documentos entregados.")],
             },
             goto = [
                 Send(
-                    "supervisor_research_validation",
+                    "index_node",
                     {
-                        "messages": [
-                            HumanMessage(
-                                content= self.human_message_prompt.format(
-                                    reglas_extraccion_razonamiento=template_sets[set_name]["human_message_prompt"],
-                                    tags=template_sets[set_name]["tags"],
-                                    doc_path_list=self.build_doc_path_list(state, set_name),
-                                    data_extraction_model=template_sets[set_name]["data_extraction_model"],
-                                )
-                            )
-                        ],
                         "set_name": set_name,
-                        # Pasar valores reales al subgrafo
                         "doc_path_list": self.build_doc_path_list(state, set_name),
-                        "data_extraction_model": template_sets[set_name]["data_extraction_model"],
-                        "structured_output_supervisor": template_sets[set_name]["structured_output_supervisor"],
-                        "tags": template_sets[set_name]["tags"],
+                        "data_extraction_model": self.template_sets[set_name]["data_extraction_model"],
+                        "tags": self.template_sets[set_name]["tags"],
                     }
                 )
-                for set_name in template_sets.keys()
+                for set_name in self.template_sets.keys()
             ]
         )
+

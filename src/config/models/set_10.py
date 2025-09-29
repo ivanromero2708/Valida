@@ -37,29 +37,12 @@ class DataChromaEstFM(BaseModel):
         None, description= "Lista de diccionarios que contiene los picos obtenidos en la data cromatográfica de la inyección"
     )
 
-# Box Extraction
-class Set10BoxDetector(BaseModel):
-    """Detector para bboxes que parezcan tablas de cromatografía útiles para Set10."""
-    is_set10_candidate: bool = Field(..., description="True si la imagen contiene una tabla de cromatografía relevante para Set10")
-    confidence: float = Field(..., ge=0.0, le=1.0, description="Confianza del clasificador")
-    hints_columns_presentes: List[str] = Field(
-        default_factory=list,
-        description="Columnas detectadas: e.g., 'No', 'Peak', 'Retention time', 'Area', 'USP Tailing', 'Resolution', 'Amount', etc."
-    )
-    possible_section: Optional[Literal["Fase Movil","SST","Estandar","Muestra","Desconocido"]] = Field(
-        None, description="Heurística de sección"
-    )
-    notes: Optional[str] = Field(None, description="Notas breves (opcional)")
-
 class ExtraccionDaExtraccionArchivoDataTiempo(BaseModel):
-    page_index: Optional[int] = Field(None, description="Página de origen")
-    bbox_id: Optional[str] = Field(None, description="ID del bbox en la página")
-    # ⬇️ Hacerlo opcional: el pipeline lo inyecta si falta
     nombre_archivo: Optional[str] = Field(
         None, description= "Nombre del archivo de donde se hará la extracción de datos.. Se puede inferir el tiempo de allí, por eso es importante que lo extraigas"
     )
-    data_estabilidad_fase_movil: List[DataChromaEstFM] = Field(
-        ..., description="Listado de diccionarios que contiene toda la información relacionada con la validación de la fase movil."
+    data_estabilidad_fase_movil: Optional[List[DataChromaEstFM]] = Field(
+        None, description="Listado de diccionarios que contiene toda la información relacionada con la validación de la fase movil."
     )
     criterios_validacion: Optional[List[CriterioValidacion]] = Field(
         None, description="Lista de criterios de aceptación de las pruebas de validación presentes en el protocolo de validación"

@@ -3,8 +3,10 @@ from langgraph.graph import StateGraph
 
 from src.graph.nodes import (
     AgentUI,
-    SupervisorResearchValidation,
-    RenderValidationReport
+    AnalyticalChemReasoning,
+    RenderValidationReport,
+    IndexNode,
+    OPReasoningParallelization
 )
 
 # Define the graph
@@ -12,7 +14,9 @@ valida_builder = StateGraph(ValidaState)
 
 # Add nodes
 valida_builder.add_node("agent_ui", AgentUI().run)
-valida_builder.add_node("supervisor_research_validation", SupervisorResearchValidation().run)
+valida_builder.add_node("index_node", IndexNode().run)
+valida_builder.add_node("op_reasoning_parallelization", OPReasoningParallelization().run)
+valida_builder.add_node("analytical_chemistry_reasoning", AnalyticalChemReasoning().run)
 valida_builder.add_node("render_validation_report", RenderValidationReport().run)
 
 # Set entry point

@@ -1334,166 +1334,6 @@ RULES_SET_8 = """
 """
 
 RULES_SET_10 = """
-  <REGLAS_DE_EXTRACCION_ESTRUCTURADA>
-  Estas reglas aplican al `structured_extraction_agent`. SOLO LE DEBES PASAR ESTE PLAN DE FASES A EL.
-
-  - **Objetivo General:** Extraer y estructurar los datos para el parámetro de **Estabilidad de la Fase Móvil**, poblando un modelo que replique la tabla de resultados final.
-
-  - DEBES planificar exhaustivamente antes de cada llamada a una función y reflexionar exhaustivamente sobre los resultados de las llamadas a las funciones anteriores. NO realices todo este proceso haciendo solo llamadas a funciones, ya que esto puede afectar tu capacidad para resolver el problema y pensar de manera perspicaz.
-
-  -----
-  
-  - **Fase 1: Extracción de criterios de aceptación del protocolo de validación**
-        - **Fuente primaria:** Documento del **Protocolo de Validación** en vectorstore .parquet.
-        - **Objetivo específico:** Identificar los criterios de aceptación del parámetro estabilidad de la fase movil.
-        - **Plan de acción:**
-          1.  Genera consultas sobre el vectorstore .parquet del protocolo de validación con strings similares a "Criterio de aceptación de Estabilidad fase movil".
-          2.  Extrae el texto más completo y descriptivo que encuentres en los chunks de los criterios de aceptación de la tabla "Criterio de aceptación" de la estabilidad de las fases moviles del protocolo de validación. Esto, cuando aplique. Si no encuentras simplemente dejalo vacío o null.
-          3.  Registra el string con el criterio de aceptación de acuerdo a lo reportado en el texto extraído.
-        - **Ejemplo de salida :**
-        ```json
-        {
-            "criterio_aceptacion": "CRITERIO_DEL_PROTOCOLO"
-        }
-        ```
-
-  -----
-
-  - **Fase 2: Extracción de Datos de Picos por cada Archivo de la data cromatográfica**
-      - **Fuentes:** TODOS los Documentos de data cromatográfica en vectorstore .parquet.
-      - **Objetivo:** Extraer los datos brutos de cada uno de las inyecciones (Peak name, Area, T plates USP, Asymmetry, entre otros) de CADA UNO de los archivos.
-      - **Plan de acción:**
-        0. Lista los archivos de la data cromatográfica en vectorstore .parquet.
-        1. **Bucle por archivo:** Mi sugerencia es que generes un llamado al structured extraction agent para cada archivo vectorstore .parquet. Itera sobre la lista de archivos vectorstore .parquet. VAS A REALIZAR ESTE PROCESO DE INVESTIGACIÓN PROFUNDA UN VECTORSTORE .PARQUET A LA VEZ. Cada archivo se refiere a un tiempo específico. Ejecuta los siguientes pasos por cada una de los vectostore .parquet exceptuando el protocolo. Siempre dejando claramente en un mensaje de texto lo que pudiste extraer.
-          1.1 Genera suficientes consultas sobre el vectorsore .parquet en el que estas iterando actualmente. Las consultas deben tener las siguientes claves (UNA A LA VEZ.. NO TODAS EN EL MISMO QUERY): "[SOURCE...",  "peak_name".
-          1.2 De la consulta "[SOURCE..." vas a extraer el nombre del archivo.
-          1.3 Vas a identificar ESTOS DATOS de los encabezados de TODAS LAS tablas de las inyecciones:
-              - nombre_muestra:Nombre de la muestra que se analiza en la inyeccion. Puede empezar con 'SST', 'Fase Movil', 'Solucion Estandar', entre otros
-              - referencia_analitica: Referencia analitica de la muestra. Usualmente empieza como HT.
-              - dilution_factor: Factor de dilución de la muestra. Usualmente es un número que aparece al lado del strin 'Dilution Factor', o similar
-              - weight: Peso de la muestra. Usualmente es un número que aparece al lado del strin 'Weight', o similar
-              - no_inyeccion: Número de la inyección que aparece al lado de un string similar a 'Injection Number', o similar
-          1.4.  Vas a extraer la siguiente información de TODOS LOS PICOS :
-              - No: Número consecutivo que identifica el pico en la data cromatográfica recuperada de la inyección.
-              - peak_name: Nombre del pico en la data cromatográfica recuperada de la inyección. Usualmente corresponde al analito de estudio
-              - analito: Nombre del analito asociado al pico. Usualmente corresponde al nombre del pico
-              - retention_time: NÚMERO EXACTO CON TODOS LOS DECIMALES DEL Tiempo de retención del pico en la data cromatográfica recuperada de la inyección.
-              - area: NÚMERO EXACTO CON TODOS LOS DECIMALES DEL Área bajo la curva del pico en la data cromatográfica recuperada de la inyección.
-              - cal_amount: Cantidad calificada del pico en la data cromatográfica recuperada de la inyección.
-              - resolution: Resolución entre los picos de los ingredientes activos en la data cromatográfica recuperada de la inyección.
-              - t_plates_usp: T-plates USP del pico en la data cromatográfica recuperada de la inyección.
-              - assymetry: Asimetría del pico en la data cromatográfica recuperada de la inyección.
-              - amount: Cantidad del pico en la data cromatográfica recuperada de la inyección. Usualmente se acompaña de unidades tales como mg/mL, entre otras
-          1.4 Consolida en un mensaje los resultados extraidos por el archivo (O el tiempo, preferiblemente el tiempo) y sigue con el siguiente archivo en la búsqueda. DEBES EJECUTAR LAS BÚSQUEDAS CON EL SIGUIENTE archivo CON EL MISMO NIVEL DE RIGUROSIDAD QUE LO HICISTE CON ESTE.. NO OMITAS NINGUNA INSTRUCCION RELEVANTE PARA ENSAMBLAR LAS CONSULTAS O PARA EXTRAER LA DATA.
-          1.5 LA ITERACIÓN DEBES CONTINUARLA HASTA EXTRAER TODOS LOS DATOS.
-      - Ejemplo:
-      ```json
-      {
-        "data_bruta_estabilidad_fase_movil": [
-          {
-            "nombre_archivo": "[NOMBRE_ARCHIVO_TIEMPO_1].pdf",
-            "data_estabilidad_fase_movil": [
-              {
-                "nombre_muestra": "[Solucion Estandar Mixto Rep 1]",
-                "data_inyecciones": [
-                  {
-                    "No": 1,
-                    "peak_name": "[NOMBRE_ANALITO_1]",
-                    "analito": "[NOMBRE_ANALITO_1]",
-                    "retention_time": "[VALOR_NUMERICO]",
-                    "area": "[VALOR_NUMERICO]",
-                    "cal_amount": null,
-                    "resolution": null,
-                    "t_plates_usp": "[VALOR_NUMERICO]",
-                    "assymetry": "[VALOR_NUMERICO]",
-                    "amount": "[VALOR_NUMERICO]"
-                  },
-                  {
-                    "No": 2,
-                    "peak_name": "[NOMBRE_ANALITO_2]",
-                    "analito": "[NOMBRE_ANALITO_2]",
-                    "retention_time": "[VALOR_NUMERICO]",
-                    "area": "[VALOR_NUMERICO]",
-                    "cal_amount": null,
-                    "resolution": "[VALOR_NUMERICO]",
-                    "t_plates_usp": "[VALOR_NUMERICO]",
-                    "assymetry": "[VALOR_NUMERICO]",
-                    "amount": "[VALOR_NUMERICO]"
-                  }
-                ]
-              },
-              {
-                "nombre_muestra": "[Solucion Estandar Mixto Rep 2]",
-                "data_inyecciones": [
-                  {
-                    "No": 1,
-                    "peak_name": "[NOMBRE_ANALITO_1]",
-                    "analito": "[NOMBRE_ANALITO_1]",
-                    "retention_time": "[VALOR_NUMERICO]",
-                    "area": "[VALOR_NUMERICO]",
-                    "cal_amount": null,
-                    "resolution": null,
-                    "t_plates_usp": "[VALOR_NUMERICO]",
-                    "assymetry": "[VALOR_NUMERICO]",
-                    "amount": "[VALOR_NUMERICO]"
-                  },
-                  {
-                    "No": 2,
-                    "peak_name": "[NOMBRE_ANALITO_2]",
-                    "analito": "[NOMBRE_ANALITO_2]",
-                    "retention_time": "[VALOR_NUMERICO]",
-                    "area": "[VALOR_NUMERICO]",
-                    "cal_amount": null,
-                    "resolution": "[VALOR_NUMERICO]",
-                    "t_plates_usp": "[VALOR_NUMERICO]",
-                    "assymetry": "[VALOR_NUMERICO]",
-                    "amount": "[VALOR_NUMERICO]"
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            "nombre_archivo": "[NOMBRE_ARCHIVO_TIEMPO_2].pdf",
-            "data_estabilidad_fase_movil": [
-              {
-                "nombre_muestra": "[Solucion Muestra Mixto Rep 1]",
-                "data_inyecciones": [
-                  {
-                    "No": 1,
-                    "peak_name": "[NOMBRE_ANALITO_1]",
-                    "analito": "[NOMBRE_ANALITO_1]",
-                    "retention_time": "[VALOR_NUMERICO]",
-                    "area": "[VALOR_NUMERICO]",
-                    "cal_amount": "[VALOR_NUMERICO]",
-                    "resolution": null,
-                    "t_plates_usp": "[VALOR_NUMERICO]",
-                    "assymetry": "[VALOR_NUMERICO]",
-                    "amount": "[VALOR_NUMERICO]"
-                  },
-                  {
-                    "No": 2,
-                    "peak_name": "[NOMBRE_ANALITO_2]",
-                    "analito": "[NOMBRE_ANALITO_2]",
-                    "retention_time": "[VALOR_NUMERICO]",
-                    "area": "[VALOR_NUMERICO]",
-                    "cal_amount": "[VALOR_NUMERICO]",
-                    "resolution": "[VALOR_NUMERICO]",
-                    "t_plates_usp": "[VALOR_NUMERICO]",
-                    "assymetry": "[VALOR_NUMERICO]",
-                    "amount": "[VALOR_NUMERICO]"
-                  }
-                ]
-              }
-            ]
-          }
-        ]
-      }
-      ```
-  </REGLAS_DE_EXTRACCION_ESTRUCTURADA>
-
-  <br>
-
   <REGLAS_DE_RAZONAMIENTO>
   Estas reglas aplican al `reasoning_agent`.
 
@@ -1517,9 +1357,7 @@ RULES_SET_10 = """
 
   <br>
 
-  <REGLAS_DE_SALIDA_SUPERVISOR>
-  Aplica al `supervisor_agent`.
-
+  <REGLAS_DE_SALIDA_ESTRUCTURADA>
   - **Modelo de salida obligatorio:** `Set10StructuredOutput`.
   - **Formato:** Un único objeto JSON bien formado y completo, sin texto adicional.
   - **Integración de datos:**
@@ -1573,7 +1411,7 @@ RULES_SET_10 = """
         "referencia_analitica": "[CODIGO_REFERENCIA_HT]"
       }
       ```
-  </REGLAS_DE_SALIDA_SUPERVISOR>
+  </REGLAS_DE_SALIDA_ESTRUCTURADA>
 """
 
 
