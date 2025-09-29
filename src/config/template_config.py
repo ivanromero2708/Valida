@@ -108,11 +108,11 @@ TEMPLATE_SETS_TRIAL = {
     "Set 6": {
         "human_message_prompt": RULES_SET_6,
         "doc_path_list": [
-            "dir_protocolo",
+            #"dir_protocolo",
             "dir_reporte_lims_precision_metodo",
-            "dirs_hoja_trabajo_precision_metodo",
-            "dirs_bitacoras_precision_metodo",
-            "dirs_soportes_cromatograficos_precision_metodo",
+            #"dirs_hoja_trabajo_precision_metodo",
+            #"dirs_bitacoras_precision_metodo",
+            #"dirs_soportes_cromatograficos_precision_metodo",
         ],
         "data_extraction_model": Set6ExtractionModel,
         "structured_output_supervisor": Set6StructuredOutputSupervisor,
@@ -121,11 +121,11 @@ TEMPLATE_SETS_TRIAL = {
     "Set 7": {
         "human_message_prompt": RULES_SET_7,
         "doc_path_list": [
-            "dir_protocolo",
+            #"dir_protocolo",
             "dir_reporte_lims_precision_intermedia",
-            "dirs_hoja_trabajo_precision_intermedia",
-            "dirs_bitacoras_precision_intermedia",
-            "dirs_soportes_cromatograficos_precision_intermedia",
+            #"dirs_hoja_trabajo_precision_intermedia",
+            #"dirs_bitacoras_precision_intermedia",
+            #"dirs_soportes_cromatograficos_precision_intermedia",
         ],
         "data_extraction_model": Set7ExtractionModel,
         "structured_output_supervisor": Set7StructuredOutputSupervisor,
@@ -174,5 +174,5 @@ TEMPLATE_SETS_TRIAL = {
 
 TEMPLATE_SETS = {
     "Protocolo": TEMPLATE_SETS_TRIAL["Protocolo"],
-    "Set 5": TEMPLATE_SETS_TRIAL["Set 5"]
+    "Set 7": TEMPLATE_SETS_TRIAL["Set 7"]
 }
