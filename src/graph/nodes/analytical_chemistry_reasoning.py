@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from langchain_core.runnables import RunnableConfig
 from src.agents.create_react_agent import make_react_agent
 from src.config.configuration import Configuration
-from src.graph.nodes.supervisor_research_validation.builder import SupervisorResearchValidationOutput
+from src.graph.state import SupervisorResearchValidationOutput
 
 multiagent_configuration = Configuration()
 

@@ -1,24 +1,22 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional
-from datetime import date
+from typing import List
 
 # Variables auxiliares
 
 class DatosPrecisionIntermediaStrExt(BaseModel):
-    replica: str = Field(..., description="replica de la solucion evaluada en el parametro de precision del metodo")
-    porcentaje_an1: float = Field(..., description="Porcentaje obtenido del activo evaluado en el parametro de precision del metodo")
-    porcentaje_an2: float = Field(..., description="Porcentaje obtenido del activo evaluado en el parametro de precision del metodo")
+    replica: str = Field(..., description="replica de la solucion evaluada en el parametro de precision del metodo.")
+    porcentaje_an1: float = Field(..., description="Porcentaje obtenido del activo para A1D1E1")
+    porcentaje_an2: float = Field(..., description="Porcentaje obtenido del activo para A2D1E1")
     
 class ActivoPrecisionIntermediaStrExt(BaseModel):
     nombre: str = Field(..., description="Nombre del ingrediente activo")
     precision_intermedia: List[DatosPrecisionIntermediaStrExt] = Field(..., description="Datos de los porcentajes obtenidos de las replicas evaluadas en el parametro de precision del metodo")
     rsd_analista: float = Field(..., description="RSD de los porcentajes obtenidos del activo evaluado realizado por el analista")
-    criterio_precision_intermedia: str = Field(..., description="Criterios de aceptacion para precision intermedia")
 
 class DatosPrecisionIntermediaStrOutput(BaseModel):
     replica: str = Field(..., description="replica de la solucion evaluada en el parametro de precision del metodo")
-    porcentaje_an1: float = Field(..., description="Porcentaje obtenido del activo evaluado en el parametro de precision del metodo")
-    porcentaje_an2: float = Field(..., description="Porcentaje obtenido del activo evaluado en el parametro de precision del metodo")
+    porcentaje_an1: float = Field(..., description="Porcentaje obtenido del activo para A1D1E1")
+    porcentaje_an2: float = Field(..., description="Porcentaje obtenido del activo para A2D1E1")
     
 class ActivoPrecisionIntermediaStrOutput(BaseModel):
     nombre: str = Field(..., description="Nombre del ingrediente activo")
