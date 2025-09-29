@@ -82,7 +82,7 @@ TEMPLATE_SETS_TRIAL = {
     "Set 4": {
         "human_message_prompt": RULES_SET_4,
         "doc_path_list": [
-            "dir_protocolo",
+            #"dir_protocolo",
             "dir_reporte_lims_exactitud",
             "dirs_hoja_trabajo_exactitud",
             "dirs_bitacoras_exactitud",
@@ -95,7 +95,7 @@ TEMPLATE_SETS_TRIAL = {
     "Set 5": {
         "human_message_prompt": RULES_SET_5,
         "doc_path_list": [
-            "dir_protocolo",
+           # "dir_protocolo",
             "dir_reporte_lims_precision_sistema",
             "dirs_hoja_trabajo_precision_sistema",
             "dirs_bitacoras_precision_sistema",
@@ -174,5 +174,5 @@ TEMPLATE_SETS_TRIAL = {
 
 TEMPLATE_SETS = {
     "Protocolo": TEMPLATE_SETS_TRIAL["Protocolo"],
-    "Set 3": TEMPLATE_SETS_TRIAL["Set 3"]
+    "Set 4": TEMPLATE_SETS_TRIAL["Set 4"]
 }

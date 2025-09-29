@@ -21,15 +21,13 @@ class ActivoExactitudStrOutput(BaseModel):
 
 
 class DatosExactitudStrExt(BaseModel):
-    nivel: str = Field(..., description="Nivel de concentración")
-    recuperacion: float =Field(..., description="Recuperación en porcentaje")
+    nivel: str = Field(..., description="Nivel de concentración. Usualmente es el dato que se encuentra en la columna Solution.")
+    recuperacion: float =Field(..., description="Concentration Level")
 
 
 class ActivoExactitudStrExt(BaseModel):
-    nombre: str = Field(..., description="Nombre del ingrediente activo")
-    exactitud_metodo: List[DatosExactitudStrExt] = Field(..., min_length=1, description="Datos de exactitud del sistema")
-    conclusion_exactitud: str = Field(..., description="Cumple o No cumple con el criterio global")
-    criterio_exactitud: str = Field(..., description="Criterio de exactitud")
+    nombre: str = Field(..., description="Nombre del ingrediente activo.. El analito...")
+    exactitud_metodo: List[DatosExactitudStrExt] = Field(..., description="Datos de exactitud del sistema")
 
 
 class Set4ExtractionModel(BaseModel):
@@ -39,12 +37,6 @@ class Set4ExtractionModel(BaseModel):
 
 
 # Modelos de validación de datos
-
-
-class Set4RenderingModel(BaseModel):
-    """Modelo de validación de datos del Set 4"""
-
-    activos_exactitud: List[ActivoExactitudStrOutput] = Field(..., description="Listado de diccionarios que contiene toda la información relacionada con la validación del parámetro de exactitud para cada uno de los ingredientes activos del método")
 
 
 class Set4StructuredOutputSupervisor(BaseModel):

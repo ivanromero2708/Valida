@@ -38,8 +38,10 @@ class Configuration(BaseModel):
     
     reasoning_tools: List[Literal[
         "linearidad_tool",
+        "average_tool",
+        "rsd_tool"
     ]] = Field(
-        default=["linearidad_tool"],
+        default=["linearidad_tool", "average_tool", "rsd_tool"],
         description="Las herramientas a usar para el agente.",
         json_schema_extra={"langgraph_nodes": ["reasoning_agent"]},
     )

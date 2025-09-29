@@ -210,77 +210,6 @@ RULES_SET_3 = """
 """
 
 RULES_SET_4 = """
-  `<REGLAS_DE_EXTRACCION_ESTRUCTURADA>`
-  Estas reglas aplican al `structured_extraction_agent`.
-
-    - **Objetivo General:** Extraer el criterio de aceptación para **exactitud** desde el protocolo de validación y los datos de recuperación experimentales desde los reportes LIMS, estructurando la información final según el modelo `Set4ExtractionModel`.
-
-  -----
-
-    - **Fase 1: Extracción del Criterio de Aceptación desde el Protocolo**
-
-        - **Fuente Primaria:** Documento del **Protocolo de Validación**.
-        - **Objetivo Específico:** Identificar y extraer el criterio de aceptación para el porcentaje de recuperación (% recobro).
-        - **Plan de Acción:**
-          1.  **Enfócate en el protocolo.** Realiza búsquedas específicas en el documento usando términos clave como "Exactitud", "Accuracy", "Criterio de Aceptación", "Recuperación", "% Recovery", o "Recobro".
-          2.  **Busca el rango de aceptación.** El criterio generalmente se expresa como un rango de porcentaje. Por ejemplo: "El promedio de la recuperación debe encontrarse en el rango de 98.0% a 102.0%". Extrae este texto completo.
-          3.  **Puebla el campo de criterio.** Asigna el criterio extraído al campo `criterio_exactitud` para cada API relevante.
-        - **Salida de Fase 1 (Ejemplo):**
-          ```json
-          {
-            "activos_exactitud": [
-              {
-                "nombre": "[api_1_nombre]",
-                "criterio_exactitud": "El % de recuperación debe estar entre 98.0% y 102.0%",
-              }
-            ]
-          }
-          ```
-
-  -----
-
-    - **Fase 2: Extracción de Datos de Recuperación desde el Reporte LIMS**
-
-        - **Fuente Primaria:** Reporte de datos crudos del **LIMS** o la **Hoja de Trabajo Analítica**.
-        - **Objetivo Específico:** Extraer todos los valores individuales de porcentaje de recuperación para cada nivel de concentración analizado.
-        - **Plan de Acción:**
-          1.  **Busca la tabla de resultados de exactitud.** Identifica tablas con títulos como "Accuracy", "Exactitud" o "Recuperación". Estas tablas deben contener columnas como "Nivel" (ej. "Level I", "80%"), "Réplica" y "% Recuperación" (o "% Recovery").
-          2.  **Extrae todas las réplicas.** Es fundamental que extraigas una entrada por cada réplica o preparación individual. No debes promediar los valores en esta etapa. Puebla la lista `exactitud_metodo`.
-          3.  **Extrae la referencia.** Localiza el identificador único del análisis o reporte (ej. "RUN-00123", "HTA-456") y asígnalo a `referencia_exactitud`.
-        - **Normalización de Datos:**
-            - `nivel`: Mantén la etiqueta original del reporte (ej: "Level I", "Nivel 80%").
-            - `recuperacion`: Convierte el valor a tipo flotante (`float`), asegurando que la coma decimal sea un punto.
-
-  -----
-
-    - **Ejemplo de Extracción Completa (Pre-Razonamiento):**
-    **OJO, EN EL EJEMPLO APENAS APARECE UNA RÉPLICA POR CADA NIVEL, PERO ESTO ES SÓLO A MODO DE EJEMPLO.. NECESITO QUE EXTRAIGAS TODA LA DATA, ES DECIR, TODAS LAS REPLICAS POR CADA NIVEL**
-      ```json
-      {
-        "activos_exactitud": [
-          {
-            "nombre": "[api_1_nombre]",
-            "exactitud_metodo": [
-              { "nivel": "Level I", "recuperacion": 99.2 },
-              { "nivel": "Level I", "recuperacion": 100.3 },
-              { "nivel": "Level I", "recuperacion": 99.8 },
-              { "nivel": "Level II", "recuperacion": 100.1 },
-              { "nivel": "Level II", "recuperacion": 101.5 },
-              { "nivel": "Level II", "recuperacion": 100.9 },
-              { "nivel": "Level III", "recuperacion": 98.7 },
-              { "nivel": "Level III", "recuperacion": 99.1 },
-              { "nivel": "Level III", "recuperacion": 98.9 }
-            ],
-            "conclusion_exactitud": "[pendiente_validar]",
-            "criterio_exactitud": "El % de recuperación debe estar entre 98.0% y 102.0%"
-          }
-        ],
-        "referencia_exactitud": "[lims_run_o_ref_analitica]"
-      }
-      ```
-
-  `</REGLAS_DE_EXTRACCION_ESTRUCTURADA>`
-
   `<REGLAS_DE_RAZONAMIENTO>`
   Estas reglas aplican al `reasoning_agent`.
 
@@ -292,7 +221,7 @@ RULES_SET_4 = """
 
       1.  **Agrupar y Promediar por Nivel:**
             - Agrupa los datos de `exactitud_metodo` por el campo `nivel`.
-            - Para cada nivel, calcula el promedio de los valores de `recuperacion`.
+            - Para cada nivel, calcula el promedio de los valores de `recuperacion`. Usa la herramienta average_tool para calcular el promedio.
             - Documenta los cálculos. Ejemplo: *Level I: valores [99.2, 100.3, 99.8] → promedio = 99.77%*.
       2.  **Comparar cada Nivel contra el Criterio:**
             - Extrae los límites numéricos del `criterio_exactitud` (ej: 98.0 y 102.0).
@@ -325,15 +254,15 @@ RULES_SET_4 = """
           {
             "nombre": "[api_1_nombre]",
             "exactitud_metodo": [
-              { "nivel": "Level I", "recuperacion": 99.2, "recuperacion_promedio": 99.2" },
-              { "nivel": "Level I", "recuperacion": 100.3, "recuperacion_promedio": 99.2 },
-              { "nivel": "Level I", "recuperacion": 99.8, "recuperacion_promedio": 99.2 },
-              { "nivel": "Level II", "recuperacion": 100.1, "recuperacion_promedio": 100.1 },
-              { "nivel": "Level II", "recuperacion": 101.5, "recuperacion_promedio": 100.1 },
-              { "nivel": "Level II", "recuperacion": 100.9, "recuperacion_promedio": 100.1 },
-              { "nivel": "Level III", "recuperacion": 98.7, "recuperacion_promedio": 98.7 },
-              { "nivel": "Level III", "recuperacion": 99.1, "recuperacion_promedio": 98.7 },
-              { "nivel": "Level III", "recuperacion": 98.9, "recuperacion_promedio": 98.7 }
+              { "nivel": "Level I", "recuperacion": "VALOR_RECUPERACION_1", "recuperacion_promedio": "VALOR_RECUPERACION_PROMEDIO_1" },
+              { "nivel": "Level I", "recuperacion": "VALOR_RECUPERACION_2", "recuperacion_promedio": "VALOR_RECUPERACION_PROMEDIO_2" },
+              { "nivel": "Level I", "recuperacion": "VALOR_RECUPERACION_3", "recuperacion_promedio": "VALOR_RECUPERACION_PROMEDIO_3" },
+              { "nivel": "Level II", "recuperacion": "VALOR_RECUPERACION_4", "recuperacion_promedio": "VALOR_RECUPERACION_PROMEDIO_4" },
+              { "nivel": "Level II", "recuperacion": "VALOR_RECUPERACION_5", "recuperacion_promedio": "VALOR_RECUPERACION_PROMEDIO_5" },
+              { "nivel": "Level II", "recuperacion": "VALOR_RECUPERACION_6", "recuperacion_promedio": "VALOR_RECUPERACION_PROMEDIO_6" },
+              { "nivel": "Level III", "recuperacion": "VALOR_RECUPERACION_7", "recuperacion_promedio": "VALOR_RECUPERACION_PROMEDIO_7" },
+              { "nivel": "Level III", "recuperacion": "VALOR_RECUPERACION_8", "recuperacion_promedio": "VALOR_RECUPERACION_PROMEDIO_8" },
+              { "nivel": "Level III", "recuperacion": "VALOR_RECUPERACION_9", "recuperacion_promedio": "VALOR_RECUPERACION_PROMEDIO_9" }
             ],
             "conclusion_exactitud": "Cumple",
             "criterio_exactitud": "El % de recuperación debe estar entre 98.0% y 102.0%"
