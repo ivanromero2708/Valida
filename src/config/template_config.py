@@ -97,9 +97,9 @@ TEMPLATE_SETS_TRIAL = {
         "doc_path_list": [
            # "dir_protocolo",
             "dir_reporte_lims_precision_sistema",
-            "dirs_hoja_trabajo_precision_sistema",
-            "dirs_bitacoras_precision_sistema",
-            "dirs_soportes_cromatograficos_precision_sistema",
+            #"dirs_hoja_trabajo_precision_sistema",
+            #"dirs_bitacoras_precision_sistema",
+            #"dirs_soportes_cromatograficos_precision_sistema",
         ],
         "data_extraction_model": Set5ExtractionModel,
         "structured_output_supervisor": Set5StructuredOutputSupervisor,
