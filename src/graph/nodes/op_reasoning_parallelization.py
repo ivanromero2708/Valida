@@ -18,11 +18,14 @@ logger = logging.getLogger(__name__)
 multiagent_configuration = Configuration()
 template_sets = TEMPLATE_SETS
 
+from langsmith import traceable
+
 class OPReasoningParallelization:
     def __init__(self):
         self.human_message_prompt = HUMAN_MESSAGE_PROMPT
         self.template_sets = TEMPLATE_SETS
     
+    @traceable
     def _get_context_data_json_str(self, state: ValidaState, set_name: str) -> str:
         """
         Soporta tres formas de state["extraction_content"]:
@@ -46,6 +49,9 @@ class OPReasoningParallelization:
                     if isinstance(item, dict) and item.get("set_name") == set_name:
                         payload = item.get("extracted_content")
                         break
+                    if hasattr(item, "set_name") and item.set_name == set_name:
+                        payload = getattr(item, "extracted_content", None)
+                        break
             else:
                 # objeto con attrs
                 if getattr(ec, "set_name", None) == set_name:
@@ -54,8 +60,29 @@ class OPReasoningParallelization:
             logger.exception("Fallo obteniendo extraction_content para %s: %s", set_name, e)
             payload = None
 
-        return str(payload) if payload is not None else ""
+        if payload is None:
+            return ""
+
+        try:
+            return json.dumps(payload)
+        except TypeError:
+            try:
+                if hasattr(payload, "model_dump"):
+                    return json.dumps(payload.model_dump())
+                if isinstance(payload, list):
+                    serializable = []
+                    for item in payload:
+                        if hasattr(item, "model_dump"):
+                            serializable.append(item.model_dump())
+                        else:
+                            serializable.append(item)
+                    return json.dumps(serializable)
+            except Exception:
+                pass
+
+        return str(payload)
     
+    @traceable
     def run(self, state: ValidaState) -> Command[Literal["analytical_chemistry_reasoning"]]:
         return Command(
             update= {
@@ -76,7 +103,8 @@ class OPReasoningParallelization:
                             )
                         ],
                     "structured_output_supervisor": template_sets[set_name]["structured_output_supervisor"],
-                    "tags": state.get("tags")
+                    "tags": template_sets[set_name]["tags"],
+                    "set_name": set_name,
                 }
             )
             for set_name in self.template_sets.keys()

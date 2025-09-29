@@ -50,20 +50,8 @@ class AnalyticalChemReasoning:
         
         structured_response = response["structured_response"]
         
-        # Convertir el objeto Pydantic a diccionario si es necesario
-        if hasattr(structured_response, 'model_dump'):
-            # Es un modelo Pydantic, convertir a dict
-            context_data = structured_response.model_dump()
-        elif hasattr(structured_response, 'dict'):
-            # Versión anterior de Pydantic
-            context_data = structured_response.dict()
-        elif isinstance(structured_response, dict):
-            # Ya es un diccionario
-            context_data = structured_response
-        else:
-            # Fallback: intentar convertir a dict
-            context_data = dict(structured_response) if structured_response else {}
-            
+        context_data = structured_response.model_dump()
+                    
         context_for_render = SupervisorResearchValidationOutput(
             set_name=state.get("set_name"),
             context_for_set=context_data,

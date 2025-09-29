@@ -1,94 +1,4 @@
 RULES_SET_2 = """
-  <REGLAS_DE_EXTRACCION_ESTRUCTURADA>
-  Estas reglas aplican al agente de extracción estructurada (`structured_extraction_agent`).
-
-    - **Objetivo General:** Extraer y estructurar la información de muestras, estándares, reactivos, materiales, equipos y columnas, diferenciando entre lo especificado en el protocolo de validación y lo documentado en las hojas de trabajo.
-
-    - **Fase 1: Extracción de Requisitos del Protocolo de Validación**
-
-        - **Fuente:** El documento principal del protocolo de validación.
-        - **Objetivo Específico:** Identificar y listar todos los elementos *requeridos* o *especificados* para el análisis.
-        - **Plan de Acción:**
-          1.  **Muestras y Estándares:** Realiza consultas buscando "Muestras", "Productos", "Estándares" y los nombres de los principios activos (API). Extrae los nombres de los productos y los estándares mencionados.
-          2.  **Reactivos:** Realiza consultas buscando "Reactivos", "Solución Amortiguadora", "Fase Móvil" y nombres de químicos. Lista todos los reactivos especificados.
-          3.  **Equipos:** Realiza consultas buscando "Equipos". Extrae la lista de equipos genéricos requeridos.
-          4.  **Columna Cromatográfica:** Realiza consultas específicas buscando "Columna", "Condiciones Cromatográficas". Extrae la descripción completa de la columna, incluyendo fabricante, dimensiones y número de parte.
-        - **Salida de Fase 1 (Población de campos `_protocolo`):**
-            - `muestra_utilizadas_protocolo`: ["[Nombre del Producto] [Concentración]"]
-            - `estandar_utilizados_protocolo`: ["[API_Principal_Estándar_Farmacopea]", "[API_Secundario_Estándar_de_Trabajo]"]
-            - `reactivo_utilizados_protocolo`: ["Buffer de Fosfato", "Agua grado HPLC", "Metanol", "Ácido Fosfórico"]
-            - `equipos_utilizados_protocolo`: ["Sistema HPLC con detector DAD", "Balanza Analítica", "pH-metro"]
-            - `columna_utilizada_protocolo`: ["Waters Symmetry C18 (150 x 3.9) mm 5µm, Número de parte: WAT046980"]
-        - Es importante que reportes los listados de la información identificada aquí.
-
-    - **Fase 2: Extracción de Datos de Ejecución de Hojas de Trabajo y Bitácoras**
-
-        - **Fuentes:** Las hojas de trabajo, bitácoras de preparación y registros de análisis.
-        - **Objetivo Específico:** Extraer los detalles (lotes, códigos, series, etc.) de los elementos *realmente utilizados* durante la ejecución del análisis.
-        - **Plan de Acción:**
-          1.  **Muestras:** Busca tablas de "IDENTIFICACIÓN DE LA MUESTRA" para extraer "Nombre del material", "Código", "Lote(s)/CIM".
-          2.  **Estándares:** Busca tablas de "INFORMACION DE ESTANDARES" para extraer "Nombre", "Lote", "Fabricante", "Código", "Potencia", "Vigencia".
-          3.  **Reactivos:** Busca tablas de "REACTIVOS EMPLEADOS" para extraer "Nombre", "Lote", "Fabricante", "Fecha Vencimiento", "\#Parte".
-          4.  **Materiales:** Busca en el texto y tablas referencias a materiales consumibles como "filtro de jeringa", "membrana de nylon", "viales". Extrae cualquier detalle disponible como tipo, tamaño de poro, fabricante o lote.
-          5.  **Equipos:** Busca tablas de "EQUIPOS UTILIZADOS" y registros de pesaje para extraer "Nombre del Equipo/No.", "ID de balanza", "Fabricante", "Modelo", "N.º ser.", "Fecha de próxima calificación/calibración".
-          6.  **Columnas:** Busca en las notas o registros de corridas cromatográficas detalles de la columna utilizada, como su número de serie o identificador interno.
-        - **Salida de Fase 2 (Población de campos principales):** Rellena la estructura JSON principal con todos los datos extraídos de las hojas de trabajo, creando un objeto por cada ítem único identificado.
-
-    - **Normalización Mínima:**
-
-        - Trim y colapso de espacios; preservar acentos y mayúsculas/minúsculas originales.
-        - No alterar el formato de fechas, códigos o números de serie. No inventar valores; si un dato no está presente, dejar el campo como nulo o una cadena vacía.
-
-  -----
-
-  **Nota Importante:** El siguiente bloque de código es un **ejemplo sintético** para ilustrar la estructura de salida de la extracción. **Por ningún motivo debe ser tomado como una salida real de los agentes.**
-
-  -----
-
-    - **Ejemplo de Extracción Estructurada Completa (plantilla Set2ExtractionModel):**
-      ```json
-      {
-        "muestra_utilizadas_protocolo": [
-          "Producto Analizado XYZ 50mg/5mL Solución Oral"
-        ],
-        "estandar_utilizados_protocolo": [
-          "API-XYZ Estándar de Referencia USP"
-        ],
-        "reactivo_utilizados_protocolo": [
-          "Metanol Grado HPLC", "Buffer de Fosfatos pH 3.0"
-        ],
-        "materiales_utilizados_protocolo": [
-          "Filtros de jeringa 0.22 µm PVDF"
-        ],
-        "equipos_utilizados_protocolo": [
-          "Sistema HPLC", "Balanza Analítica con 0.01mg de precisión"
-        ],
-        "columna_utilizada_protocolo": [
-          "Waters Symmetry C18 (150 x 3.9) mm 5µm, Número de parte: WAT046980"
-        ],
-        "muestra_utilizadas": [
-          { "nombre": "Producto Analizado XYZ", "codigo": "FG-102030", "lote": "LOTE-PILOTO-001", "codigo_interno_cim": "CI-25-001-LAB" }
-        ],
-        "estandar_utilizados": [
-          { "nombre": "API-XYZ Estándar", "fabricante": "USP", "lote": "R098W0", "numero_parte": null, "codigo_identificacion": "USP-1044331", "potencia": "99.5% (base seca)", "vencimiento": "2026-08-31" }
-        ],
-        "reactivo_utilizados": [
-          { "nombre": "Metanol", "fabricante": "J.T.Baker", "lote": "24599103", "numero_parte": "9093-33", "vencimiento": "2027-01-31" }
-        ],
-        "materiales_utilizados": [
-          { "nombre": "Filtro de jeringa PVDF", "fabricante": "Millipore", "numero_parte": "SLGV033RS", "lote": "R5AA4411" }
-        ],
-        "equipos_utilizados": [
-          { "nombre": "Balanza", "consecutivo": "BAL-AN-04", "fabricante": "Mettler Toledo", "modelo": "XP205", "serial": "B512345678", "prox_actividad": "2026-03-31" }
-        ],
-        "columna_utilizada": [
-          { "descripcion": "Waters Symmetry C18 5µm 150x3.9mm", "fabricante": "Waters", "numero_parte": "WAT046980", "serial": "018834215132", "numero_interno": "COL-HPLC-112" }
-        ]
-      }
-      ```
-
-  </REGLAS_DE_EXTRACCION_ESTRUCTURADA>
-
   <REGLAS_DE_RAZONAMIENTO>
   **Objetivo Principal:** Estandarizar y consolidar la información de materiales, reactivos y equipos utilizados en un análisis. El objetivo es corregir los nombres registrados en las hojas de trabajo (`*_utilizados`) para que coincidan con los nombres oficiales del protocolo (`*_utilizados_protocolo`), pero conservando toda la información detallada (lotes, identificadores, fechas, etc.) registrada en la hoja de trabajo.
 
@@ -217,106 +127,6 @@ RULES_SET_2 = """
 """
 
 RULES_SET_3 = """
-  `<REGLAS_DE_EXTRACCION_ESTRUCTURADA>`
-  Estas reglas aplican al `structured_extraction_agent`.
-
-    - **Objetivo General:** Extraer los criterios de aceptación para **linealidad** desde el protocolo de validación y los datos experimentales (curva de calibración y parámetros de regresión) desde los reportes LIMS, estructurando la información según el modelo `Set3ExtractionModel`.
-
-  -----
-
-    - **Fase 1: Extracción de Criterios de Aceptación desde el Protocolo**
-
-        - **Fuente Primaria:** Vectorstore .parquet del Documento del **Protocolo de Validación**.
-        - **Objetivo Específico:** Identificar y listar todos los criterios de aceptación definidos para el parámetro de linealidad.
-        - **Plan de Acción:**
-          1.  **Enfócate en el protocolo.** Realiza búsquedas específicas en el documento usando términos como "Linealidad", "Criterios de Aceptación", "Coeficiente de correlación", "r²", "Intercepto", "Factor de respuesta".
-          2.  **Busca la tabla de criterios.** La linealidad suele tener múltiples criterios. Busca una tabla o lista que defina los límites para cada uno (ej: `r ≥ 0.995`, `RSD ≤ 2.0%`).
-          3.  **Extrae todos los criterios.** Captura cada par de "parámetro" y "criterio" encontrado y puebla la lista `criterio_linealidad`.
-        - **Salida de Fase 1 (Ejemplo):**
-          ```json
-          {
-            "activos_linealidad": [
-              {
-                "nombre": "[NOMBRE_DEL_API_1]",
-                "criterio_linealidad": "[CRITERIO_LINEALIDAD_API_1]",
-              }
-            ]
-          }
-          ```
-
-  -----
-
-    - **Fase 2: Extracción de Datos de Ejecución desde el Reporte LIMS**
-
-        - **Fuente Primaria:** Reporte de datos crudos del **LIMS** o la **Hoja de Trabajo Analítica**.
-        - **Objetivo Específico:** Extraer la curva de calibración completa (todos los niveles con **todas sus réplicas**) y los parámetros de regresión calculados por el software **PARA CADA ACTIVO INDIVIDUAL**.
-        - **CRÍTICO - PROCESAMIENTO MULTI-ACTIVO:** 
-          - **DEBES procesar TODOS los vectorstores de reportes LIMS disponibles en la lista de documentos**
-          - **DEBES extraer datos para CADA activo encontrado en CADA vectorstore por separado**
-          - **DEBES consolidar TODOS los activos en una sola lista `activos_linealidad`**
-          - **DEBES incluir TODAS las referencias en la lista `referencia_linealidad`**
-        - **Plan de Acción:**
-          1.  **Procesa CADA vectorstore de reporte LIMS individualmente.** Para cada vectorstore que contenga "REPORTE_LINEALIDAD" en su nombre:
-             a. **Identifica el activo del reporte.** Busca en el título del documento términos como "VALORACIÓN", "LINEARITY RESULTS" seguidos del nombre del activo.
-             b. **Extrae el nombre del activo.** Captura el nombre exacto del ingrediente activo desde el título o encabezado del reporte.
-          2.  **Para CADA activo identificado:**
-             a. **Extrae la curva de calibración completa.** Busca la tabla principal de datos de linealidad. Debe contener columnas como "Level", "Concentration", "Response", y "Response Factor". **Es crucial que extraigas una entrada por cada inyección/réplica individual**, no un promedio por nivel.
-             b. **Extrae los parámetros de regresión.** Busca en las secciones de estadísticas los valores numéricos para `Slope` (pendiente), `Intercept` (intercepto), `Correlation Coefficient (r)`, `Determination Coefficient (r2)`.
-             c. **Extrae los cálculos de resumen.** Busca valores como `RSD Response Factor` y `Intercept as percentage of Y at 100%`.
-             d. **Extrae la referencia específica.** Identifica el código de referencia único del reporte (ej. "HT001/25-XXXXX ID-VAL").
-          3.  **Consolida en estructura final.** Crea un elemento en `activos_linealidad` por cada activo procesado y agrega todas las referencias a `referencia_linealidad`.
-        
-        - **VALIDACIÓN OBLIGATORIA:**
-          - **Verifica que el número de elementos en `activos_linealidad` coincida con el número de vectorstores de reportes LIMS procesados**
-          - **Si falta algún activo, revisa los vectorstores nuevamente con búsquedas más amplias**
-
-    - **Ejemplo de Extracción Completa (Pre-Razonamiento):**
-      *NOTA: Este ejemplo muestra múltiples activos genéricos con múltiples réplicas por nivel. DEBES extraer TODOS los activos encontrados en los vectorstores.*
-
-      ```json
-      {
-        "activos_linealidad": [
-          {
-            "nombre": "[NOMBRE_ACTIVO_1_EXTRAIDO_DEL_REPORTE]",
-            "linealidad_sistema": [
-              { "nivel": "[NIVEL_EXTRAIDO]", "replica": 1, "concentracion": [VALOR_EXTRAIDO], "area_pico": [VALOR_EXTRAIDO] },
-              { "nivel": "[NIVEL_EXTRAIDO]", "replica": 2, "concentracion": [VALOR_EXTRAIDO], "area_pico": [VALOR_EXTRAIDO] },
-              { "nivel": "[NIVEL_EXTRAIDO]", "replica": 3, "concentracion": [VALOR_EXTRAIDO], "area_pico": [VALOR_EXTRAIDO] }
-              // ... TODAS las réplicas de TODOS los niveles
-            ],
-            "rsd_factor": [VALOR_EXTRAIDO_RSD],
-            "pendiente": [VALOR_EXTRAIDO_SLOPE],
-            "intercepto": [VALOR_EXTRAIDO_INTERCEPT],
-            "r": [VALOR_EXTRAIDO_CORRELATION],
-            "r2": [VALOR_EXTRAIDO_DETERMINATION],
-            "porcentaje_intercepto": [VALOR_EXTRAIDO_PERCENTAGE],
-            "criterio_linealidad": "[CRITERIO_EXTRAIDO_DEL_PROTOCOLO]"
-          },
-          {
-            "nombre": "[NOMBRE_ACTIVO_2_EXTRAIDO_DEL_REPORTE]",
-            "linealidad_sistema": [
-              { "nivel": "[NIVEL_EXTRAIDO]", "replica": 1, "concentracion": [VALOR_EXTRAIDO], "area_pico": [VALOR_EXTRAIDO] },
-              { "nivel": "[NIVEL_EXTRAIDO]", "replica": 2, "concentracion": [VALOR_EXTRAIDO], "area_pico": [VALOR_EXTRAIDO] }
-              // ... TODAS las réplicas de TODOS los niveles para este activo
-            ],
-            "rsd_factor": [VALOR_EXTRAIDO_RSD],
-            "pendiente": [VALOR_EXTRAIDO_SLOPE],
-            "intercepto": [VALOR_EXTRAIDO_INTERCEPT],
-            "r": [VALOR_EXTRAIDO_CORRELATION],
-            "r2": [VALOR_EXTRAIDO_DETERMINATION],
-            "porcentaje_intercepto": [VALOR_EXTRAIDO_PERCENTAGE],
-            "criterio_linealidad": "[CRITERIO_EXTRAIDO_DEL_PROTOCOLO]"
-          }
-          // ... TANTOS ELEMENTOS COMO ACTIVOS ENCUENTRES EN LOS VECTORSTORES
-        ],
-        "referencia_linealidad": ["[REFERENCIA_ACTIVO_1]", "[REFERENCIA_ACTIVO_2]", "[REFERENCIA_ACTIVO_N]"]
-      }
-      ```
-
-  `</REGLAS_DE_EXTRACCION_ESTRUCTURADA>`
-
-  <br>
-
   `<REGLAS_DE_RAZONAMIENTO>`
   Estas reglas aplican al `reasoning_agent`.
 
@@ -1338,7 +1148,7 @@ RULES_SET_10 = """
   Estas reglas aplican al `reasoning_agent`.
 
   - **Propósito:** Calcular las estadísticas, aplicar los criterios de aceptación y determinar las conclusiones para cada parámetro y analito, poblando completamente el modelo `Set10StructuredOutput`.
-  - **Entradas:** Objeto JSON generado por el `structured_extraction_agent`.
+  - **Entradas:** Mensaje que contiene todo el contexto incluyendo un JSON generado por un agente de extracción.
   - **Pasos del razonamiento:**
       1.  **Itera por cada analito** en la lista `analitos`.
       2.  **Itera por cada `resultados_por_tiempo`** dentro de ese analito.
@@ -1413,7 +1223,6 @@ RULES_SET_10 = """
       ```
   </REGLAS_DE_SALIDA_ESTRUCTURADA>
 """
-
 
 RULES_SET_11 = """
 
@@ -1584,5 +1393,4 @@ RULES_SET_11 = """
       ```
     - **Recordatorio estricto:** El razonamiento debe documentar cálculos, umbrales y conclusiones antes de presentar el JSON final.
   </REGLAS_DE_SALIDA_SUPERVISOR>
-
 """

@@ -85,5 +85,5 @@ class AnalitoResultados(BaseModel):
 
 class Set10StructuredOutputSupervisor(BaseModel):
     titulo_parametro: str = Field(..., description="Título del parámetro de validación, ej: 'Resultados Estabilidad de la Fase Móvil'.")
-    analitos_estabilidad_fasemovil: List[AnalitoResultados] = Field(..., description="Lista de resultados para cada analito encontrado.")
-    referencia_analitica_estabilidad_fasemovil: Optional[str] = Field(None, description="Código de referencia del reporte o análisis, si está disponible (ej. HT...).")
+    activos_estabilidad_solucion_fase_movil: List[AnalitoResultados] = Field(..., description="Lista de resultados para cada analito encontrado.")
+    refencia_estabilidad_solucion_fase_movil: Optional[str] = Field(None, description="Código de referencia del reporte o análisis, si está disponible (ej. HT...).")

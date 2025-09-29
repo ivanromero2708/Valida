@@ -4,10 +4,14 @@ from typing import Any, Callable, Dict, List
 
 # --- Importa tus herramientas personalizadas ---
 from src.tools.linealidad_tool import LinearidadTool
+from src.tools.average_tool import AverageTool
+from src.tools.rsd_tool import RSDTool
 
 # --- Instanciación de las herramientas basadas en clases ---
 
 linearidad_tool = LinearidadTool()
+average_tool = AverageTool()
+rsd_tool = RSDTool()
 
 # --- Registro Central de Herramientas ---
 # Usamos un diccionario para que sea fácil de mantener y escalar.
@@ -15,6 +19,8 @@ linearidad_tool = LinearidadTool()
 AVAILABLE_TOOLS: Dict[str, Any] = {
     # Herramientas de Búsqueda
     "linearidad_tool": linearidad_tool,
+    "average_tool": average_tool,
+    "rsd_tool": rsd_tool,
 }
 
 
