@@ -142,79 +142,79 @@ class LinearidadCalculator:
 class LinearidadPlotter:
     """Clase para generar gráficos de linealidad."""
     
+
     @staticmethod
     def plot_regresion(
-        x: np.ndarray, 
-        y: np.ndarray, 
-        y_hat: np.ndarray, 
-        m: float, 
-        b: float, 
+        x: np.ndarray,
+        y: np.ndarray,
+        y_hat: np.ndarray,
+        m: float,
+        b: float,
         r2: float,
         nombre_analito: Optional[str] = None
     ):
         """Genera gráfico de regresión lineal."""
-        # Ordenar para línea suave
         idx = np.argsort(x)
         x_ord, y_hat_ord = x[idx], y_hat[idx]
-        
-        fig = plt.figure(figsize=(10, 7), dpi=120)
-        
-        # Scatter plot de datos
-        plt.scatter(x, y, color="black", s=60, alpha=0.8, label="Datos experimentales")
-        
-        # Línea de regresión
-        plt.plot(x_ord, y_hat_ord, color="blue", linewidth=2.5,
-                label=f"y = {m:.6f}x + {b:.6f}")
-        
-        # Etiquetas y título
-        plt.xlabel("Concentración (mg/mL)", fontsize=LABEL_SIZE, fontweight='bold')
-        plt.ylabel("Área del pico", fontsize=LABEL_SIZE, fontweight='bold')
-        
+
+        fig, ax = plt.subplots(figsize=(10, 7), dpi=120)
+        ax.scatter(x, y, color="black", s=60, alpha=0.8, label="Datos experimentales")
+        ax.plot(
+            x_ord,
+            y_hat_ord,
+            color="blue",
+            linewidth=2.5,
+            label=f"y = {m:.6f}x + {b:.6f}"
+        )
+
+        ax.set_xlabel("Concentración (mg/mL)", fontsize=LABEL_SIZE, fontweight='bold')
+        ax.set_ylabel("Área del pico", fontsize=LABEL_SIZE, fontweight='bold')
+
         titulo = "Curva de Calibración - Análisis de Linealidad"
         if nombre_analito:
             titulo += f"\n{nombre_analito}"
-        plt.title(titulo, fontsize=TITLE_SIZE, fontweight='bold', pad=20)
-        
-        # Añadir R² en el gráfico
-        plt.text(0.05, 0.95, f"R² = {r2:.6f}", transform=plt.gca().transAxes,
-                fontsize=12, bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.8))
-        
-        plt.grid(True, alpha=0.3, linestyle='--')
-        plt.legend(fontsize=LEGEND_SIZE, loc='lower right')
-        plt.tick_params(axis="both", labelsize=TICK_SIZE)
-        plt.tight_layout()
-        
+        ax.set_title(titulo, fontsize=TITLE_SIZE, fontweight='bold', pad=20)
+
+        ax.text(
+            0.05,
+            0.95,
+            f"R² = {r2:.6f}",
+            transform=ax.transAxes,
+            fontsize=12,
+            bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.8)
+        )
+
+        ax.grid(True, alpha=0.3, linestyle='--')
+        ax.legend(fontsize=LEGEND_SIZE, loc='lower right')
+        ax.tick_params(axis="both", labelsize=TICK_SIZE)
+        fig.tight_layout()
+
         return fig
 
     @staticmethod
     def plot_residuales(
-        x: np.ndarray, 
+        x: np.ndarray,
         residuales: np.ndarray,
         nombre_analito: Optional[str] = None
     ):
         """Genera gráfico de residuales."""
-        fig = plt.figure(figsize=(10, 7), dpi=120)
-        
-        # Scatter plot de residuales
-        plt.scatter(x, residuales, color="red", s=60, alpha=0.8, label="Residuales")
-        
-        # Línea horizontal en y=0
-        plt.axhline(0, color="blue", linestyle="--", linewidth=2, alpha=0.7, label="y = 0")
-        
-        # Etiquetas y título
-        plt.xlabel("Concentración (mg/mL)", fontsize=LABEL_SIZE, fontweight='bold')
-        plt.ylabel("Residual", fontsize=LABEL_SIZE, fontweight='bold')
-        
+        fig, ax = plt.subplots(figsize=(10, 7), dpi=120)
+        ax.scatter(x, residuales, color="red", s=60, alpha=0.8, label="Residuales")
+        ax.axhline(0, color="blue", linestyle="--", linewidth=2, alpha=0.7, label="y = 0")
+
+        ax.set_xlabel("Concentración (mg/mL)", fontsize=LABEL_SIZE, fontweight='bold')
+        ax.set_ylabel("Residual", fontsize=LABEL_SIZE, fontweight='bold')
+
         titulo = "Análisis de Residuales"
         if nombre_analito:
             titulo += f"\n{nombre_analito}"
-        plt.title(titulo, fontsize=TITLE_SIZE, fontweight='bold', pad=20)
-        
-        plt.grid(True, alpha=0.3, linestyle='--')
-        plt.legend(fontsize=LEGEND_SIZE)
-        plt.tick_params(axis="both", labelsize=TICK_SIZE)
-        plt.tight_layout()
-        
+        ax.set_title(titulo, fontsize=TITLE_SIZE, fontweight='bold', pad=20)
+
+        ax.grid(True, alpha=0.3, linestyle='--')
+        ax.legend(fontsize=LEGEND_SIZE)
+        ax.tick_params(axis="both", labelsize=TICK_SIZE)
+        fig.tight_layout()
+
         return fig
 
     @staticmethod
@@ -386,3 +386,4 @@ class LinearidadTool(BaseTool):
             nombre_analito,
             run_manager.get_sync() if run_manager else None,
         )
+
