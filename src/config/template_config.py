@@ -134,7 +134,7 @@ TEMPLATE_SETS_TRIAL = {
     "Set 8": {
         "human_message_prompt": RULES_SET_8,
         "doc_path_list": [
-            "dir_protocolo",
+            #"dir_protocolo",
             "dir_reporte_lims_estabilidad_solucion",
             #"dirs_hoja_trabajo_estabilidad_solucion",
             #"dirs_bitacoras_estabilidad_solucion",
@@ -147,7 +147,7 @@ TEMPLATE_SETS_TRIAL = {
     "Set 10": {
         "human_message_prompt": RULES_SET_10,
         "doc_path_list": [
-            "dir_protocolo",
+            #"dir_protocolo",
             #"dir_reporte_lims_estabilidad_solucion_fase_movil",
             #"dirs_hoja_trabajo_estabilidad_solucion_fase_movil",
             #"dirs_bitacoras_estabilidad_solucion_fase_movil",
@@ -161,10 +161,10 @@ TEMPLATE_SETS_TRIAL = {
         "human_message_prompt": RULES_SET_11,
         "doc_path_list": [
             "dir_protocolo",
-            "dir_reporte_lims_robustez",
-            "dirs_hoja_trabajo_robustez",
-            "dirs_bitacoras_robustez",
-            "dirs_soportes_cromatograficos_robustez",
+            #"dir_reporte_lims_robustez",
+            #"dirs_hoja_trabajo_robustez",
+            #"dirs_bitacoras_robustez",
+            #"dirs_soportes_cromatograficos_robustez",
         ],
         "data_extraction_model": Set11ExtractionModel,
         "structured_output_supervisor": Set11StructuredOutputSupervisor,
@@ -174,5 +174,5 @@ TEMPLATE_SETS_TRIAL = {
 
 TEMPLATE_SETS = {
     "Protocolo": TEMPLATE_SETS_TRIAL["Protocolo"],
-    "Set 7": TEMPLATE_SETS_TRIAL["Set 7"]
+    "Set 11": TEMPLATE_SETS_TRIAL["Set 11"]
 }
