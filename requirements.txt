@@ -2,12 +2,12 @@
 numpy>=2.1,<3
 pandas==2.3.0
 pyarrow==20.0.0
-orjson>=3.11.0,<4
+orjson>=3.9.7,<3.10.17          # <- alineado con constraints de la imagen (LGP)
 ormsgpack>=1.10.0,<2
 jiter>=0.4.0,<1
-pydantic==2.11.7
+pydantic>=2.6,<3                # 2.11.7 es válido; rango para flexibilidad
 python-dotenv==1.1.0
-SQLAlchemy==2.0.43
+SQLAlchemy>=2.0.28,<3
 requests==2.32.4
 cachetools>=5.3,<6
 unidecode>=1.3,<2
@@ -15,6 +15,7 @@ unidecode>=1.3,<2
 # ── I/O, documentos y medios ────────────────────────────────────────────────
 pillow>=9.2,<12
 pypdf==5.7.0
+# pypdf2   # <- ELIMINADO: evita duplicidad/incompatibilidades con pypdf
 pymupdf==1.25.5
 openpyxl==3.1.5
 xlrd>=2.0.1,<3
@@ -27,7 +28,6 @@ json-repair==0.41.0
 pubchempy==1.0.4
 lxml>=4.9,<6
 pdfminer.six>=20231228
-pypdf2
 
 # ── Visualización ───────────────────────────────────────────────────────────
 matplotlib==3.10.3
@@ -36,23 +36,22 @@ squarify==0.4.4
 streamlit==1.45.1
 
 # ── SDKs de modelos ─────────────────────────────────────────────────────────
-openai>=1.60.0,<2
+openai>=1.40,<2                 # compatible con langchain-openai 0.3.x
 mistralai==1.9.9
-sentence-transformers>=2.7.0
+sentence-transformers>=2.7,<3
 
-# ── LangChain / LangGraph (conjuntos compatibles) ───────────────────────────
-langchain==0.3.27
-langchain-core==0.3.74
-langchain-community==0.3.27
-langchain-openai==0.3.30
-langchain-text-splitters==0.3.9
-langsmith==0.3.45
-langchain-experimental>=0.3.0,<0.4
+# ── LangChain / LangGraph (alineados) ───────────────────────────────────────
+langchain>=0.3,<0.4
+langchain-core>=0.3,<0.4
+langchain-community>=0.3,<0.4
+langchain-openai>=0.3,<0.4
+langchain-text-splitters>=0.3,<0.4
+langsmith>=0.3,<0.4
+langchain-experimental>=0.3,<0.4
 
 langgraph==0.6.5
 langgraph-supervisor==0.0.29
-# Servidor local para `langgraph dev` (útil en desarrollo local)
-langgraph-api==0.2.130
+# langgraph-api==0.2.130         # <- NO incluir en LGP (lo trae la imagen)
 
 # ── Otros ───────────────────────────────────────────────────────────────────
 trustcall
