@@ -749,172 +749,163 @@ RULES_SET_10 = """
 """
 
 RULES_SET_11 = """
-
-  <REGLAS_DE_EXTRACCION_ESTRUCTURADA>
-  Estas reglas aplican al `structured_extraction_agent`.
-
-    - **Objetivo General:** Extraer y estructurar la información de **robustez** por API en dos fases, conforme al modelo `Set11ExtractionModel`.
-
-  -----
-
-    - **Fase 1: Extracción de criterios y factores del protocolo**
-
-        - **Fuente primaria:** Documento del **Protocolo de Validación** (tabla de condiciones de robustez).
-        - **Objetivo específico:** Registrar los factores modificados, sus niveles nominales/ajustados y el criterio de aceptación global.
-        - **Plan de acción:**
-          1.  Ubica la tabla de "Condiciones de robustez" o equivalente.
-          2.  Extrae para cada experimento los valores objetivo (temperatura, flujo, volumen de inyección, composición de fase móvil, etc.) y puebla `experimento_robustez`.
-          3.  Transcribe el criterio literal (ej.: `|%di| <= 2.0%`, `No debe cambiar el orden de elución`) y almacénalo en `criterio_robustez` para cada API.
-        - **Salida esperada Fase 1 (ejemplo sintético):**
-          ```json
-          {
-            "activos_robustez": [
-              {
-                "nombre": "[API_1]",
-                "criterio_robustez": "Aceptar si |%di| <= 2.0% para cada condición evaluada."
-              }
-            ],
-            "referencia_robustez": "[ID_PROTOCOLO]",
-            "experimento_robustez": [
-              { "nombre_experimento": "Flow", "temperatura": 30.0, "flujo": 1.00, "volumen_inyeccion": 10.0, "fase_movil": "Buffer pH [x]:ACN [y]" }
-            ]
-          }
-          ```
-
-  -----
-
-    - **Fase 2: Extracción de datos experimentales (reportes analíticos / LIMS)**
-
-        - **Fuentes:** Reportes analíticos finales y/o LIMS que contengan secciones "Robustness Flow/Temperature/Injection Volume/Mobile Phase".
-        - **Objetivo específico:** Capturar las réplicas individuales, los promedios por condición y las diferencias porcentuales respecto a la condición nominal para cada API.
-        - **Plan de acción:**
-          1.  Identifica bloques que agrupen réplicas por experimento y condición (Nominal, Bajo, Alto, etc.).
-          2.  Registra cada réplica en la lista `robustez`, conservando el texto literal del experimento (ej.: "Robustness Flow - Bajo").
-          3.  Transcribe `promedio_experimento` y `diferencia_porcentaje` si el reporte los provee; si faltan, deja `null` y anota en la trazabilidad que se calcularán en el razonamiento.
-          4.  Marca `conclusion_robustez` como `[pendiente_validar]` hasta que se evalúe en el razonamiento.
-          5.  Asegura que la `referencia_robustez` y los factores de `experimento_robustez` estén presentes en la raíz del objeto.
-        - **Normalización y control de calidad:**
-          - Elimina símbolos de porcentaje; usa punto decimal.
-          - `replica` debe ser entero correlativo.
-          - Si se detectan múltiples corridas para el mismo API/condición, prioriza la más completa y documenta el criterio.
-        - **Trazabilidad obligatoria (registro interno, no en la salida):** `source_document`, `page_or_span`, `query_used`, `confidence`, `cleaning_notes`.
-
-  -----
-
-    - **Ejemplo de extracción completa (Set11ExtractionModel):**
-      ```json
-      {
-        "activos_robustez": [
-          {
-            "nombre": "[API_1]",
-            "robustez": [
-              { "experimento": "Robustness Flow - Nominal", "replica": 1, "valores_aproximados": 100.2, "promedio_experimento": 100.1, "diferencia_porcentaje": 0.0 },
-              { "experimento": "Robustness Flow - Nominal", "replica": 2, "valores_aproximados": 100.0, "promedio_experimento": 100.1, "diferencia_porcentaje": 0.0 },
-              { "experimento": "Robustness Flow - Bajo", "replica": 1, "valores_aproximados": 99.6, "promedio_experimento": 99.6, "diferencia_porcentaje": -0.50 },
-              { "experimento": "Robustness Flow - Alto", "replica": 1, "valores_aproximados": 100.7, "promedio_experimento": 100.7, "diferencia_porcentaje": 0.60 },
-              { "experimento": "Robustness Temperature - Nominal", "replica": 1, "valores_aproximados": 100.3, "promedio_experimento": 100.3, "diferencia_porcentaje": 0.0 },
-              { "experimento": "Robustness Temperature - Alto", "replica": 1, "valores_aproximados": 100.9, "promedio_experimento": 100.9, "diferencia_porcentaje": 0.60 }
-            ],
-            "conclusion_robustez": "[pendiente_validar]",
-            "criterio_robustez": "Aceptar si |%di| <= 2.0% para todas las condiciones."
-          },
-          {
-            "nombre": "[API_2]",
-            "robustez": [
-              { "experimento": "Robustness Flow - Nominal", "replica": 1, "valores_aproximados": 99.8, "promedio_experimento": 99.9, "diferencia_porcentaje": 0.0 },
-              { "experimento": "Robustness Flow - Nominal", "replica": 2, "valores_aproximados": 100.0, "promedio_experimento": 99.9, "diferencia_porcentaje": 0.0 },
-              { "experimento": "Robustness Flow - Bajo", "replica": 1, "valores_aproximados": 99.4, "promedio_experimento": 99.5, "diferencia_porcentaje": -0.40 },
-              { "experimento": "Robustness Flow - Alto", "replica": 1, "valores_aproximados": 100.5, "promedio_experimento": 100.4, "diferencia_porcentaje": 0.50 },
-              { "experimento": "Robustness Mobile Phase - Nominal", "replica": 1, "valores_aproximados": 99.7, "promedio_experimento": 99.7, "diferencia_porcentaje": 0.0 },
-              { "experimento": "Robustness Mobile Phase - Variante B", "replica": 1, "valores_aproximados": 100.2, "promedio_experimento": 100.2, "diferencia_porcentaje": 0.50 }
-            ],
-            "conclusion_robustez": "[pendiente_validar]",
-            "criterio_robustez": "Aceptar si |%di| <= 2.5% para cada condición de robustez."
-          }
-        ],
-        "referencia_robustez": "[HTA_ROBUSTEZ]",
-        "experimento_robustez": [
-          { "nombre_experimento": "Flow", "temperatura": 30.0, "flujo": 1.00, "volumen_inyeccion": 10.0, "fase_movil": "Buffer pH [x]:ACN [y]" },
-          { "nombre_experimento": "Temperature", "temperatura": 35.0, "flujo": 1.00, "volumen_inyeccion": 10.0, "fase_movil": "Buffer pH [x]:ACN [y]" },
-          { "nombre_experimento": "Mobile Phase", "temperatura": 30.0, "flujo": 1.00, "volumen_inyeccion": 10.0, "fase_movil": "Buffer pH [x1]:ACN [y1]" }
-        ]
-      }
-      ```
-  </REGLAS_DE_EXTRACCION_ESTRUCTURADA>
-
-  <br>
-
   <REGLAS_DE_RAZONAMIENTO>
   Estas reglas aplican al `reasoning_agent`.
 
-    - **Propósito:** Evaluar si cada API cumple los criterios de robustez del protocolo comparando las condiciones modificadas contra la condición nominal y preparar la salida para `Set11StructuredOutputSupervisor`.
-    - **Herramientas restringidas:** No utilices `linealidad_tool`; está prohibida en este conjunto.
-    - **Entradas:** Objeto JSON producido por el `structured_extraction_agent`.
-    - **Pasos del razonamiento:**
-      1.  Agrupa las réplicas por API y experimento, identificando claramente la condición nominal.
-      2.  Calcula `promedio_experimento` y `diferencia_porcentaje` si se dejaron en `null`, documentando el método.
-      3.  Para cada condición distinta de la nominal, calcula `%di = 100 * (promedio_condicion - promedio_nominal) / promedio_nominal` y registra el resultado antes de compararlo.
-      4.  Compara cada `%di` con el criterio literal (`criterio_robustez`). Si el criterio incluye otras verificaciones (ej. orden de elución), deja evidencia textual del chequeo.
-      5.  Determina `conclusion_robustez` por API: "Cumple" únicamente si todas las condiciones evaluadas satisfacen los límites; de lo contrario, "No Cumple".
-      6.  Resume en la narrativa los valores clave (promedio nominal, %di por condición, umbral aplicado) antes de emitir la conclusión.
-      7.  Señala cualquier dato faltante o supuesto que pueda afectar la interpretación.
-    - **Mini-ejemplo (orden recomendado):**
-      - `[API_1] Flow Bajo`: promedio_nominal=100.1; promedio_bajo=99.6; %di=-0.50% (<=2.0%) -> Cumple.
-      - `[API_1] Flow Alto`: %di=+0.60% (<=2.0%) -> Cumple.
-      - `[API_2] Mobile Phase Variante B`: %di=+0.50% (<=2.5%) -> Cumple. Conclusión global API_2 = "Cumple".
+    - **Propósito:** Ubicar los datos ya estructurados en el modelo de salida `Set11StructuredOutputSupervisor` SIN realizar ningún cálculo, inferencia, validación numérica ni conclusión. Es exclusivamente un mapeo 1:1 de campos.
+    - **Herramientas restringidas:** No utilices ninguna herramienta. No llames funciones externas. No apliques fórmulas ni redondeos.
+    - **Entradas:** Objeto JSON producido por el `structured_extraction_agent` que incluye la clave `experimento_robustez` (lista de `DataFactoresExperimentos`).
+    - **Convenciones para placeholders (solo en ejemplos):**
+      - `<STR_X>`: cualquier texto.
+      - `<NUM_X>`: cualquier número (usa el tipo que corresponda si implementas).
+    - **Pasos del razonamiento (mapeo literal):**
+      1. Verifica únicamente la presencia de la clave `experimento_robustez`. Si no existe, emite `experimentos_robustez: []` (lista vacía). No rellenes, no inventes.
+      2. Copia los elementos de `experimento_robustez` a `experimentos_robustez` **sin alterar**:
+        - No cambies valores, unidades, tipos, ni el orden.
+        - No crees ni borres campos.
+        - No transformes cadenas (no trims, no upper/lower).
+        - Mantén `null` como `null` si viniera así.
+      3. No calcules promedios, diferencias, ni porcentajes. No determines conclusiones. No modifiques criterios.
+      4. No agregues narrativa ni comentarios en la salida. El resultado final debe ser exclusivamente el JSON del modelo de salida.
+    - **Mini-ejemplo (mapeo 1:1, data-agnostic):**
+      - **Entrada (extracto):**
+        ```json
+        {
+          "experimento_robustez": [
+            {
+              "nombre_experimento": "<STR_EXPERIMENTO_A>",
+              "temperatura": "<NUM_TEMPERATURA_A>",
+              "flujo": "<NUM_FLUJO_A>",
+              "volumen_inyeccion": "<NUM_VOL_INY_A>",
+              "fase_movil": "<STR_FASE_A>"
+            }
+          ]
+        }
+        ```
+      - **Salida esperada (renombrando la clave, sin cambios de contenido):**
+        ```json
+        {
+          "experimentos_robustez": [
+            {
+              "nombre_experimento": "<STR_EXPERIMENTO_A>",
+              "temperatura": "<NUM_TEMPERATURA_A>",
+              "flujo": "<NUM_FLUJO_A>",
+              "volumen_inyeccion": "<NUM_VOL_INY_A>",
+              "fase_movil": "<STR_FASE_A>"
+            }
+          ]
+        }
+        ```
   </REGLAS_DE_RAZONAMIENTO>
-
-  <br>
 
   <REGLAS_DE_SALIDA_SUPERVISOR>
   Aplica al `supervisor_agent`.
 
     - **Modelo de salida obligatorio:** `Set11StructuredOutputSupervisor`.
-    - **Formato:** único objeto JSON bien formado; no se permite texto adicional tras el razonamiento.
-    - **Integración de datos:**
-      - Copia las réplicas de `robustez` incorporando los valores calculados definitivos.
-      - Actualiza `conclusion_robustez` y `criterio_robustez` por API según el análisis.
-      - Convierte `experimento_robustez` a `experimentos_robustez` conservando los factores del protocolo.
-      - Mantén `referencia_robustez` literal.
-    - **Ejemplo de salida final del supervisor:**
+    - **Formato:** ÚNICO objeto JSON bien formado; NO se permite texto adicional, comentarios, ni narrativa.
+    - **Integración de datos (solo mapeo):**
+      - Renombra la clave `experimento_robustez` → `experimentos_robustez`.
+      - Copia **literalmente** cada objeto `DataFactoresExperimentos` sin alteraciones en sus campos:
+        - `nombre_experimento`, `temperatura`, `flujo`, `volumen_inyeccion`, `fase_movil`.
+      - No agregues otras claves a menos que estén definidas en el modelo. Para `Set11StructuredOutputSupervisor`, **solo** debe emitirse `experimentos_robustez`.
+      - Si la entrada carece de `experimento_robustez`, devuelve `"experimentos_robustez": []`.
+    - **Ejemplo de salida final del supervisor (data-agnostic):**
       ```json
       {
-        "activos_robustez": [
+        "experimentos_robustez": [
           {
-            "nombre": "[API_1]",
-            "robustez": [
-              { "experimento": "Robustness Flow - Nominal", "replica": 1, "valores_aproximados": 100.2, "promedio_experimento": 100.1, "diferencia_porcentaje": 0.0 },
-              { "experimento": "Robustness Flow - Nominal", "replica": 2, "valores_aproximados": 100.0, "promedio_experimento": 100.1, "diferencia_porcentaje": 0.0 },
-              { "experimento": "Robustness Flow - Bajo", "replica": 1, "valores_aproximados": 99.6, "promedio_experimento": 99.6, "diferencia_porcentaje": -0.50 },
-              { "experimento": "Robustness Flow - Alto", "replica": 1, "valores_aproximados": 100.7, "promedio_experimento": 100.7, "diferencia_porcentaje": 0.60 },
-              { "experimento": "Robustness Temperature - Nominal", "replica": 1, "valores_aproximados": 100.3, "promedio_experimento": 100.3, "diferencia_porcentaje": 0.0 },
-              { "experimento": "Robustness Temperature - Alto", "replica": 1, "valores_aproximados": 100.9, "promedio_experimento": 100.9, "diferencia_porcentaje": 0.60 }
-            ],
-            "conclusion_robustez": "Cumple",
-            "criterio_robustez": "Aceptar si |%di| <= 2.0% para todas las condiciones."
+            "nombre_experimento": "<STR_EXPERIMENTO_A>",
+            "temperatura": "<NUM_TEMPERATURA_A>",
+            "flujo": "<NUM_FLUJO_A>",
+            "volumen_inyeccion": "<NUM_VOL_INY_A>",
+            "fase_movil": "<STR_FASE_A>"
           },
           {
-            "nombre": "[API_2]",
-            "robustez": [
-              { "experimento": "Robustness Flow - Nominal", "replica": 1, "valores_aproximados": 99.8, "promedio_experimento": 99.9, "diferencia_porcentaje": 0.0 },
-              { "experimento": "Robustness Flow - Nominal", "replica": 2, "valores_aproximados": 100.0, "promedio_experimento": 99.9, "diferencia_porcentaje": 0.0 },
-              { "experimento": "Robustness Flow - Bajo", "replica": 1, "valores_aproximados": 99.4, "promedio_experimento": 99.5, "diferencia_porcentaje": -0.40 },
-              { "experimento": "Robustness Flow - Alto", "replica": 1, "valores_aproximados": 100.5, "promedio_experimento": 100.4, "diferencia_porcentaje": 0.50 },
-              { "experimento": "Robustness Mobile Phase - Nominal", "replica": 1, "valores_aproximados": 99.7, "promedio_experimento": 99.7, "diferencia_porcentaje": 0.0 },
-              { "experimento": "Robustness Mobile Phase - Variante B", "replica": 1, "valores_aproximados": 100.2, "promedio_experimento": 100.2, "diferencia_porcentaje": 0.50 }
-            ],
-            "conclusion_robustez": "Cumple",
-            "criterio_robustez": "Aceptar si |%di| <= 2.5% para cada condición de robustez."
+            "nombre_experimento": "<STR_EXPERIMENTO_B>",
+            "temperatura": "<NUM_TEMPERATURA_B>",
+            "flujo": "<NUM_FLUJO_B>",
+            "volumen_inyeccion": "<NUM_VOL_INY_B>",
+            "fase_movil": "<STR_FASE_B>"
+          },
+          {
+            "nombre_experimento": "<STR_EXPERIMENTO_C>",
+            "temperatura": "<NUM_TEMPERATURA_C>",
+            "flujo": "<NUM_FLUJO_C>",
+            "volumen_inyeccion": "<NUM_VOL_INY_C>",
+            "fase_movil": "<STR_FASE_C>"
           }
-        ],
-        "referencia_robustez": "[HTA_ROBUSTEZ]",
-        "experimentos_robustez": [
-          { "nombre_experimento": "Flow", "temperatura": 30.0, "flujo": 1.00, "volumen_inyeccion": 10.0, "fase_movil": "Buffer pH [x]:ACN [y]" },
-          { "nombre_experimento": "Temperature", "temperatura": 35.0, "flujo": 1.00, "volumen_inyeccion": 10.0, "fase_movil": "Buffer pH [x]:ACN [y]" },
-          { "nombre_experimento": "Mobile Phase", "temperatura": 30.0, "flujo": 1.00, "volumen_inyeccion": 10.0, "fase_movil": "Buffer pH [x1]:ACN [y1]" }
         ]
       }
       ```
-    - **Recordatorio estricto:** El razonamiento debe documentar cálculos, umbrales y conclusiones antes de presentar el JSON final.
+    - **Recordatorio estricto:** No realices cálculos, comparaciones, imputaciones ni conclusiones. Emite **solo** el JSON del modelo con el mapeo literal.
   </REGLAS_DE_SALIDA_SUPERVISOR>
+"""
+
+RULES_SET_12 = """
+  <REGLAS_DE_RAZONAMIENTO>
+    Estas reglas aplican al `reasoning_agent`.
+
+      - **Propósito:** Evaluar si cada **Entidad de Análisis** (`variable_entrada`) cumple los criterios de robustez del protocolo, comparando los resultados de las **Condiciones Modificadas** (Bajo y Alto) contra la **Condición Nominal** y preparando la salida para `Set12StructuredOutputSupervisor`.
+      - **Herramientas restringidas:** No utilices `linealidad_tool`; está prohibida en este conjunto.
+      - **Entradas:** Objeto JSON producido por el `structured_extraction_agent` (que sigue el modelo `Set12ExtractionModel`).
+      - **Pasos del razonamiento:**
+        1.  Agrupa las réplicas por **Entidad de Análisis** (`variable_entrada`) y por **Condición de Experimento** (Nominal, Bajo, Alto).
+        2.  Calcula el `promedio_experimento` para cada `replicas` de cada condición si los valores del campo `promedio_experimento` en la salida se dejaron en `null`, documentando claramente el método de cálculo (i.e., promedio de las réplicas).
+        3.  Para cada **Condición Modificada** (Bajo y Alto), calcula el **Porcentaje de Diferencia** (`diferencia_porcentaje` o `%di`) usando la fórmula:
+            $$ \%di = 100 \times \frac{(\text{promedio\_condicion\_modificada} - \text{promedio\_nominal})}{\text{promedio\_nominal}} $$
+            Registra este resultado antes de compararlo.
+        4.  Compara cada `%di` (tanto `di_porcentaje_bajo` como `di_porcentaje_alto`) con el `criterio_robustez` literal. Si el criterio incluye otras verificaciones (ej. orden de elución, estabilidad), deja evidencia textual del chequeo.
+        5.  Determina la `conclusion_robustez` por **Entidad de Análisis**: "Cumple" únicamente si **todas** las condiciones evaluadas satisfacen los límites del `criterio_robustez`; de lo contrario, "No Cumple".
+        6.  Resume en la narrativa los valores clave para cada Entidad (promedio nominal, %di por condición, umbral aplicado) antes de emitir la conclusión.
+        7.  Señala cualquier dato faltante o supuesto que pueda afectar la interpretación.
+      - **Mini-ejemplo (orden recomendado, usando nombres genéricos):**
+        - `[Componente_X] Factor_A - Condición_Bajo`: promedio_nominal=100.1; promedio_bajo=99.6; %di=-0.50% (<=2.0%) -> Cumple.
+        - `[Componente_X] Factor_A - Condición_Alto`: %di=+0.60% (<=2.0%) -> Cumple.
+        - `[Componente_Y] Factor_B - Variante_C`: %di=+0.50% (<=2.5%) -> Cumple. Conclusión global Componente_Y = "Cumple".
+    </REGLAS_DE_RAZONAMIENTO>
+
+    <br>
+
+    <REGLAS_DE_SALIDA_SUPERVISOR>
+    Aplica al `supervisor_agent`.
+
+      - **Modelo de salida obligatorio:** `Set12StructuredOutputSupervisor`.
+      - **Formato:** único objeto JSON bien formado; no se permite texto adicional tras el razonamiento.
+      - **Integración de datos:**
+        - Copia las réplicas de `robustez` incorporando los valores calculados definitivos (`promedio_experimento` y `diferencia_porcentaje`).
+        - El campo `experimento` en `DataRobustezStrOutput` debe crearse combinando la `variable_entrada` y la condición (ej: "Robustez [variable_entrada] - [Condición]").
+        - El campo `nombre` en `ActivoRobustezStrOutput` representa el **Ingrediente Activo/Componente Principal** evaluado y debe ser genérico (ej: "[Componente_1]", "[Componente_2]").
+        - Actualiza `conclusion_robustez` y `criterio_robustez` por **Entidad de Análisis** según el análisis.
+        - Mantén `referencia_robustez` literal.
+      - **Ejemplo de salida final del supervisor (utilizando placeholders):**
+        ```json
+        {
+          "activos_robustez": [
+            {
+              "nombre": "[Componente_A]",
+              "robustez": [
+                { "experimento": "Robustez Factor_X - Nominal", "replica": 1, "valores_aproximados": 100.2, "promedio_experimento": 100.1, "diferencia_porcentaje": 0.0 },
+                { "experimento": "Robustez Factor_X - Nominal", "replica": 2, "valores_aproximados": 100.0, "promedio_experimento": 100.1, "diferencia_porcentaje": 0.0 },
+                { "experimento": "Robustez Factor_X - Bajo", "replica": 1, "valores_aproximados": 99.6, "promedio_experimento": 99.6, "diferencia_porcentaje": -0.50 },
+                { "experimento": "Robustez Factor_X - Alto", "replica": 1, "valores_aproximados": 100.7, "promedio_experimento": 100.7, "diferencia_porcentaje": 0.60 }
+              ],
+              "conclusion_robustez": "Cumple",
+              "criterio_robustez": "Aceptar si |%di| <= 2.0% para todas las condiciones."
+            },
+            {
+              "nombre": "[Componente_B]",
+              "robustez": [
+                { "experimento": "Robustez Factor_Y - Nominal", "replica": 1, "valores_aproximados": 99.8, "promedio_experimento": 99.9, "diferencia_porcentaje": 0.0 },
+                { "experimento": "Robustez Factor_Y - Bajo", "replica": 1, "valores_aproximados": 99.4, "promedio_experimento": 99.5, "diferencia_porcentaje": -0.40 }
+              ],
+              "conclusion_robustez": "Cumple",
+              "criterio_robustez": "Aceptar si |%di| <= 2.5% para cada condición de robustez."
+            }
+          ],
+          "referencia_robustez": "[REFERENCIA_DOCUMENTAL_GENÉRICA]"
+          // El campo 'experimentos_robustez' fue omitido en este ejemplo, asume que debe incluirse según el modelo 'Set12StructuredOutputSupervisor' si el agente de extracción lo proporciona.
+        }
+        ```
+      - **Recordatorio estricto:** El razonamiento debe documentar cálculos, umbrales y conclusiones antes de presentar el JSON final.
+    </REGLAS_DE_SALIDA_SUPERVISOR>
 """

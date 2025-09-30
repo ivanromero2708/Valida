@@ -27,6 +27,7 @@ json-repair==0.41.0
 pubchempy==1.0.4
 lxml>=4.9,<6
 pdfminer.six>=20231228
+pypdf2
 
 # ── Visualización ───────────────────────────────────────────────────────────
 matplotlib==3.10.3

@@ -8,11 +8,12 @@ from src.config.models.set_8 import (Set8ExtractionModel,Set8StructuredOutputSup
 from src.config.models.set_10 import (Set10ExtractionModel,Set10StructuredOutputSupervisor,)
 from src.config.models.set_11 import (Set11ExtractionModel,Set11StructuredOutputSupervisor,)
 from src.config.models.protocolo import ParametrosValidacion
+from src.config.models.set_12 import (Set12ExtractionModel,Set12StructuredOutputSupervisor,)
 
-from src.config.prompt_sets import (RULES_SET_2,RULES_SET_3,RULES_SET_4,RULES_SET_5,RULES_SET_6,RULES_SET_7,RULES_SET_8,RULES_SET_10,RULES_SET_11)
+from src.config.prompt_sets import (RULES_SET_2,RULES_SET_3,RULES_SET_4,RULES_SET_5,RULES_SET_6,RULES_SET_7,RULES_SET_8,RULES_SET_10,RULES_SET_11,RULES_SET_12)
 
 
-TEMPLATE_SETS_TRIAL = {
+TEMPLATE_SETS = {
     "Protocolo": {
         "human_message_prompt": "",
         "doc_path_list": [
@@ -170,9 +171,22 @@ TEMPLATE_SETS_TRIAL = {
         "structured_output_supervisor": Set11StructuredOutputSupervisor,
         "tags": ["activos_robustez", "refencia_robustez"],
     },
+    "Set 12": {
+        "human_message_prompt": RULES_SET_12,
+        "doc_path_list": [
+            #"dir_protocolo",
+            "dir_reporte_lims_robustez",
+            #"dirs_hoja_trabajo_robustez",
+            #"dirs_bitacoras_robustez",
+            #"dirs_soportes_cromatograficos_robustez",
+        ],
+        "data_extraction_model": Set12ExtractionModel,
+        "structured_output_supervisor": Set12StructuredOutputSupervisor,
+        "tags": ["activos_robustez", "refencia_robustez"],
+    },
 }
 
-TEMPLATE_SETS = {
-    "Protocolo": TEMPLATE_SETS_TRIAL["Protocolo"],
-    "Set 11": TEMPLATE_SETS_TRIAL["Set 11"]
-}
+#TEMPLATE_SETS = {
+#    "Protocolo": TEMPLATE_SETS_TRIAL["Protocolo"],
+#    "Set 12": TEMPLATE_SETS_TRIAL["Set 12"]
+#}
