@@ -28,6 +28,8 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Type
 from pathlib import Path
 
+from src.utils.pathing import get_images_root
+
 import numpy as np
 # Configurar matplotlib para usar backend sin GUI antes de importar pyplot
 import matplotlib
@@ -298,9 +300,9 @@ class LinearidadTool(BaseTool):
             # Siempre generar y guardar gráficos (requerido para flujo de agentes)
             plotter = LinearidadPlotter()
             
-            # Crear directorio de imágenes en src/images
-            images_dir = Path(__file__).parent.parent / "images"
-            images_dir.mkdir(exist_ok=True)
+            # Crear directorio de imágenes de salida configurable
+            images_dir = get_images_root()
+            images_dir.mkdir(parents=True, exist_ok=True)
             
             # Generar UUIDs únicos para los archivos
             uuid_regresion = str(uuid.uuid4())

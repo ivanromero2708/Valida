@@ -9,6 +9,7 @@ from src.config.template_config import TEMPLATE_SETS
 from src.config.configuration import Configuration
 from src.graph.state import ValidaState
 from src.prompts.prompts_agent_ui import HUMAN_MESSAGE_PROMPT
+from src.utils.pathing import resolve_input_path
 
 logger = logging.getLogger(__name__)
 
@@ -39,16 +40,15 @@ class AgentUI:
             return getattr(state, key, default)
     
     @traceable
-    def build_doc_path_list(self, state: ValidaState, set_name: str) -> list[str]:
+    def build_doc_path_list(self, state: ValidaState, set_name: str) -> list[dict[str, str]]:
         cfg = self.template_sets.get(set_name, {})
         keys: list[str] = cfg.get("doc_path_list", [])
         paths: list[str] = []
 
         for k in keys:
             v = self._state_get(state, k, "")
-            paths.extend(_coerce_to_list(v))  # <- CORRECTO (no reasignamos paths)
+            paths.extend(_coerce_to_list(v))
 
-        # Deduplicar preservando orden y limpiando espacios
         seen: set[str] = set()
         unique_paths: list[str] = []
         for p in paths:
@@ -56,7 +56,35 @@ class AgentUI:
             if p_str and p_str not in seen:
                 seen.add(p_str)
                 unique_paths.append(p_str)
-        return unique_paths
+
+        resolved_entries: list[dict[str, str]] = []
+        for original_path in unique_paths:
+            resolved_path = resolve_input_path(original_path)
+            if resolved_path is None:
+                logger.warning("Ruta no interpretable: %s", original_path)
+                continue
+
+            resolved_path = resolved_path.resolve()
+            if not resolved_path.exists():
+                logger.warning(
+                    "Documento no encontrado tras normalizar '%s' -> '%s'",
+                    original_path,
+                    resolved_path,
+                )
+                continue
+
+            resolved_entries.append(
+                {
+                    "original_path": str(original_path),
+                    "resolved_path": str(resolved_path),
+                }
+            )
+
+        if not resolved_entries:
+            logger.warning("Set %s sin documentos tras normalizar rutas", set_name)
+
+        return resolved_entries
+
     
     @traceable
     def run(self, state: ValidaState, config: RunnableConfig) -> Command[Literal["index_node"]]:
