@@ -1,4 +1,5 @@
 from langgraph.prebuilt.chat_agent_executor import AgentStateWithStructuredResponse
+from enum import Enum
 from typing import Annotated, List, Dict, Any, Optional
 from pydantic import Field, BaseModel
 import operator
@@ -25,6 +26,36 @@ class FileDescriptor(BaseModel):
     source_id: Optional[str] = Field(None, description="Identificador interno opcional del repositorio origen")
     checksum: Optional[str] = Field(None, description="Checksum opcional para validar integridad")
 
+
+class DocumentGroupName(str, Enum):
+    PROTOCOLO = "Protocolo"
+    HOJAS_TRABAJO_PREPARACION = "Hojas de Trabajo Preparacion"
+    PREPARACION_BITACORAS = "Preparacion Bitacoras"
+    LINEALIDAD = "Linealidad"
+    PRECISION_SISTEMA = "Precision del sistema"
+    PRECISION_METODO = "Precision del método"
+    PRECISION_INTERMEDIA = "Precision Intermedia"
+    EXACTITUD = "Exactitud"
+    ESTABILIDAD_SOLUCION = "Estabilidad solución"
+    ESTABILIDAD_FASE_MOVIL = "Estabilidad fase móvil"
+    ROBUSTEZ = "Robustez"
+
+
+class DocumentName(str, Enum):
+    PROTOCOLO = "Protocolo"
+    HOJAS_TRABAJO_PREPARACION = "Hojas de Trabajo Preparacion"
+    PREPARACION_BITACORAS = "Preparacion Bitacoras"
+    REPORTE_LIMS = "Reporte LIMS"
+    HOJAS_TRABAJO = "Hojas de Trabajo"
+    BITACORAS = "Bitacoras"
+    SOPORTES_CROMATOGRAFICOS = "Soportes Cromatográficos"
+
+
+class DocumentGroup(BaseModel):
+    group: DocumentGroupName = Field(..., description="Grupo temático de documentos")
+    document: DocumentName = Field(..., description="Subtipo de documento dentro del grupo")
+    files: List[FileDescriptor] = Field(default_factory=list, description="Listado de archivos asociados al grupo y subtipo")
+
 class ValidaState(AgentStateWithStructuredResponse):
     """Estado del Sistema Agentico Valida"""
     validacion: str = Field(..., description="Nombre del reporte de validación")
@@ -33,6 +64,7 @@ class ValidaState(AgentStateWithStructuredResponse):
     codigo_producto: str = Field(..., description="Código del producto cuyo método anlítico está siendo validado")
     lista_activos: List[API] = Field(..., description="Lista de ingredientes activos del producto cuyo metodo esta siendo validado")
     rango_validado: str = Field(..., description="Rango de validación del método analítico")
+    document_groups: List[DocumentGroup] = Field(default_factory=list, description="Colecciones de archivos agrupados por tipo de documento")
     
     # Protocolo de validación
     dir_protocolo: FileDescriptor = Field(..., description="Directorio del protocolo de validació del método analítico")
