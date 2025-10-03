@@ -129,36 +129,6 @@ class ValidaState(AgentStateWithStructuredResponse):
     dirs_hoja_trabajo_robustez: List[FileDescriptor] = Field(..., description="Directorios de las Hojas de Trabajo de Robustez")
     dirs_bitacoras_robustez: List[FileDescriptor] = Field(..., description="Directorios de las Bitacoras de Robustez")
     dirs_soportes_cromatograficos_robustez: List[FileDescriptor] = Field(..., description="Directorios de los Soportes Cromatográficos de Robustez")
-    
-
-    def get_document_group(self, group: Union[DocumentGroupName, str], document: Union[DocumentName, str]) -> DocumentGroup:
-        """Return the document group matching the provided keys."""
-        try:
-            group_key = DocumentGroupName(group)
-        except ValueError as exc:
-            raise ValueError(f"Grupo de documentos desconocido: {group}") from exc
-
-        try:
-            document_key = DocumentName(document)
-        except ValueError as exc:
-            raise ValueError(f"Tipo de documento desconocido: {document}") from exc
-
-        for entry in self.document_groups:
-            if entry.group == group_key and entry.document == document_key:
-                return entry
-
-        raise ValueError(f"No se encontró el grupo {group_key.value} / {document_key.value} en el estado")
-
-    def get_files(self, group: Union[DocumentGroupName, str], document: Union[DocumentName, str], *, allow_empty: bool = True) -> List[FileDescriptor]:
-        """Return the files belonging to the given group and document."""
-        entry = self.get_document_group(group, document)
-        if not entry.files and not allow_empty:
-            raise ValueError(f"El grupo {entry.group.value} / {entry.document.value} no contiene archivos")
-        return list(entry.files)
-
-    def iter_document_groups(self) -> Iterator[DocumentGroup]:
-        """Iterate over the registered document groups."""
-        return iter(self.document_groups)
 
     extraction_content: Annotated[List[IndexNodeOutput], operator.add]
     

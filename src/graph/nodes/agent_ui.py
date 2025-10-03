@@ -4,6 +4,7 @@ from langchain_core.messages import HumanMessage
 import logging
 import os
 from typing import Any, Literal, Iterable
+from collections.abc import Mapping
 from langsmith import traceable
 from pydantic import ValidationError
 
@@ -201,6 +202,17 @@ def _normalize_to_descriptors(value: Any) -> list[FileDescriptor]:
     return descriptors
 
 
+
+
+
+def _unwrap_state(value: Any) -> Any:
+    """Return the underlying state object when instrumentation wraps it."""
+    candidate = value
+    for attr in ("state", "value", "data"):
+        candidate = getattr(candidate, attr, candidate)
+    return candidate
+
+
 class AgentUI:
     """Agent UI that classifies validation documents and manages workflow"""
 
@@ -209,22 +221,78 @@ class AgentUI:
         self.template_sets = TEMPLATE_SETS
 
     @traceable
-    def _state_get(self, state: ValidaState, key: str, default: Any = "") -> Any:
-        if isinstance(state, dict):
-            return state.get(key, default)
-        return getattr(state, key, default)
+    def _state_get(self, state: ValidaState | Mapping[str, Any], key: str, default: Any = "") -> Any:
+        candidate = _unwrap_state(state)
+
+        if isinstance(candidate, Mapping):
+            return candidate.get(key, default)
+
+        if hasattr(candidate, "dict"):
+            data = candidate.dict(exclude_none=False)
+            if key in data:
+                return data[key]
+
+        return getattr(candidate, key, default)
 
     @traceable
     def _collect_from_state(self, state: ValidaState, key: str) -> Iterable[FileDescriptor]:
+        candidate = _unwrap_state(state)
+        descriptors: list[FileDescriptor] = []
+
+        def _coerce_name(value: Any) -> str | None:
+            if value is None:
+                return None
+            if isinstance(value, (DocumentGroupName, DocumentName)):
+                return value.value
+            if hasattr(value, "value") and isinstance(getattr(value, "value"), str):
+                return getattr(value, "value")
+            if isinstance(value, str):
+                return value
+            return str(value)
+
         mapping = DOC_KEY_TO_GROUP.get(key)
-        if mapping and hasattr(state, "get_files"):
+        if mapping:
             group, document = mapping
-            try:
-                return [descriptor.model_copy() for descriptor in state.get_files(group, document, allow_empty=True)]
-            except ValueError as exc:
-                logger.debug("Grupo no encontrado para %s: %s", key, exc)
-        value = self._state_get(state, key, None)
-        return [descriptor.model_copy() for descriptor in _normalize_to_descriptors(value)]
+            target_group = _coerce_name(group)
+            target_document = _coerce_name(document)
+
+            if isinstance(candidate, Mapping):
+                document_groups = candidate.get("document_groups") or []
+            else:
+                document_groups = getattr(candidate, "document_groups", None) or []
+
+            for entry in document_groups:
+                if isinstance(entry, Mapping):
+                    entry_group = entry.get("group")
+                    entry_document = entry.get("document")
+                    files = entry.get("files")
+                else:
+                    entry_group = getattr(entry, "group", None)
+                    entry_document = getattr(entry, "document", None)
+                    files = getattr(entry, "files", None)
+
+                if _coerce_name(entry_group) != target_group or _coerce_name(entry_document) != target_document:
+                    continue
+
+                descriptors.extend(_normalize_to_descriptors(files))
+
+        if not descriptors:
+            value = self._state_get(state, key, None)
+            descriptors.extend(_normalize_to_descriptors(value))
+
+        unique: list[FileDescriptor] = []
+        seen: set[tuple[str, str]] = set()
+
+        for descriptor in descriptors:
+            copy = descriptor.model_copy()
+            dedup_key = (copy.url, copy.name)
+            if dedup_key in seen:
+                continue
+            seen.add(dedup_key)
+            unique.append(copy)
+
+        return unique
+
 
     @traceable
     def build_documents(self, state: ValidaState, set_name: str) -> list[FileDescriptor]:
