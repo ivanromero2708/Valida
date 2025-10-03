@@ -55,6 +55,7 @@ class IndexNode:
             raise EnvironmentError("Defina MISTRAL_API_KEY en el entorno")
         self.client = Mistral(api_key=api_key, timeout_ms=300000)
     
+    @traceable
     def get_pdf_page_count(self, pdf_path: str) -> int:
         """Get the number of pages in a PDF."""
         try:
@@ -65,6 +66,7 @@ class IndexNode:
             self.logger.error(f"Error counting pages in {pdf_path}: {e}")
             return 0
     
+    @traceable
     def split_pdf_into_chunks(self, pdf_path: str) -> list[str]:
         """Split PDF into chunks of max_pages and return temporary file paths."""
         temp_files = []
@@ -98,6 +100,7 @@ class IndexNode:
             
         return temp_files
 
+    @traceable
     def encode_pdf(self, pdf_path: str) -> str:
         """Encode the pdf to base64."""
         try:

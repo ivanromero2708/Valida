@@ -74,12 +74,14 @@ class RenderValidationReport:
                 to_fix[k] = ""
         data.update(to_fix)
 
+    @traceable
     def _merge_contexts(self, base: Dict[str, Any], extra: Dict[str, Any]) -> Dict[str, Any]:
         """Fusión simple: las claves de extra sobrescriben base."""
         merged = dict(base)
         merged.update(extra)
         return merged
 
+    @traceable
     def _extract_undefined_key(self, err_msg: str) -> Optional[str]:
         """
         Intenta extraer la clave undefined del mensaje de Jinja2.
@@ -88,6 +90,7 @@ class RenderValidationReport:
         m = re.search(r"'([^']+)'\s+is\s+undefined", err_msg)
         return m.group(1) if m else None
 
+    @traceable
     def _render_with_fallback_missing(self, doc: DocxTemplate, context: Dict[str, Any], max_retries: int = 30) -> None:
         """
         Intenta renderizar. Si hay variables undefined, las define como '' y reintenta, hasta max_retries.
@@ -110,6 +113,7 @@ class RenderValidationReport:
                     # Si no se pudo extraer, abortamos para no ciclar
                     raise
 
+    @traceable
     def _process_activos_images(self, doc: DocxTemplate, context: Dict[str, Any]) -> Dict[str, Any]:
         """
         Procesa las imágenes de linealidad para cada activo en el contexto.

@@ -208,11 +208,13 @@ class AgentUI:
         self.human_message_prompt = HUMAN_MESSAGE_PROMPT
         self.template_sets = TEMPLATE_SETS
 
+    @traceable
     def _state_get(self, state: ValidaState, key: str, default: Any = "") -> Any:
         if isinstance(state, dict):
             return state.get(key, default)
         return getattr(state, key, default)
 
+    @traceable
     def _collect_from_state(self, state: ValidaState, key: str) -> Iterable[FileDescriptor]:
         mapping = DOC_KEY_TO_GROUP.get(key)
         if mapping and hasattr(state, "get_files"):
