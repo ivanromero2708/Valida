@@ -27,6 +27,15 @@ class FileDescriptor(BaseModel):
     checksum: Optional[str] = Field(None, description="Checksum opcional para validar integridad")
 
 
+class RenderedReport(BaseModel):
+    name: str = Field(..., description="Nombre del archivo generado")
+    path: str = Field(..., description="Ruta local donde se guardó el archivo")
+    content_type: str = Field(..., description="Tipo MIME del archivo generado")
+    size: int = Field(..., description="Tamano del archivo en bytes")
+    content_base64: Optional[str] = Field(None, description="Contenido del archivo en base64 cuando no supera el límite configurado")
+    content_error: Optional[str] = Field(None, description="Mensaje de error si no se pudo adjuntar el contenido en base64")
+
+
 class DocumentGroupName(str, Enum):
     PROTOCOLO = "Protocolo"
     HOJAS_TRABAJO_PREPARACION = "Hojas de Trabajo Preparacion"
@@ -155,4 +164,5 @@ class ValidaState(AgentStateWithStructuredResponse):
     
     context_for_render: Annotated[List[SupervisorResearchValidationOutput], operator.add]
     fname_out: str = Field(..., description="Nombre del archivo de salida")
+    rendered_report: Optional[RenderedReport] = Field(None, description="Metadatos del reporte DOCX generado por el sistema")
     
