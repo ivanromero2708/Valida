@@ -7,6 +7,8 @@ import os
 import json
 import logging
 import tempfile
+import requests
+from urllib.parse import urlparse
 
 
 from src.graph.state import IndexNodeOutput, FileDescriptor
@@ -131,44 +133,85 @@ class IndexNode:
                 try:
                     request_params["document_annotation_format"] = response_format_from_pydantic_model(extraction_model)
                 except Exception as exc:
-                    self.logger.warning(f"No se pudo generar schema pydantic para {pdf_path}: {exc}")
+                    self.logger.warning("No se pudo generar schema pydantic para %s: %s", pdf_path, exc)
 
             return self.client.ocr.process(**request_params)
         except Exception as e:
             self.logger.error(f"Error processing chunk {pdf_path}: {e}")
             return None
-    
+
+    @traceable
+    def _resolve_pdf_path(self, pdf_path: str) -> tuple[str, list[str]]:
+        """Ensure a local copy of the PDF and list temp paths for cleanup."""
+        cleanup: list[str] = []
+        try:
+            parsed = urlparse(str(pdf_path))
+        except Exception:
+            parsed = None
+
+        if parsed and parsed.scheme in {"http", "https"}:
+            tmp_handle = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+            tmp_path = tmp_handle.name
+            tmp_handle.close()
+            try:
+                with requests.get(pdf_path, stream=True, timeout=(10, 120)) as response:
+                    response.raise_for_status()
+                    with open(tmp_path, "wb") as fh:
+                        for chunk in response.iter_content(chunk_size=8192):
+                            if chunk:
+                                fh.write(chunk)
+                cleanup.append(tmp_path)
+                return tmp_path, cleanup
+            except Exception as exc:
+                self.logger.error(f"No se pudo descargar PDF {pdf_path}: {exc}")
+                try:
+                    os.unlink(tmp_path)
+                except Exception:
+                    pass
+                raise
+
+        return pdf_path, cleanup
+
     def process_document(self, pdf_path: str, extraction_model: type[BaseModel]) -> list:
         """Process PDF with automatic chunking if needed."""
-        total_pages = self.get_pdf_page_count(pdf_path)
-        self.logger.info(f"Processing PDF {pdf_path} with {total_pages} pages")
-        
-        if total_pages <= self.max_pages_per_chunk:
-            # Process directly if within limit
-            result = self.process_chunk(pdf_path, extraction_model)
-            return [result] if result else []
-        
-        # Split into chunks and process each
-        chunk_files = self.split_pdf_into_chunks(pdf_path)
-        results = []
-        
         try:
-            for i, chunk_file in enumerate(chunk_files):
-                self.logger.info(f"Processing chunk {i+1}/{len(chunk_files)}")
-                result = self.process_chunk(chunk_file, extraction_model)
+            local_path, cleanup_paths = self._resolve_pdf_path(pdf_path)
+        except Exception as exc:
+            self.logger.error(f"No se pudo preparar el PDF {pdf_path}: {exc}")
+            return []
+
+        results: list = []
+        chunk_files: list[str] = []
+
+        try:
+            total_pages = self.get_pdf_page_count(local_path)
+            self.logger.info(f"Processing PDF {pdf_path} with {total_pages} pages")
+
+            if total_pages <= self.max_pages_per_chunk:
+                result = self.process_chunk(local_path, extraction_model)
                 if result:
                     results.append(result)
+            else:
+                chunk_files = self.split_pdf_into_chunks(local_path)
+                for i, chunk_file in enumerate(chunk_files):
+                    self.logger.info(f"Processing chunk {i+1}/{len(chunk_files)}")
+                    result = self.process_chunk(chunk_file, extraction_model)
+                    if result:
+                        results.append(result)
         finally:
-            # Clean up temporary files
             for chunk_file in chunk_files:
                 try:
                     os.unlink(chunk_file)
                 except Exception as e:
                     self.logger.warning(f"Could not delete temporary file {chunk_file}: {e}")
-        
+            for temp_path in cleanup_paths:
+                try:
+                    os.unlink(temp_path)
+                except Exception as e:
+                    self.logger.warning(f"Could not delete temporary file {temp_path}: {e}")
+
         return results
-    
-    
+
     def consolidate_chunks_data(self, chunk_responses: list, document_name: str, extraction_model: type[BaseModel]):
         """Consolida los document_annotation de todos los chunks y crea una instancia del modelo Pydantic."""
         try:
@@ -235,7 +278,7 @@ class IndexNode:
                 # Si ambos son dicts, mergear recursivamente
                 elif isinstance(target[key], dict) and isinstance(value, dict):
                     self._merge_chunk_data(target[key], value)
-                # Si son del mismo tipo pero no lista/dict, mantener el último valor
+                # Si son del mismo tipo pero no lista/dict, mantener el Ãºltimo valor
                 else:
                     target[key] = value
             else:
