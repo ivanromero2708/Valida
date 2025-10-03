@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import re
 import unicodedata
+import base64
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional
@@ -32,6 +33,7 @@ logger = logging.getLogger(__name__)
 _BASE_DIR = Path(__file__).resolve().parents[2]
 TEMPLATE_PATH = _BASE_DIR / "templates" / "validation_template20250916.docx"
 OUTPUT_DIR = _BASE_DIR / "output"
+MAX_INLINE_BASE64_SIZE = 25 * 1024 * 1024  # 25 MB
 
 class RenderValidationReport:
     """Renderiza reportes de validación en plantillas DOCX para el sistema Valida."""
@@ -311,6 +313,22 @@ class RenderValidationReport:
             fname_out = OUTPUT_DIR / f"validation_report_{timestamp}.docx"
             doc.save(str(fname_out))
 
+            report_info = {
+                "name": fname_out.name,
+                "path": str(fname_out),
+                "content_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                "size": fname_out.stat().st_size,
+            }
+
+            if report_info["size"] <= MAX_INLINE_BASE64_SIZE:
+                with open(fname_out, "rb") as fh:
+                    report_info["content_base64"] = base64.b64encode(fh.read()).decode("utf-8")
+            else:
+                report_info["content_base64"] = None
+                report_info["content_error"] = (
+                    f"El archivo supera el limite de {MAX_INLINE_BASE64_SIZE // (1024 * 1024)} MB para retorno en base64"
+                )
+
             msg = f"Reporte de validación generado en: {fname_out}"
             logger.info(msg)
 
@@ -319,6 +337,7 @@ class RenderValidationReport:
                     "messages": [HumanMessage(content=msg, name="render_validation_report")],
                     "fname_out": str(fname_out),
                     "render_template": str(tpl_path),
+                    "rendered_report": report_info,
                 },
                 goto="__end__",
             )

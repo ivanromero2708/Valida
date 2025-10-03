@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from langgraph.prebuilt.chat_agent_executor import AgentStateWithStructuredResponse
 from langgraph.types import Command
 from langchain_core.messages import HumanMessage
@@ -9,7 +9,7 @@ import logging
 import tempfile
 
 
-from src.graph.state import IndexNodeOutput
+from src.graph.state import IndexNodeOutput, FileDescriptor
 
 from langsmith import traceable
 from mistralai.extra import response_format_from_pydantic_model
@@ -23,9 +23,27 @@ class NodeOutput(BaseModel):
 
 class IndexNodeState(AgentStateWithStructuredResponse):
     set_name: str
-    doc_path_list: list[str]
+    documents: list[FileDescriptor]
     data_extraction_model: type[BaseModel]
     extracted_content: list[NodeOutput]
+    doc_path_list: list[str] | None = None
+
+
+
+
+def _coerce_to_descriptor(value: Any) -> FileDescriptor | None:
+    if isinstance(value, FileDescriptor):
+        return value
+    if isinstance(value, dict):
+        try:
+            return FileDescriptor(**value)
+        except ValidationError as exc:
+            logging.getLogger(__name__).warning("No se pudo convertir dict a FileDescriptor: %s", exc)
+            return None
+    if isinstance(value, str):
+        name = os.path.basename(value) or value
+        return FileDescriptor(name=name, url=value, size=-1, content_type="application/octet-stream")
+    return None
 
 
 class IndexNode:
@@ -220,36 +238,56 @@ class IndexNode:
             else:
                 target[key] = value
         
+    
+
+
+
+
     @traceable
     def run(self, state: IndexNodeState, config) -> Command[Literal["op_reasoning_parallelization"]]:
         extraction_content = []
-        
-        for doc_path in state.get("doc_path_list", []):
-            self.logger.info(f"Processing document: {doc_path}")
-            
-            # Solo el nombre del archivo
-            document_name = os.path.basename(doc_path)
-            
-            # Procesar documento (puede generar múltiples chunks)
-            extraction_model = state.get("data_extraction_model")
+
+        raw_documents = state.get("documents", []) or []
+        if not raw_documents:
+            raw_documents = state.get("doc_path_list", []) or []
+
+        documents: list[FileDescriptor] = []
+        for value in raw_documents:
+            descriptor = _coerce_to_descriptor(value)
+            if descriptor is None:
+                self.logger.warning("Descriptor de documento invalido ignorado: %s", value)
+                continue
+            documents.append(descriptor)
+
+        extraction_model = state.get("data_extraction_model")
+
+        for descriptor in documents:
+            doc_path = descriptor.url
+            if not doc_path:
+                self.logger.warning("Descriptor sin URL omitido: %s", descriptor)
+                continue
+
+            self.logger.info("Processing document: %s", doc_path)
+            document_name = descriptor.name or os.path.basename(doc_path)
+
             chunk_responses = self.process_document(doc_path, extraction_model)
-            
-            # Consolidar datos de todos los chunks y crear instancia del modelo
             model_instance = self.consolidate_chunks_data(chunk_responses, document_name, extraction_model)
-            
+
             extraction_content.append(
                 IndexNodeOutput(
                     document_name=document_name,
                     extracted_content=model_instance
                 )
             )
-            
-            self.logger.info(f"Completed processing {document_name}")
-        
+
+            self.logger.info("Completed processing %s", document_name)
+
         return Command(
             update={
                 "messages": [HumanMessage(content=f"Procesados {len(extraction_content)} documentos.")],
-                "extraction_content": [NodeOutput(set_name=state.get("set_name"), extracted_content=extraction_content)]
+                "extraction_content": [
+                    NodeOutput(set_name=state.get("set_name"), extracted_content=extraction_content)
+                ]
             },
-            goto = "op_reasoning_parallelization"
+            goto="op_reasoning_parallelization"
         )
