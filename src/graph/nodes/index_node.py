@@ -7,6 +7,7 @@ import os
 import json
 import logging
 import tempfile
+import asyncio
 import requests
 from urllib.parse import urlparse
 
@@ -302,7 +303,7 @@ class IndexNode:
 
         raise ValueError("Descriptor sin URL ni contenido base64")
 
-    def process_document(
+    def _process_document_sync(
         self, descriptor: FileDescriptor, extraction_model: type[BaseModel]
     ) -> list:
         label = descriptor.url or descriptor.name or "<sin nombre>"
@@ -348,6 +349,14 @@ class IndexNode:
                     )
 
         return results
+
+    async def process_document(
+        self, descriptor: FileDescriptor, extraction_model: type[BaseModel]
+    ) -> list:
+        """Run blocking document processing in a worker thread."""
+        return await asyncio.to_thread(
+            self._process_document_sync, descriptor, extraction_model
+        )
 
     def consolidate_chunks_data(
         self,
@@ -435,7 +444,7 @@ class IndexNode:
                 target[key] = value
 
     @traceable
-    def run(
+    async def run(
         self, state: IndexNodeState, config
     ) -> Command[Literal["op_reasoning_parallelization"]]:
         extraction_content = []
@@ -464,9 +473,12 @@ class IndexNode:
                 else:
                     document_name = "documento.pdf"
 
-            chunk_responses = self.process_document(descriptor, extraction_model)
-            model_instance = self.consolidate_chunks_data(
-                chunk_responses, document_name, extraction_model
+            chunk_responses = await self.process_document(descriptor, extraction_model)
+            model_instance = await asyncio.to_thread(
+                self.consolidate_chunks_data,
+                chunk_responses,
+                document_name,
+                extraction_model,
             )
 
             extraction_content.append(

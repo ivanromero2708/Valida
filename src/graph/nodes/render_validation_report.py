@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 import unicodedata
@@ -228,7 +229,7 @@ class RenderValidationReport:
 
     # ---------- Nodo principal ----------
     @traceable
-    def run(self, state: ValidaState, config: RunnableConfig) -> Command[Literal["__end__"]]:
+    def _run_sync(self, state: ValidaState, config: Optional[RunnableConfig] = None) -> Command[Literal["__end__"]]:
         """
         Ejecuta el renderizado del reporte de validación.
 
@@ -359,3 +360,8 @@ class RenderValidationReport:
                 },
                 goto="__end__",
             )
+
+    async def run(self, state: ValidaState, config: Optional[RunnableConfig] = None) -> Command[Literal["__end__"]]:
+        """Run the heavy render logic in a worker thread to avoid blocking the event loop."""
+        return await asyncio.to_thread(self._run_sync, state, config)
+
