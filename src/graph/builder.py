@@ -22,7 +22,7 @@ valida_builder.add_node("analytical_chemistry_reasoning", AnalyticalChemReasonin
 valida_builder.add_node("render_validation_report", RenderValidationReport().run)
 
 # Set entry point
-valida_builder.set_entry_point("agent_ui")
+valida_builder.set_entry_point("accumulation_node")
 
 # Compile the graph
 valida_graph = valida_builder.compile()
