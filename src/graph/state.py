@@ -1,7 +1,12 @@
 from langgraph.prebuilt.chat_agent_executor import AgentStateWithStructuredResponse
 from enum import Enum
-from typing import Annotated, List, Dict, Any, Optional, Union, Iterator
+from typing import Annotated, List, Dict, Any, Optional, Union, Iterator, Literal
 from pydantic import Field, BaseModel
+import operator
+
+from typing import List, Optional, Dict, Any, Tuple, Callable
+from pydantic import BaseModel, Field
+from typing_extensions import Annotated
 import operator
 
 class IndexNodeOutput(BaseModel):
@@ -20,11 +25,13 @@ class API(BaseModel):
 
 class FileDescriptor(BaseModel):
     name: str = Field(..., description="Nombre del archivo tal como fue cargado")
-    url: str = Field(..., description="URL accesible para descargar el archivo")
+    url: Optional[str] = Field(None, description="URL accesible para descargar el archivo (opcional si hay base64)")
     size: int = Field(..., description="Tamano del archivo en bytes")
     content_type: str = Field(..., description="Tipo MIME reportado para el archivo")
     source_id: Optional[str] = Field(None, description="Identificador interno opcional del repositorio origen")
     checksum: Optional[str] = Field(None, description="Checksum opcional para validar integridad")
+    content_base64: Optional[str] = Field(None, description="Contenido del archivo en base64 (si se envía inline)")
+
 
 
 class RenderedReport(BaseModel):
@@ -65,19 +72,57 @@ class DocumentGroup(BaseModel):
     document: DocumentName = Field(..., description="Subtipo de documento dentro del grupo")
     files: List[FileDescriptor] = Field(default_factory=list, description="Listado de archivos asociados al grupo y subtipo")
 
+
+# --- DEDUPE/REDUCER ---
+def _merge_doc_groups(
+    old: Optional[List[DocumentGroup]],
+    new: Optional[List[DocumentGroup]]
+) -> List[DocumentGroup]:
+    old = old or []
+    new = new or []
+    by_key: Dict[Tuple[str, str], DocumentGroup] = {}
+
+    def key_of(g: DocumentGroup) -> Tuple[str, str]:
+        return (str(g.group), str(g.document))
+
+    # Copiamos old
+    for g in old:
+        by_key[key_of(g)] = DocumentGroup(group=g.group, document=g.document, files=list(g.files))
+
+    # Fusionamos new
+    for g in new:
+        k = key_of(g)
+        if k not in by_key:
+            by_key[k] = DocumentGroup(group=g.group, document=g.document, files=[])
+        # Añadir files sin duplicar (por source_id|name|size)
+        seen = {(f.source_id, f.name, f.size) for f in by_key[k].files}
+        for f in g.files:
+            h = (f.source_id, f.name, f.size)
+            if h not in seen:
+                by_key[k].files.append(f)
+                seen.add(h)
+
+    return list(by_key.values())
+
+
 class ValidaState(AgentStateWithStructuredResponse):
     """Estado del Sistema Agentico Valida"""
-    validacion: str = Field(..., description="Nombre del reporte de validación")
-    codigo_informe: str = Field(..., description="Código del informe de validación")
-    nombre_producto: str = Field(..., description="Nombre del producto cuyo método anlítico está siendo validado")
-    codigo_producto: str = Field(..., description="Código del producto cuyo método anlítico está siendo validado")
-    lista_activos: List[API] = Field(..., description="Lista de ingredientes activos del producto cuyo metodo esta siendo validado")
-    rango_validado: str = Field(..., description="Rango de validación del método analítico")
-    document_groups: List[DocumentGroup] = Field(default_factory=list, description="Colecciones de archivos agrupados por tipo de documento")
-    
+    validacion: Optional[str] = None
+    codigo_informe: Optional[str] = None
+    nombre_producto: Optional[str] = None
+    codigo_producto: Optional[str] = None
+    lista_activos: List[API] = Field(default_factory=list)
+    rango_validado: Optional[str] = None
+
+    op: Literal["stage", "finalize"] = "stage"
+
+    # aquí apilas con merge
+    document_groups: Annotated[List[DocumentGroup], _merge_doc_groups] = Field(default_factory=list)
+
+    # dirs_* → listas vacías por defecto
     # Protocolo de validación
-    dir_protocolo: FileDescriptor = Field(..., description="Directorio del protocolo de validació del método analítico")
-    
+    dir_protocolo: Optional[FileDescriptor] = None
+        
     # Hojas de trabajo y bitácoras de preparación
     dir_hoja_trabajo_preparacion: List[FileDescriptor] = Field(..., description = "Listado de las rutas de las hojas de trabajo de preparación para todos los parámetros de validación")
     dirs_bitacora_preparacion: List[FileDescriptor] = Field(..., description="Listado de las rutas de las bitacoras de preparación para todos los parámetros de validación")
@@ -130,9 +175,9 @@ class ValidaState(AgentStateWithStructuredResponse):
     dirs_bitacoras_robustez: List[FileDescriptor] = Field(..., description="Directorios de las Bitacoras de Robustez")
     dirs_soportes_cromatograficos_robustez: List[FileDescriptor] = Field(..., description="Directorios de los Soportes Cromatográficos de Robustez")
 
-    extraction_content: Annotated[List[IndexNodeOutput], operator.add]
-    
+    extraction_content: Annotated[List[IndexNodeOutput], operator.add]    
     context_for_render: Annotated[List[SupervisorResearchValidationOutput], operator.add]
+    
     fname_out: str = Field(..., description="Nombre del archivo de salida")
     rendered_report: Optional[RenderedReport] = Field(None, description="Metadatos del reporte DOCX generado por el sistema")
     

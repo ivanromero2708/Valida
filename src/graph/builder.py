@@ -6,13 +6,15 @@ from src.graph.nodes import (
     AnalyticalChemReasoning,
     RenderValidationReport,
     IndexNode,
-    OPReasoningParallelization
+    OPReasoningParallelization,
+    AccumulationNode
 )
 
 # Define the graph
 valida_builder = StateGraph(ValidaState)
 
 # Add nodes
+valida_builder.add_node("accumulation_node", AccumulationNode().run)
 valida_builder.add_node("agent_ui", AgentUI().run)
 valida_builder.add_node("index_node", IndexNode().run)
 valida_builder.add_node("op_reasoning_parallelization", OPReasoningParallelization().run)
