@@ -10,18 +10,20 @@ import tempfile
 import requests
 from urllib.parse import urlparse
 
-
 from src.graph.state import IndexNodeOutput, FileDescriptor
 
 from langsmith import traceable
 from mistralai.extra import response_format_from_pydantic_model
 from mistralai import Mistral
 import base64
+import binascii
 from PyPDF2 import PdfReader, PdfWriter
+
 
 class NodeOutput(BaseModel):
     set_name: str
     extracted_content: List[IndexNodeOutput]
+
 
 class IndexNodeState(AgentStateWithStructuredResponse):
     set_name: str
@@ -31,20 +33,109 @@ class IndexNodeState(AgentStateWithStructuredResponse):
     doc_path_list: list[str] | None = None
 
 
+def _clean_base64_payload(value: str) -> str:
+    return "".join(value.strip().split())
+
+
+def _extract_base64_payload(value: str) -> tuple[str | None, str | None]:
+    stripped = value.strip()
+    if not stripped:
+        return None, None
+    if stripped.startswith("data:"):
+        header, _, payload = stripped.partition(",")
+        if ";base64" not in header:
+            return None, None
+        mime = header[5:].split(";")[0] or None
+        return _clean_base64_payload(payload), mime
+    try:
+        base64.b64decode(stripped, validate=True)
+    except (binascii.Error, ValueError):
+        return None, None
+    return _clean_base64_payload(stripped), None
+
+
+def _estimate_base64_size(payload: str) -> int:
+    padding = payload.count("=")
+    length = len(payload)
+    return max((length * 3) // 4 - padding, 0)
 
 
 def _coerce_to_descriptor(value: Any) -> FileDescriptor | None:
     if isinstance(value, FileDescriptor):
         return value
+
     if isinstance(value, dict):
+        data = dict(value)
+        payload: str | None = None
+        mime: str | None = None
+
+        raw_content = data.get("content_base64")
+        if isinstance(raw_content, str):
+            payload, mime = _extract_base64_payload(raw_content)
+
+        if payload is None:
+            raw_url = data.get("url")
+            if isinstance(raw_url, str):
+                maybe_payload, maybe_mime = _extract_base64_payload(raw_url)
+                if maybe_payload:
+                    payload = maybe_payload
+                    mime = maybe_mime or mime
+                    data["url"] = None
+
+        if payload:
+            data["content_base64"] = payload
+            if not data.get("size"):
+                data["size"] = _estimate_base64_size(payload)
+            if mime and not data.get("content_type"):
+                data["content_type"] = mime
+
+        if not data.get("size"):
+            data["size"] = data.get("size", -1)
+
+        if not data.get("content_type"):
+            content_type = None
+            name = data.get("name")
+            if isinstance(name, str):
+                _, ext = os.path.splitext(name)
+                if ext.lower() == ".pdf":
+                    content_type = "application/pdf"
+            data["content_type"] = content_type or "application/octet-stream"
+
+        if not data.get("name"):
+            for candidate in ("filename", "file_name"):
+                candidate_val = data.get(candidate)
+                if isinstance(candidate_val, str) and candidate_val:
+                    data["name"] = candidate_val
+                    break
+            if not data.get("name"):
+                raw_url = data.get("url")
+                if isinstance(raw_url, str):
+                    data["name"] = os.path.basename(raw_url) or "document.pdf"
+                else:
+                    data["name"] = "document.pdf"
+
         try:
-            return FileDescriptor(**value)
+            return FileDescriptor(**data)
         except ValidationError as exc:
-            logging.getLogger(__name__).warning("No se pudo convertir dict a FileDescriptor: %s", exc)
+            logging.getLogger(__name__).warning(
+                "No se pudo convertir dict a FileDescriptor: %s", exc
+            )
             return None
+
     if isinstance(value, str):
+        payload, _ = _extract_base64_payload(value)
+        if payload:
+            return FileDescriptor(
+                name="document.pdf",
+                url=None,
+                size=_estimate_base64_size(payload),
+                content_type="application/pdf",
+                content_base64=payload,
+            )
         name = os.path.basename(value) or value
-        return FileDescriptor(name=name, url=value, size=-1, content_type="application/octet-stream")
+        return FileDescriptor(
+            name=name, url=value, size=-1, content_type="application/octet-stream"
+        )
     return None
 
 
@@ -56,7 +147,7 @@ class IndexNode:
         if not api_key:
             raise EnvironmentError("Defina MISTRAL_API_KEY en el entorno")
         self.client = Mistral(api_key=api_key, timeout_ms=300000)
-    
+
     @traceable
     def get_pdf_page_count(self, pdf_path: str) -> int:
         """Get the number of pages in a PDF."""
@@ -67,7 +158,7 @@ class IndexNode:
         except Exception as e:
             self.logger.error(f"Error counting pages in {pdf_path}: {e}")
             return 0
-    
+
     @traceable
     def split_pdf_into_chunks(self, pdf_path: str) -> list[str]:
         """Split PDF into chunks of max_pages and return temporary file paths."""
@@ -76,21 +167,23 @@ class IndexNode:
             with open(pdf_path, "rb") as pdf_file:
                 reader = PdfReader(pdf_file)
                 total_pages = len(reader.pages)
-                
+
                 for start_page in range(0, total_pages, self.max_pages_per_chunk):
                     end_page = min(start_page + self.max_pages_per_chunk, total_pages)
-                    
+
                     writer = PdfWriter()
                     for page_num in range(start_page, end_page):
                         writer.add_page(reader.pages[page_num])
-                    
-                    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
+
+                    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
                     with open(temp_file.name, "wb") as output_file:
                         writer.write(output_file)
-                    
+
                     temp_files.append(temp_file.name)
-                    self.logger.info(f"Created chunk {len(temp_files)}: pages {start_page+1}-{end_page}")
-                    
+                    self.logger.info(
+                        f"Created chunk {len(temp_files)}: pages {start_page+1}-{end_page}"
+                    )
+
         except Exception as e:
             self.logger.error(f"Error splitting PDF {pdf_path}: {e}")
             for temp_file in temp_files:
@@ -99,7 +192,7 @@ class IndexNode:
                 except:
                     pass
             return []
-            
+
         return temp_files
 
     @traceable
@@ -107,7 +200,7 @@ class IndexNode:
         """Encode the pdf to base64."""
         try:
             with open(pdf_path, "rb") as pdf_file:
-                return base64.b64encode(pdf_file.read()).decode('utf-8')
+                return base64.b64encode(pdf_file.read()).decode("utf-8")
         except Exception as e:
             self.logger.error(f"Error encoding PDF {pdf_path}: {e}")
             return None
@@ -124,16 +217,20 @@ class IndexNode:
                 "model": "mistral-ocr-latest",
                 "document": {
                     "type": "document_url",
-                    "document_url": f"data:application/pdf;base64,{base64_pdf}"
+                    "document_url": f"data:application/pdf;base64,{base64_pdf}",
                 },
                 "include_image_base64": False,
             }
 
             if extraction_model:
                 try:
-                    request_params["document_annotation_format"] = response_format_from_pydantic_model(extraction_model)
+                    request_params["document_annotation_format"] = (
+                        response_format_from_pydantic_model(extraction_model)
+                    )
                 except Exception as exc:
-                    self.logger.warning("No se pudo generar schema pydantic para %s: %s", pdf_path, exc)
+                    self.logger.warning(
+                        "No se pudo generar schema pydantic para %s: %s", pdf_path, exc
+                    )
 
             return self.client.ocr.process(**request_params)
         except Exception as e:
@@ -172,12 +269,48 @@ class IndexNode:
 
         return pdf_path, cleanup
 
-    def process_document(self, pdf_path: str, extraction_model: type[BaseModel]) -> list:
-        """Process PDF with automatic chunking if needed."""
+    def _ensure_local_pdf(self, descriptor: FileDescriptor) -> tuple[str, list[str]]:
+        cleanup: list[str] = []
+        payload: str | None = None
+        mime: str | None = None
+
+        if isinstance(descriptor.content_base64, str):
+            payload, mime = _extract_base64_payload(descriptor.content_base64)
+
+        if payload is None and isinstance(descriptor.url, str):
+            maybe_payload, maybe_mime = _extract_base64_payload(descriptor.url)
+            if maybe_payload:
+                payload = maybe_payload
+                mime = maybe_mime or mime
+
+        if payload:
+            try:
+                pdf_bytes = base64.b64decode(payload, validate=False)
+            except (binascii.Error, ValueError) as exc:
+                raise ValueError(
+                    f"Contenido base64 invalido para {descriptor.name}"
+                ) from exc
+            suffix = os.path.splitext(descriptor.name or "")[1] or ".pdf"
+            tmp_handle = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+            with open(tmp_handle.name, "wb") as fh:
+                fh.write(pdf_bytes)
+            cleanup.append(tmp_handle.name)
+            return tmp_handle.name, cleanup
+
+        if descriptor.url:
+            return self._resolve_pdf_path(descriptor.url)
+
+        raise ValueError("Descriptor sin URL ni contenido base64")
+
+    def process_document(
+        self, descriptor: FileDescriptor, extraction_model: type[BaseModel]
+    ) -> list:
+        label = descriptor.url or descriptor.name or "<sin nombre>"
+
         try:
-            local_path, cleanup_paths = self._resolve_pdf_path(pdf_path)
+            local_path, cleanup_paths = self._ensure_local_pdf(descriptor)
         except Exception as exc:
-            self.logger.error(f"No se pudo preparar el PDF {pdf_path}: {exc}")
+            self.logger.error(f"No se pudo preparar el PDF {label}: {exc}")
             return []
 
         results: list = []
@@ -185,7 +318,7 @@ class IndexNode:
 
         try:
             total_pages = self.get_pdf_page_count(local_path)
-            self.logger.info(f"Processing PDF {pdf_path} with {total_pages} pages")
+            self.logger.info(f"Processing PDF {label} with {total_pages} pages")
 
             if total_pages <= self.max_pages_per_chunk:
                 result = self.process_chunk(local_path, extraction_model)
@@ -203,36 +336,45 @@ class IndexNode:
                 try:
                     os.unlink(chunk_file)
                 except Exception as e:
-                    self.logger.warning(f"Could not delete temporary file {chunk_file}: {e}")
+                    self.logger.warning(
+                        f"Could not delete temporary file {chunk_file}: {e}"
+                    )
             for temp_path in cleanup_paths:
                 try:
                     os.unlink(temp_path)
                 except Exception as e:
-                    self.logger.warning(f"Could not delete temporary file {temp_path}: {e}")
+                    self.logger.warning(
+                        f"Could not delete temporary file {temp_path}: {e}"
+                    )
 
         return results
 
-    def consolidate_chunks_data(self, chunk_responses: list, document_name: str, extraction_model: type[BaseModel]):
+    def consolidate_chunks_data(
+        self,
+        chunk_responses: list,
+        document_name: str,
+        extraction_model: type[BaseModel],
+    ):
         """Consolida los document_annotation de todos los chunks y crea una instancia del modelo Pydantic."""
         try:
             if not chunk_responses:
                 self.logger.warning(f"No chunks to process for {document_name}")
                 return None
-            
+
             # Consolidar todos los datos de los chunks
             all_chunk_data = {}
-            
+
             for i, response in enumerate(chunk_responses):
                 if not response:
                     continue
-                    
+
                 # Extraer document_annotation del chunk
                 annotation_data = None
-                if hasattr(response, 'document_annotation'):
+                if hasattr(response, "document_annotation"):
                     annotation_data = response.document_annotation
-                elif isinstance(response, dict) and 'document_annotation' in response:
-                    annotation_data = response['document_annotation']
-                
+                elif isinstance(response, dict) and "document_annotation" in response:
+                    annotation_data = response["document_annotation"]
+
                 if annotation_data:
                     try:
                         # Convertir a dict si es necesario
@@ -242,32 +384,40 @@ class IndexNode:
                             chunk_data = annotation_data
                         else:
                             chunk_data = json.loads(str(annotation_data))
-                        
+
                         # Mergear datos del chunk con el consolidado
                         self._merge_chunk_data(all_chunk_data, chunk_data)
                         self.logger.debug(f"Merged chunk {i+1} data")
-                        
+
                     except (json.JSONDecodeError, TypeError) as e:
-                        self.logger.warning(f"Error parsing chunk {i+1} annotation: {e}")
-            
+                        self.logger.warning(
+                            f"Error parsing chunk {i+1} annotation: {e}"
+                        )
+
             # Crear instancia del modelo Pydantic con los datos consolidados
             if all_chunk_data and extraction_model:
                 try:
                     model_instance = extraction_model(**all_chunk_data)
-                    self.logger.info(f"Created {extraction_model.__name__} instance for {document_name}")
+                    self.logger.info(
+                        f"Created {extraction_model.__name__} instance for {document_name}"
+                    )
                     return model_instance
                 except Exception as e:
-                    self.logger.error(f"Error creating model instance for {document_name}: {e}")
+                    self.logger.error(
+                        f"Error creating model instance for {document_name}: {e}"
+                    )
                     # Fallback: retornar los datos raw
                     return all_chunk_data
-            
-            self.logger.warning(f"No valid data to create model instance for {document_name}")
+
+            self.logger.warning(
+                f"No valid data to create model instance for {document_name}"
+            )
             return None
-            
+
         except Exception as e:
             self.logger.error(f"Error consolidating chunks for {document_name}: {e}")
             return None
-    
+
     def _merge_chunk_data(self, target: dict, source: dict):
         """Mergea datos de un chunk con el diccionario consolidado."""
         for key, value in source.items():
@@ -278,19 +428,16 @@ class IndexNode:
                 # Si ambos son dicts, mergear recursivamente
                 elif isinstance(target[key], dict) and isinstance(value, dict):
                     self._merge_chunk_data(target[key], value)
-                # Si son del mismo tipo pero no lista/dict, mantener el Ãºltimo valor
+                # Si son del mismo tipo pero no lista/dict, mantener el ÃƒÆ’Ã‚Âºltimo valor
                 else:
                     target[key] = value
             else:
                 target[key] = value
-        
-    
-
-
-
 
     @traceable
-    def run(self, state: IndexNodeState, config) -> Command[Literal["op_reasoning_parallelization"]]:
+    def run(
+        self, state: IndexNodeState, config
+    ) -> Command[Literal["op_reasoning_parallelization"]]:
         extraction_content = []
 
         raw_documents = state.get("documents", []) or []
@@ -301,28 +448,30 @@ class IndexNode:
         for value in raw_documents:
             descriptor = _coerce_to_descriptor(value)
             if descriptor is None:
-                self.logger.warning("Descriptor de documento invalido ignorado: %s", value)
+                self.logger.warning(
+                    "Descriptor de documento invalido ignorado: %s", value
+                )
                 continue
             documents.append(descriptor)
 
         extraction_model = state.get("data_extraction_model")
 
         for descriptor in documents:
-            doc_path = descriptor.url
-            if not doc_path:
-                self.logger.warning("Descriptor sin URL omitido: %s", descriptor)
-                continue
+            document_name = descriptor.name
+            if not document_name:
+                if descriptor.url:
+                    document_name = os.path.basename(descriptor.url) or descriptor.url
+                else:
+                    document_name = "documento.pdf"
 
-            self.logger.info("Processing document: %s", doc_path)
-            document_name = descriptor.name or os.path.basename(doc_path)
-
-            chunk_responses = self.process_document(doc_path, extraction_model)
-            model_instance = self.consolidate_chunks_data(chunk_responses, document_name, extraction_model)
+            chunk_responses = self.process_document(descriptor, extraction_model)
+            model_instance = self.consolidate_chunks_data(
+                chunk_responses, document_name, extraction_model
+            )
 
             extraction_content.append(
                 IndexNodeOutput(
-                    document_name=document_name,
-                    extracted_content=model_instance
+                    document_name=document_name, extracted_content=model_instance
                 )
             )
 
@@ -330,10 +479,17 @@ class IndexNode:
 
         return Command(
             update={
-                "messages": [HumanMessage(content=f"Procesados {len(extraction_content)} documentos.")],
+                "messages": [
+                    HumanMessage(
+                        content=f"Procesados {len(extraction_content)} documentos."
+                    )
+                ],
                 "extraction_content": [
-                    NodeOutput(set_name=state.get("set_name"), extracted_content=extraction_content)
-                ]
+                    NodeOutput(
+                        set_name=state.get("set_name"),
+                        extracted_content=extraction_content,
+                    )
+                ],
             },
-            goto="op_reasoning_parallelization"
+            goto="op_reasoning_parallelization",
         )
