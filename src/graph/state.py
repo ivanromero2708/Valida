@@ -3,6 +3,7 @@ from enum import Enum
 from typing import Annotated, List, Dict, Any, Optional, Union, Iterator, Literal
 from pydantic import Field, BaseModel
 import operator
+from collections.abc import Mapping
 
 from typing import List, Optional, Dict, Any, Tuple, Callable
 from pydantic import BaseModel, Field
@@ -82,19 +83,34 @@ def _merge_doc_groups(
     new = new or []
     by_key: Dict[Tuple[str, str], DocumentGroup] = {}
 
+    def to_doc_group(value: Union[DocumentGroup, Dict[str, Any]]) -> DocumentGroup:
+        if isinstance(value, DocumentGroup):
+            return value
+        if isinstance(value, BaseModel):
+            return DocumentGroup.model_validate(value.model_dump())
+        if isinstance(value, Mapping):
+            return DocumentGroup.model_validate(value)
+        raise TypeError(f"Unsupported value for DocumentGroup merge: {type(value)!r}")
+
     def key_of(g: DocumentGroup) -> Tuple[str, str]:
         return (str(g.group), str(g.document))
 
+    def iter_groups(items: List[Any]) -> Iterator[DocumentGroup]:
+        for item in items:
+            if item is None:
+                continue
+            yield to_doc_group(item)
+
     # Copiamos old
-    for g in old:
+    for g in iter_groups(old):
         by_key[key_of(g)] = DocumentGroup(group=g.group, document=g.document, files=list(g.files))
 
     # Fusionamos new
-    for g in new:
+    for g in iter_groups(new):
         k = key_of(g)
         if k not in by_key:
             by_key[k] = DocumentGroup(group=g.group, document=g.document, files=[])
-        # Añadir files sin duplicar (por source_id|name|size)
+        # A�adir files sin duplicar (por source_id|name|size)
         seen = {(f.source_id, f.name, f.size) for f in by_key[k].files}
         for f in g.files:
             h = (f.source_id, f.name, f.size)
