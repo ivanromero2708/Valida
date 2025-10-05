@@ -1,12 +1,11 @@
 from langgraph.prebuilt.chat_agent_executor import AgentStateWithStructuredResponse
 from enum import Enum
 from typing import Annotated, List, Dict, Any, Optional, Union, Iterator, Literal
-from pydantic import Field, BaseModel
+from pydantic import Field, BaseModel, ConfigDict
 import operator
 from collections.abc import Mapping
 
 from typing import List, Optional, Dict, Any, Tuple, Callable
-from pydantic import BaseModel, Field
 from typing_extensions import Annotated
 import operator
 
@@ -25,14 +24,54 @@ class API(BaseModel):
 
 
 class FileDescriptor(BaseModel):
+    """Descriptor unificado de archivos proporcionados por el flujo de validación."""
+
+    model_config = ConfigDict(populate_by_name=True, extra="allow")
+
     name: str = Field(..., description="Nombre del archivo tal como fue cargado")
     url: Optional[str] = Field(None, description="URL accesible para descargar el archivo (opcional si hay base64)")
-    size: int = Field(..., description="Tamano del archivo en bytes")
-    content_type: str = Field(..., description="Tipo MIME reportado para el archivo")
+    size: int = Field(-1, description="Tamano del archivo en bytes")
+    content_type: str = Field("application/octet-stream", description="Tipo MIME reportado para el archivo")
+    source: Optional[str] = Field(None, description="Origen del archivo dentro del ecosistema (p. ej. 'sharepoint')")
     source_id: Optional[str] = Field(None, description="Identificador interno opcional del repositorio origen")
     checksum: Optional[str] = Field(None, description="Checksum opcional para validar integridad")
-    content_base64: Optional[str] = Field(None, description="Contenido del archivo en base64 (si se envía inline)")
-
+    content_base64: Optional[str] = Field(None, description="Contenido del archivo en base64 (si se envia inline)")
+    site_lookup: Optional[str] = Field(
+        None,
+        alias="siteLookup",
+        serialization_alias="siteLookup",
+        description="Identificador compuesto del sitio SharePoint (tenant:/sites/site)",
+    )
+    site_url: Optional[str] = Field(
+        None,
+        alias="siteUrl",
+        serialization_alias="siteUrl",
+        description="URL completa del sitio SharePoint",
+    )
+    server_relative_path: Optional[str] = Field(
+        None,
+        alias="serverRelativePath",
+        serialization_alias="serverRelativePath",
+        description="Ruta relativa del archivo dentro del sitio SharePoint",
+    )
+    unique_id: Optional[str] = Field(
+        None,
+        alias="uniqueId",
+        serialization_alias="uniqueId",
+        description="Identificador unico del elemento en SharePoint",
+    )
+    drive_id: Optional[str] = Field(
+        None,
+        alias="driveId",
+        serialization_alias="driveId",
+        description="Identificador del drive SharePoint asociado al archivo, cuando aplique",
+    )
+    item_id: Optional[str] = Field(
+        None,
+        alias="itemId",
+        serialization_alias="itemId",
+        description="Identificador del item de lista en SharePoint, cuando aplique",
+    )
 
 
 class RenderedReport(BaseModel):

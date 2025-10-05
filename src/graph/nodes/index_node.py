@@ -2,22 +2,25 @@ from pydantic import BaseModel, ValidationError
 from langgraph.prebuilt.chat_agent_executor import AgentStateWithStructuredResponse
 from langgraph.types import Command
 from langchain_core.messages import HumanMessage
-from typing import Literal, Any, List
+from typing import Literal, Any, List, Optional
 import os
 import json
 import logging
 import tempfile
 import asyncio
 import requests
-from urllib.parse import urlparse
+from urllib.parse import urlparse, quote
+
+from dotenv import load_dotenv
+load_dotenv()
 
 from src.graph.state import IndexNodeOutput, FileDescriptor
+from src.utils.sharepoint_api import SharePointClient
 
 from langsmith import traceable
 from mistralai.extra import response_format_from_pydantic_model
 from mistralai import Mistral
 import base64
-import binascii
 from PyPDF2 import PdfReader, PdfWriter
 
 
@@ -34,31 +37,7 @@ class IndexNodeState(AgentStateWithStructuredResponse):
     doc_path_list: list[str] | None = None
 
 
-def _clean_base64_payload(value: str) -> str:
-    return "".join(value.strip().split())
 
-
-def _extract_base64_payload(value: str) -> tuple[str | None, str | None]:
-    stripped = value.strip()
-    if not stripped:
-        return None, None
-    if stripped.startswith("data:"):
-        header, _, payload = stripped.partition(",")
-        if ";base64" not in header:
-            return None, None
-        mime = header[5:].split(";")[0] or None
-        return _clean_base64_payload(payload), mime
-    try:
-        base64.b64decode(stripped, validate=True)
-    except (binascii.Error, ValueError):
-        return None, None
-    return _clean_base64_payload(stripped), None
-
-
-def _estimate_base64_size(payload: str) -> int:
-    padding = payload.count("=")
-    length = len(payload)
-    return max((length * 3) // 4 - padding, 0)
 
 
 def _coerce_to_descriptor(value: Any) -> FileDescriptor | None:
@@ -67,31 +46,17 @@ def _coerce_to_descriptor(value: Any) -> FileDescriptor | None:
 
     if isinstance(value, dict):
         data = dict(value)
-        payload: str | None = None
-        mime: str | None = None
 
-        raw_content = data.get("content_base64")
-        if isinstance(raw_content, str):
-            payload, mime = _extract_base64_payload(raw_content)
-
-        if payload is None:
-            raw_url = data.get("url")
-            if isinstance(raw_url, str):
-                maybe_payload, maybe_mime = _extract_base64_payload(raw_url)
-                if maybe_payload:
-                    payload = maybe_payload
-                    mime = maybe_mime or mime
-                    data["url"] = None
-
-        if payload:
-            data["content_base64"] = payload
-            if not data.get("size"):
-                data["size"] = _estimate_base64_size(payload)
-            if mime and not data.get("content_type"):
-                data["content_type"] = mime
+        if not data.get("source") and (
+            data.get("siteLookup")
+            or data.get("siteUrl")
+            or data.get("serverRelativePath")
+            or data.get("uniqueId")
+        ):
+            data["source"] = "sharepoint"
 
         if not data.get("size"):
-            data["size"] = data.get("size", -1)
+            data["size"] = -1
 
         if not data.get("content_type"):
             content_type = None
@@ -124,15 +89,6 @@ def _coerce_to_descriptor(value: Any) -> FileDescriptor | None:
             return None
 
     if isinstance(value, str):
-        payload, _ = _extract_base64_payload(value)
-        if payload:
-            return FileDescriptor(
-                name="document.pdf",
-                url=None,
-                size=_estimate_base64_size(payload),
-                content_type="application/pdf",
-                content_base64=payload,
-            )
         name = os.path.basename(value) or value
         return FileDescriptor(
             name=name, url=value, size=-1, content_type="application/octet-stream"
@@ -148,6 +104,7 @@ class IndexNode:
         if not api_key:
             raise EnvironmentError("Defina MISTRAL_API_KEY en el entorno")
         self.client = Mistral(api_key=api_key, timeout_ms=300000)
+        self._sharepoint_client: Optional[SharePointClient] = None
 
     @traceable
     def get_pdf_page_count(self, pdf_path: str) -> int:
@@ -270,38 +227,73 @@ class IndexNode:
 
         return pdf_path, cleanup
 
+    def _get_sharepoint_client(self) -> SharePointClient:
+        if self._sharepoint_client is None:
+            tenant_id = os.getenv('TENANT_ID')
+            client_id = os.getenv('CLIENT_ID')
+            client_secret = os.getenv('CLIENT_SECRET')
+            resource = os.getenv('RESOURCE') or 'https://graph.microsoft.com/'
+            if not (tenant_id and client_id and client_secret):
+                raise RuntimeError('Credenciales de SharePoint no configuradas en el entorno (.env)')
+            self._sharepoint_client = SharePointClient(tenant_id, client_id, client_secret, resource)
+        return self._sharepoint_client
+
     def _ensure_local_pdf(self, descriptor: FileDescriptor) -> tuple[str, list[str]]:
         cleanup: list[str] = []
-        payload: str | None = None
-        mime: str | None = None
 
-        if isinstance(descriptor.content_base64, str):
-            payload, mime = _extract_base64_payload(descriptor.content_base64)
-
-        if payload is None and isinstance(descriptor.url, str):
-            maybe_payload, maybe_mime = _extract_base64_payload(descriptor.url)
-            if maybe_payload:
-                payload = maybe_payload
-                mime = maybe_mime or mime
-
-        if payload:
-            try:
-                pdf_bytes = base64.b64decode(payload, validate=False)
-            except (binascii.Error, ValueError) as exc:
+        if descriptor.source and descriptor.source.lower() == "sharepoint":
+            site_lookup = descriptor.site_lookup
+            if not site_lookup and descriptor.site_url:
+                parsed_site = urlparse(descriptor.site_url)
+                site_path = (parsed_site.path or "").rstrip("/")
+                if parsed_site.netloc and site_path:
+                    site_lookup = f"{parsed_site.netloc}:{site_path}"
+            if not site_lookup:
                 raise ValueError(
-                    f"Contenido base64 invalido para {descriptor.name}"
-                ) from exc
+                    f"Descriptor SharePoint sin referencia de sitio para {descriptor.name}"
+                )
+            server_relative_path = descriptor.server_relative_path or descriptor.url
+            if not server_relative_path:
+                raise ValueError(
+                    f"Descriptor SharePoint sin ruta relativa para {descriptor.name}"
+                )
+            client = self._get_sharepoint_client()
+            site_id = client.get_site_id(site_lookup)
+            drive_id = descriptor.drive_id
+            if not drive_id:
+                drives = client.get_drive_id(site_id)
+                if not drives:
+                    raise ValueError("No se encontraron drives asociados al sitio SharePoint")
+                drive_id = drives[0].get("id")
+            if not drive_id:
+                raise ValueError("Descriptor SharePoint sin drive asociado")
+            if descriptor.unique_id:
+                download_url = (
+                    f"{client.resource_url}/v1.0/sites/{site_id}/drives/{drive_id}/items/{descriptor.unique_id}/content"
+                )
+            else:
+                normalized_path = server_relative_path.lstrip("/").lstrip()
+                encoded_path = quote(f"/{normalized_path}", safe="/")
+                download_url = (
+                    f"{client.resource_url}/v1.0/sites/{site_id}/drives/{drive_id}/root:{encoded_path}:/content"
+                )
             suffix = os.path.splitext(descriptor.name or "")[1] or ".pdf"
             tmp_handle = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
-            with open(tmp_handle.name, "wb") as fh:
-                fh.write(pdf_bytes)
+            tmp_handle.close()
+            headers = {"Authorization": f"Bearer {client.access_token}"}
+            with requests.get(download_url, headers=headers, stream=True, timeout=(10, 120)) as response:
+                response.raise_for_status()
+                with open(tmp_handle.name, "wb") as fh:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        if chunk:
+                            fh.write(chunk)
             cleanup.append(tmp_handle.name)
             return tmp_handle.name, cleanup
 
         if descriptor.url:
             return self._resolve_pdf_path(descriptor.url)
 
-        raise ValueError("Descriptor sin URL ni contenido base64")
+        raise ValueError("Descriptor sin ubicacion accesible")
 
     def _process_document_sync(
         self, descriptor: FileDescriptor, extraction_model: type[BaseModel]

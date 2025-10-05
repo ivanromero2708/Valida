@@ -209,6 +209,13 @@ def _guess_extension(content_type: str | None) -> str:
 
 
 def _descriptor_fingerprint(descriptor: FileDescriptor) -> str | None:
+    if descriptor.source and descriptor.source.lower() == "sharepoint":
+        if descriptor.unique_id:
+            return f"sharepoint:{descriptor.unique_id}"
+        if descriptor.site_lookup and descriptor.server_relative_path:
+            return f"sharepoint:{descriptor.site_lookup}:{descriptor.server_relative_path}"
+        if descriptor.server_relative_path:
+            return f"sharepoint:{descriptor.server_relative_path}"
     if descriptor.url:
         return descriptor.url
     if descriptor.checksum:
@@ -230,6 +237,14 @@ def _normalize_to_descriptors(value: Any) -> list[FileDescriptor]:
 
     if isinstance(value, Mapping):
         data = dict(value)
+
+        if not data.get("source") and (
+            data.get("siteLookup")
+            or data.get("siteUrl")
+            or data.get("serverRelativePath")
+            or data.get("uniqueId")
+        ):
+            data["source"] = "sharepoint"
 
         if "name" not in data:
             for candidate in ("filename", "file_name"):
