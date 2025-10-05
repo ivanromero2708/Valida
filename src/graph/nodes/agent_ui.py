@@ -325,42 +325,30 @@ def _normalize_to_descriptors(value: Any) -> list[FileDescriptor]:
 
 def _unwrap_state(value: Any) -> Any:
     """Return the underlying state object when instrumentation wraps it."""
-
     candidate = value
-
     for attr in ("state", "value", "data"):
-
         candidate = getattr(candidate, attr, candidate)
-
     return candidate
 
 
 class AgentUI:
     """Agent UI that classifies validation documents and manages workflow"""
-
     def __init__(self):
-
         self.human_message_prompt = HUMAN_MESSAGE_PROMPT
-
         self.template_sets = TEMPLATE_SETS
 
     @traceable
     def _state_get(
         self, state: ValidaState | Mapping[str, Any], key: str, default: Any = ""
     ) -> Any:
-
         candidate = _unwrap_state(state)
 
         if isinstance(candidate, Mapping):
-
             return candidate.get(key, default)
 
         if hasattr(candidate, "dict"):
-
             data = candidate.dict(exclude_none=False)
-
             if key in data:
-
                 return data[key]
 
         return getattr(candidate, key, default)
