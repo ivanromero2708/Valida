@@ -9,7 +9,7 @@ import logging
 import tempfile
 import asyncio
 import requests
-from urllib.parse import urlparse, quote
+from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -96,6 +96,7 @@ def _coerce_to_descriptor(value: Any) -> FileDescriptor | None:
     return None
 
 
+
 class IndexNode:
     def __init__(self):
         self.logger = logging.getLogger(__name__)
@@ -105,6 +106,73 @@ class IndexNode:
             raise EnvironmentError("Defina MISTRAL_API_KEY en el entorno")
         self.client = Mistral(api_key=api_key, timeout_ms=300000)
         self._sharepoint_client: Optional[SharePointClient] = None
+
+    def _infer_sharepoint_host(self, descriptor: FileDescriptor) -> Optional[str]:
+        for candidate in (descriptor.site_lookup, descriptor.site_url, descriptor.url):
+            if not candidate:
+                continue
+            if ':/' in candidate:
+                host = candidate.split(':/', 1)[0].strip()
+                if host:
+                    return host
+            parsed = urlparse(candidate)
+            if parsed.netloc:
+                return parsed.netloc
+        return None
+
+    def _build_sharepoint_download_reference(
+        self, descriptor: FileDescriptor, client: SharePointClient
+    ) -> str:
+        if descriptor.url:
+            parsed = urlparse(descriptor.url)
+            if parsed.scheme in {"http", "https"} and parsed.netloc:
+                if parsed.netloc.lower().endswith("graph.microsoft.com"):
+                    return descriptor.url
+                if "sharepoint" in parsed.netloc.lower():
+                    return f"{parsed.netloc}{parsed.path}"
+            if descriptor.url.strip():
+                return descriptor.url
+
+        server_relative_path = descriptor.server_relative_path
+        if server_relative_path:
+            normalized = server_relative_path if server_relative_path.startswith('/') else f'/{server_relative_path}'
+            site_lookup = (descriptor.site_lookup or "").strip()
+            if site_lookup:
+                base = site_lookup.rstrip('/')
+                return f"{base}{normalized}"
+            site_url = (descriptor.site_url or "").strip()
+            if site_url:
+                parsed_site = urlparse(site_url)
+                if parsed_site.netloc:
+                    site_path = parsed_site.path.rstrip('/')
+                    if site_path:
+                        return f"{parsed_site.netloc}:{site_path}{normalized}"
+                    return f"{parsed_site.netloc}{normalized}"
+
+        host = self._infer_sharepoint_host(descriptor)
+        if host and server_relative_path:
+            normalized = server_relative_path if server_relative_path.startswith('/') else f'/{server_relative_path}'
+            return f"{host}{normalized}"
+
+        if (
+            descriptor.unique_id
+            and descriptor.drive_id
+            and isinstance(descriptor.unique_id, str)
+            and '-' in descriptor.unique_id
+        ):
+            site_reference = descriptor.site_lookup or descriptor.site_url or host
+            if not site_reference:
+                raise ValueError("Descriptor SharePoint sin referencia de sitio")
+            site_id = client.get_site_id(site_reference)
+            resource_base = client.resource_url.rstrip('/')
+            return (
+                f"{resource_base}/v1.0/sites/{site_id}/drives/{descriptor.drive_id}/"
+                f"items/{descriptor.unique_id}/content"
+            )
+
+        raise ValueError(
+            f"No se pudo determinar la ruta SharePoint para {descriptor.name}"
+        )
 
     @traceable
     def get_pdf_page_count(self, pdf_path: str) -> int:
@@ -147,7 +215,7 @@ class IndexNode:
             for temp_file in temp_files:
                 try:
                     os.unlink(temp_file)
-                except:
+                except Exception:
                     pass
             return []
 
@@ -229,64 +297,62 @@ class IndexNode:
 
     def _get_sharepoint_client(self) -> SharePointClient:
         if self._sharepoint_client is None:
-            tenant_id = os.getenv('TENANT_ID')
-            client_id = os.getenv('CLIENT_ID')
-            client_secret = os.getenv('CLIENT_SECRET')
-            resource = os.getenv('RESOURCE') or 'https://graph.microsoft.com/'
+            tenant_id = os.getenv("TENANT_ID")
+            client_id = os.getenv("CLIENT_ID")
+            client_secret = os.getenv("CLIENT_SECRET")
+            resource = os.getenv("RESOURCE") or "https://graph.microsoft.com"
+            resource = resource.strip()
+            if resource.endswith('/'):
+                resource = resource[:-1]
+            if not resource:
+                resource = "https://graph.microsoft.com"
             if not (tenant_id and client_id and client_secret):
-                raise RuntimeError('Credenciales de SharePoint no configuradas en el entorno (.env)')
-            self._sharepoint_client = SharePointClient(tenant_id, client_id, client_secret, resource)
+                raise RuntimeError(
+                    "Credenciales de SharePoint no configuradas en el entorno (.env)"
+                )
+            self._sharepoint_client = SharePointClient(
+                tenant_id, client_id, client_secret, resource
+            )
         return self._sharepoint_client
 
     def _ensure_local_pdf(self, descriptor: FileDescriptor) -> tuple[str, list[str]]:
         cleanup: list[str] = []
 
-        if descriptor.source and descriptor.source.lower() == "sharepoint":
-            site_lookup = descriptor.site_lookup
-            if not site_lookup and descriptor.site_url:
-                parsed_site = urlparse(descriptor.site_url)
-                site_path = (parsed_site.path or "").rstrip("/")
-                if parsed_site.netloc and site_path:
-                    site_lookup = f"{parsed_site.netloc}:{site_path}"
-            if not site_lookup:
-                raise ValueError(
-                    f"Descriptor SharePoint sin referencia de sitio para {descriptor.name}"
-                )
-            server_relative_path = descriptor.server_relative_path or descriptor.url
-            if not server_relative_path:
-                raise ValueError(
-                    f"Descriptor SharePoint sin ruta relativa para {descriptor.name}"
-                )
-            client = self._get_sharepoint_client()
-            site_id = client.get_site_id(site_lookup)
-            drive_id = descriptor.drive_id
-            if not drive_id:
-                drives = client.get_drive_id(site_id)
-                if not drives:
-                    raise ValueError("No se encontraron drives asociados al sitio SharePoint")
-                drive_id = drives[0].get("id")
-            if not drive_id:
-                raise ValueError("Descriptor SharePoint sin drive asociado")
-            if descriptor.unique_id:
-                download_url = (
-                    f"{client.resource_url}/v1.0/sites/{site_id}/drives/{drive_id}/items/{descriptor.unique_id}/content"
-                )
-            else:
-                normalized_path = server_relative_path.lstrip("/").lstrip()
-                encoded_path = quote(f"/{normalized_path}", safe="/")
-                download_url = (
-                    f"{client.resource_url}/v1.0/sites/{site_id}/drives/{drive_id}/root:{encoded_path}:/content"
-                )
+        if descriptor.content_base64:
             suffix = os.path.splitext(descriptor.name or "")[1] or ".pdf"
             tmp_handle = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
             tmp_handle.close()
-            headers = {"Authorization": f"Bearer {client.access_token}"}
-            with requests.get(download_url, headers=headers, stream=True, timeout=(10, 120)) as response:
-                response.raise_for_status()
-                with open(tmp_handle.name, "wb") as fh:
-                    for chunk in response.iter_content(chunk_size=8192):
-                        if chunk:
-                            fh.write(chunk)
+            try:
+                decoded = base64.b64decode(descriptor.content_base64, validate=True)
+            except Exception as exc:
+                try:
+                    os.unlink(tmp_handle.name)
+                except Exception:
+                    pass
+                raise ValueError(
+                    f"Contenido base64 invalido para {descriptor.name}: {exc}"
+                ) from exc
+            with open(tmp_handle.name, "wb") as fh:
+                fh.write(decoded)
+            cleanup.append(tmp_handle.name)
+            return tmp_handle.name, cleanup
+
+        if descriptor.source and descriptor.source.lower() == "sharepoint":
+            client = self._get_sharepoint_client()
+            reference = self._build_sharepoint_download_reference(descriptor, client)
+            suffix = os.path.splitext(descriptor.name or "")[1] or ".pdf"
+            tmp_handle = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+            tmp_handle.close()
+            target_dir = os.path.dirname(tmp_handle.name)
+            target_name = os.path.basename(tmp_handle.name)
+            try:
+                client.download_file(reference, target_dir, target_name)
+            except Exception:
+                try:
+                    os.unlink(tmp_handle.name)
+                except Exception:
+                    pass
+                raise
             cleanup.append(tmp_handle.name)
             return tmp_handle.name, cleanup
 

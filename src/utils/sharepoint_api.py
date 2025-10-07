@@ -1,4 +1,4 @@
-from typing import List, Optional, Union
+from typing import Dict, List, Optional, Tuple, Union
 import pandas as pd
 import requests
 import os
@@ -58,16 +58,181 @@ class SharePointClient:
             # Lanza un error para detener la ejecución y mostrar el problema
             raise Exception(f"Error al obtener el token: {response.status_code} - {response.text}")
 
-    def get_site_id(self, site_url):
-        full_url = f'https://graph.microsoft.com/v1.0/sites/{site_url}'
-        response = requests.get(full_url, headers={'Authorization': f'Bearer {self.access_token}'})
-        
-        # --- Añade estas líneas para depurar ---
-        print(f"Código de estado de la respuesta: {response.status_code}")
-        print(f"Respuesta JSON de Microsoft: {response.json()}")
-        # ------------------------------------
+    def _build_site_request_candidates(self, site_url: str) -> List[str]:
+        if site_url is None:
+            raise ValueError("site_url must not be None")
 
-        return response.json().get('id')
+        cleaned = site_url.strip().strip('"').strip("'")
+        if not cleaned:
+            raise ValueError("site_url must not be empty")
+
+        if cleaned.count(',') == 2 and ',' in cleaned:
+            return [cleaned]
+
+        host = ''
+        segments: List[str] = []
+
+        if cleaned.startswith(('http://', 'https://')):
+            parsed = urllib.parse.urlparse(cleaned)
+            host = parsed.netloc
+            segments = [seg for seg in parsed.path.split('/') if seg]
+        elif ":/" in cleaned:
+            host, remainder = cleaned.split(':/', 1)
+            segments = [seg for seg in remainder.split('/') if seg]
+        elif '/' in cleaned:
+            host, remainder = cleaned.split('/', 1)
+            segments = [seg for seg in remainder.split('/') if seg]
+        else:
+            return [cleaned]
+
+        host = host.strip()
+        segments = [urllib.parse.unquote(seg.strip()) for seg in segments if seg.strip()]
+        if not host:
+            raise ValueError(f"Unable to determine SharePoint hostname from '{site_url}'")
+
+        candidates: List[str] = []
+        if not segments:
+            candidates.append(host)
+            return candidates
+
+        min_length = 1
+        if segments[0].lower() in {'sites', 'teams', 'personal'}:
+            min_length = 2
+
+        for end_idx in range(len(segments), min_length - 1, -1):
+            candidate_path = '/' + '/'.join(segments[:end_idx])
+            candidate = f"{host}:{candidate_path}"
+            if candidate not in candidates:
+                candidates.append(candidate)
+
+        if not candidates:
+            candidates.append(host)
+
+        return candidates
+
+    def _resolve_site_info(self, site_url: str) -> Dict[str, str]:
+        candidates = self._build_site_request_candidates(site_url)
+        last_error = None
+
+        for candidate in candidates:
+            full_url = f'https://graph.microsoft.com/v1.0/sites/{candidate}?$select=id,webUrl'
+            response = requests.get(full_url, headers={'Authorization': f'Bearer {self.access_token}'})
+            if response.status_code == 200:
+                payload = response.json()
+                payload['candidate'] = candidate
+                return payload
+            last_error = response
+
+        error_details = {'site_url': site_url}
+        if last_error is not None:
+            try:
+                error_details['response'] = last_error.json()
+            except ValueError:
+                error_details['response'] = {'status_code': last_error.status_code, 'text': last_error.text}
+
+        raise Exception(f"Unable to resolve site metadata: {error_details}")
+
+    def _split_sharepoint_path(self, resource_path: str) -> Dict[str, List[str]]:
+        if resource_path is None:
+            raise ValueError("resource_path must not be None")
+
+        cleaned = resource_path.strip().strip('\"').strip("'")
+        if not cleaned:
+            raise ValueError("resource_path must not be empty")
+
+        host = ''
+        segments_raw: List[str] = []
+
+        if cleaned.startswith(('http://', 'https://')):
+            parsed = urllib.parse.urlparse(cleaned)
+            host = parsed.netloc
+            segments_raw = [seg for seg in parsed.path.split('/') if seg]
+        elif ':/' in cleaned:
+            host, remainder = cleaned.split(':/', 1)
+            segments_raw = [seg for seg in remainder.split('/') if seg]
+        elif '/' in cleaned:
+            host, remainder = cleaned.split('/', 1)
+            segments_raw = [seg for seg in remainder.split('/') if seg]
+        else:
+            host = cleaned
+
+        host = host.strip()
+        if not host:
+            raise ValueError(f"Unable to determine SharePoint hostname from '{resource_path}'")
+
+        segments = [urllib.parse.unquote(seg.strip()) for seg in segments_raw]
+
+        return {'host': host, 'segments_raw': segments_raw, 'segments': segments}
+
+    def _sanitize_drive_label(self, label: Optional[str]) -> str:
+        if not label:
+            return ''
+        return ''.join(ch.lower() for ch in label if ch.isalnum())
+
+    def _match_drive_by_label(self, drives: List[Dict[str, str]], library_label: str, library_label_raw: str) -> Optional[Dict[str, str]]:
+        targets = {value for value in {self._sanitize_drive_label(library_label), self._sanitize_drive_label(library_label_raw)} if value}
+        for drive in drives:
+            candidates = [drive.get('name', '')]
+            web_url = drive.get('webUrl') if isinstance(drive, dict) else None
+            if web_url:
+                parsed = urllib.parse.urlparse(web_url)
+                if parsed.path:
+                    candidates.append(urllib.parse.unquote(parsed.path.split('/')[-1]))
+            for candidate in candidates:
+                if self._sanitize_drive_label(candidate) in targets and self._sanitize_drive_label(candidate):
+                    return drive
+        return None
+
+    def _resolve_sharepoint_download(self, sharepoint_path: str) -> Tuple[str, str]:
+        split_info = self._split_sharepoint_path(sharepoint_path)
+        candidate_path = split_info['host']
+        if split_info['segments_raw']:
+            candidate_path = f"{split_info['host']}/{'/'.join(split_info['segments_raw'])}"
+
+        site_info = self._resolve_site_info(candidate_path)
+        site_id = site_info.get('id')
+        if not site_id:
+            raise Exception(f"Unable to determine site id for '{sharepoint_path}'")
+
+        candidate = site_info.get('candidate', '')
+        candidate_segments_raw: List[str] = []
+        if candidate:
+            if ':/' in candidate:
+                _, remainder = candidate.split(':/', 1)
+                candidate_segments_raw = [seg for seg in remainder.split('/') if seg]
+            elif '/' in candidate:
+                parts = candidate.split('/', 1)
+                remainder = parts[1] if len(parts) > 1 else ''
+                candidate_segments_raw = [seg for seg in remainder.split('/') if seg]
+
+        site_segment_count = len(candidate_segments_raw)
+        segments_raw = split_info['segments_raw']
+        segments = split_info['segments']
+
+        if len(segments_raw) <= site_segment_count:
+            raise Exception(f"The provided path does not point to a document library: '{sharepoint_path}'")
+
+        library_segment_raw = segments_raw[site_segment_count]
+        library_segment = segments[site_segment_count]
+        item_segments = segments[site_segment_count + 1:]
+
+        drives = self.get_drive_id(site_id)
+        drive = self._match_drive_by_label(drives, library_segment, library_segment_raw)
+        if drive is None:
+            available = [drive.get('name', '') for drive in drives]
+            raise Exception(f"Document library '{library_segment}' not found. Available drives: {available}")
+
+        if not item_segments:
+            raise Exception(f"The provided path does not include a file name: '{sharepoint_path}'")
+
+        encoded_parts = [urllib.parse.quote(part.strip('/')) for part in item_segments if part.strip('/')]
+        relative_path = '/'.join(encoded_parts)
+        content_url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/drives/{drive['id']}/root:/{relative_path}:/content"
+        return content_url, item_segments[-1]
+
+    def get_site_id(self, site_url):
+        site_info = self._resolve_site_info(site_url)
+        return site_info.get('id')
 
     def get_drive_id(self, site_id):
         """
@@ -86,7 +251,7 @@ class SharePointClient:
         drives_url = f'https://graph.microsoft.com/v1.0/sites/{site_id}/drives'
         response = requests.get(drives_url, headers={'Authorization': f'Bearer {self.access_token}'})
         drives = response.json().get('value', [])
-        return [({'id': drive['id'], 'name': drive['name']}) for drive in drives]
+        return [{'id': drive['id'], 'name': drive.get('name', ''), 'webUrl': drive.get('webUrl', '')} for drive in drives]
 
 
     def get_folder_id(self, site_id, drive_id, folder_path):
@@ -172,30 +337,48 @@ class SharePointClient:
         return items_list
 
     
-    def download_file(self, download_url, local_path, file_name):
+    def download_file(self, download_url, local_path, file_name: Optional[str] = None):
         """
-        This function downloads a file from a specified URL and saves it to a local path.
+        Download a file either from a presigned/Graph URL or by resolving a SharePoint path.
         
         Parameters:
-        download_url (str): The URL of the file to be downloaded.
-        local_path (str): The local path where the file will be saved.
-        file_name (str): The name of the file to be saved.
-
-        Returns:
-        None. The function prints a success message if the file is downloaded and saved successfully, 
-        or an error message if the download fails.
+        download_url (str): Absolute download URL or SharePoint server-relative path.
+        local_path (str): Local directory where the file will be stored.
+        file_name (Optional[str]): Override for the saved file name.
         """
+        if not download_url:
+            raise ValueError("download_url must not be empty")
+
+        resolved_url = download_url.strip()
+        resolved_name = file_name
+        if not resolved_url.lower().startswith(('http://', 'https://')):
+            resolved_url, inferred_name = self._resolve_sharepoint_download(resolved_url)
+            if resolved_name is None:
+                resolved_name = inferred_name
+
+        if resolved_name is None:
+            parsed_path = urllib.parse.urlparse(resolved_url).path
+            basename = os.path.basename(parsed_path)
+            if basename:
+                resolved_name = urllib.parse.unquote(basename)
+            else:
+                raise ValueError("file_name could not be determined for download")
+
         headers = {'Authorization': f'Bearer {self.access_token}'}
-        response = requests.get(download_url, headers=headers)
+        parsed_url = urllib.parse.urlparse(resolved_url)
+        request_headers = headers if parsed_url.netloc.endswith('graph.microsoft.com') else {}
+        response = requests.get(resolved_url, headers=request_headers, stream=True)
         if response.status_code == 200:
-            full_path = os.path.join(local_path, file_name)
-            full_path = get_long_path(full_path)  # Apply the long path fix conditionally based on the OS
-            ensure_directory_exists(full_path) 
+            full_path = os.path.join(local_path, resolved_name)
+            full_path = get_long_path(full_path)
+            ensure_directory_exists(full_path)
             with open(full_path, 'wb') as file:
-                file.write(response.content)
-            # print(f"File downloaded: {full_path}")
-        else:
-            print(f"Failed to download {file_name}: {response.status_code} - {response.reason}")
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        file.write(chunk)
+            return
+
+        print(f"Failed to download {resolved_name}: {response.status_code} - {response.reason}")
 
 
     def download_folder_contents(self, site_id, drive_id, folder_id, local_folder_path, level=0):
