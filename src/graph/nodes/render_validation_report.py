@@ -7,6 +7,7 @@ import logging
 import re
 import unicodedata
 import base64
+import hashlib
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional
@@ -16,7 +17,13 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.types import Command
 from langsmith import traceable
 
-from src.graph.state import ValidaState
+from src.graph.state import (
+    ValidaState,
+    FileDescriptor,
+    DocumentGroup,
+    DocumentGroupName,
+    DocumentName,
+)
 
 try:
     from docxtpl import DocxTemplate, InlineImage
@@ -35,6 +42,11 @@ _BASE_DIR = Path(__file__).resolve().parents[2]
 TEMPLATE_PATH = _BASE_DIR / "templates" / "validation_template20250916.docx"
 OUTPUT_DIR = _BASE_DIR / "output"
 MAX_INLINE_BASE64_SIZE = 25 * 1024 * 1024  # 25 MB
+
+SHAREPOINT_SITE_URL = "https://procaps1.sharepoint.com/sites/VALIDEX"
+SHAREPOINT_SITE_LOOKUP = "procaps1.sharepoint.com:/sites/VALIDEX"
+SHAREPOINT_LIBRARY_FOLDER = "/sites/VALIDEX/valida_docs_final"
+SHAREPOINT_SOURCE = "valida_generated"
 
 class RenderValidationReport:
     """Renderiza reportes de validación en plantillas DOCX para el sistema Valida."""
@@ -318,23 +330,50 @@ class RenderValidationReport:
             fname_out = OUTPUT_DIR / f"validation_report_{timestamp}.docx"
             doc.save(str(fname_out))
 
+            file_bytes = fname_out.read_bytes()
+            file_size = len(file_bytes)
+            file_b64 = base64.b64encode(file_bytes).decode("utf-8")
+            file_checksum = hashlib.sha1(file_bytes).hexdigest()
+            desired_server_relative_path = f"{SHAREPOINT_LIBRARY_FOLDER}/{fname_out.name}"
+
             report_info = {
                 "name": fname_out.name,
                 "path": str(fname_out),
                 "content_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                "size": fname_out.stat().st_size,
+                "size": file_size,
+                "content_base64": file_b64 if file_size <= MAX_INLINE_BASE64_SIZE else None,
+                "content_error": None,
+                "site_url": SHAREPOINT_SITE_URL,
+                "site_lookup": SHAREPOINT_SITE_LOOKUP,
+                "server_relative_folder": SHAREPOINT_LIBRARY_FOLDER,
+                "desired_server_relative_path": desired_server_relative_path,
+                "checksum": file_checksum,
             }
 
-            if report_info["size"] <= MAX_INLINE_BASE64_SIZE:
-                with open(fname_out, "rb") as fh:
-                    report_info["content_base64"] = base64.b64encode(fh.read()).decode("utf-8")
-            else:
-                report_info["content_base64"] = None
+            if file_size > MAX_INLINE_BASE64_SIZE:
                 report_info["content_error"] = (
                     f"El archivo supera el limite de {MAX_INLINE_BASE64_SIZE // (1024 * 1024)} MB para retorno en base64"
                 )
 
-            msg = f"Reporte de validación generado en: {fname_out}"
+            report_descriptor = FileDescriptor(
+                name=fname_out.name,
+                size=file_size,
+                content_type=report_info["content_type"],
+                source=SHAREPOINT_SOURCE,
+                checksum=file_checksum,
+                content_base64=file_b64,
+                site_url=SHAREPOINT_SITE_URL,
+                site_lookup=SHAREPOINT_SITE_LOOKUP,
+                server_relative_path=desired_server_relative_path,
+            )
+
+            document_group_entry = DocumentGroup(
+                group=DocumentGroupName.REPORTE_VALIDACION,
+                document=DocumentName.REPORTE_VALIDACION,
+                files=[report_descriptor],
+            )
+
+            msg = f"Reporte de validacion generado en: {fname_out}"
             logger.info(msg)
 
             return Command(
@@ -343,6 +382,9 @@ class RenderValidationReport:
                     "fname_out": str(fname_out),
                     "render_template": str(tpl_path),
                     "rendered_report": report_info,
+                    "rendered_report_base64": file_b64,
+                    "rendered_report_descriptor": report_descriptor.model_dump(),
+                    "document_groups": [document_group_entry.model_dump()],
                 },
                 goto="__end__",
             )

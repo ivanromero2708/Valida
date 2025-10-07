@@ -76,11 +76,17 @@ class FileDescriptor(BaseModel):
 
 class RenderedReport(BaseModel):
     name: str = Field(..., description="Nombre del archivo generado")
-    path: str = Field(..., description="Ruta local donde se guardó el archivo")
+    path: str = Field(..., description="Ruta local donde se guardo el archivo")
     content_type: str = Field(..., description="Tipo MIME del archivo generado")
     size: int = Field(..., description="Tamano del archivo en bytes")
-    content_base64: Optional[str] = Field(None, description="Contenido del archivo en base64 cuando no supera el límite configurado")
+    content_base64: Optional[str] = Field(None, description="Contenido del archivo en base64 cuando no supera el limite configurado")
     content_error: Optional[str] = Field(None, description="Mensaje de error si no se pudo adjuntar el contenido en base64")
+    site_url: Optional[str] = Field(None, description="URL base del sitio SharePoint recomendado para publicar el archivo")
+    site_lookup: Optional[str] = Field(None, description="Identificador compuesto tenant:/sites/site para SharePoint")
+    server_relative_folder: Optional[str] = Field(None, description="Carpeta destino (ruta relativa al sitio) sugerida para la carga en SharePoint")
+    desired_server_relative_path: Optional[str] = Field(None, description="Ruta relativa deseada (incluyendo nombre de archivo) una vez subido a SharePoint")
+    checksum: Optional[str] = Field(None, description="Checksum SHA1 del archivo para validacion de integridad")
+
 
 
 class DocumentGroupName(str, Enum):
@@ -95,6 +101,7 @@ class DocumentGroupName(str, Enum):
     ESTABILIDAD_SOLUCION = "Estabilidad solución"
     ESTABILIDAD_FASE_MOVIL = "Estabilidad fase móvil"
     ROBUSTEZ = "Robustez"
+    REPORTE_VALIDACION = "Reporte de Validacion"
 
 
 class DocumentName(str, Enum):
@@ -104,7 +111,9 @@ class DocumentName(str, Enum):
     REPORTE_LIMS = "Reporte LIMS"
     HOJAS_TRABAJO = "Hojas de Trabajo"
     BITACORAS = "Bitacoras"
-    SOPORTES_CROMATOGRAFICOS = "Soportes Cromatográficos"
+    SOPORTES_CROMATOGRAFICOS = "Soportes Cromatograficos"
+    REPORTE_VALIDACION = "Reporte de Validacion"
+
 
 
 class DocumentGroup(BaseModel):
@@ -235,4 +244,6 @@ class ValidaState(AgentStateWithStructuredResponse):
     
     fname_out: str = Field(..., description="Nombre del archivo de salida")
     rendered_report: Optional[RenderedReport] = Field(None, description="Metadatos del reporte DOCX generado por el sistema")
+    rendered_report_base64: Optional[str] = Field(None, description="Contenido base64 del reporte final para integraciones externas")
+    rendered_report_descriptor: Optional[FileDescriptor] = Field(None, description="Descriptor del reporte final para orquestadores como Power Automate")
     
