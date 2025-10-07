@@ -111,7 +111,7 @@ class DocumentName(str, Enum):
     REPORTE_LIMS = "Reporte LIMS"
     HOJAS_TRABAJO = "Hojas de Trabajo"
     BITACORAS = "Bitacoras"
-    SOPORTES_CROMATOGRAFICOS = "Soportes Cromatograficos"
+    SOPORTES_CROMATOGRAFICOS = "Soportes Cromatográficos"
     REPORTE_VALIDACION = "Reporte de Validacion"
 
 
