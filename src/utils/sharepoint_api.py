@@ -5,6 +5,7 @@ import os
 import urllib.parse
 import io
 import platform
+import time
 from io import BytesIO
 from langchain_core.document_loaders import Blob
 from langchain_core.documents.base import Document
@@ -36,6 +37,8 @@ class SharePointClient:
         self.resource_url = resource_url
         self.base_url = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"
         self.headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+        self.access_token = None
+        self.access_token_expires_at = 0
         self.access_token = self.get_access_token()  # Initialize and store the access token upon instantiation
 
     def get_access_token(self):
@@ -53,10 +56,33 @@ class SharePointClient:
         # ✅ **CAMBIO IMPORTANTE AQUÍ**
         # Verifica si la solicitud fue exitosa antes de obtener el token
         if response.status_code == 200:
-            return response.json().get('access_token')
+            data = response.json()
+            token = data.get('access_token')
+            if not token:
+                raise Exception("Error al obtener el token: respuesta sin access_token")
+            expires_in = int(data.get('expires_in', 3600))
+            safety_window = 300 if expires_in > 300 else max(expires_in - 1, 0)
+            self.access_token_expires_at = time.time() + expires_in - safety_window
+            self.access_token = token
+            return token
         else:
             # Lanza un error para detener la ejecución y mostrar el problema
             raise Exception(f"Error al obtener el token: {response.status_code} - {response.text}")
+
+    def _ensure_access_token(self):
+        if not self.access_token or time.time() >= self.access_token_expires_at:
+            self.get_access_token()
+
+    def _graph_request(self, method: str, url: str, retry: bool = True, **kwargs):
+        self._ensure_access_token()
+        headers = kwargs.pop('headers', {})
+        headers = {**headers, 'Authorization': f'Bearer {self.access_token}'}
+        response = requests.request(method, url, headers=headers, **kwargs)
+        if response.status_code == 401 and retry:
+            self.get_access_token()
+            headers['Authorization'] = f'Bearer {self.access_token}'
+            response = requests.request(method, url, headers=headers, **kwargs)
+        return response
 
     def _build_site_request_candidates(self, site_url: str) -> List[str]:
         if site_url is None:
@@ -116,7 +142,7 @@ class SharePointClient:
 
         for candidate in candidates:
             full_url = f'https://graph.microsoft.com/v1.0/sites/{candidate}?$select=id,webUrl'
-            response = requests.get(full_url, headers={'Authorization': f'Bearer {self.access_token}'})
+            response = self._graph_request('get', full_url)
             if response.status_code == 200:
                 payload = response.json()
                 payload['candidate'] = candidate
@@ -249,7 +275,7 @@ class SharePointClient:
         """
         # Retrieve drive IDs and names associated with a site
         drives_url = f'https://graph.microsoft.com/v1.0/sites/{site_id}/drives'
-        response = requests.get(drives_url, headers={'Authorization': f'Bearer {self.access_token}'})
+        response = self._graph_request('get', drives_url)
         drives = response.json().get('value', [])
         return [{'id': drive['id'], 'name': drive.get('name', ''), 'webUrl': drive.get('webUrl', '')} for drive in drives]
 
@@ -277,7 +303,7 @@ class SharePointClient:
         for folder_name in folders:
             # Build the URL to access the contents of the current folder
             folder_url = f'https://graph.microsoft.com/v1.0/sites/{site_id}/drives/{drive_id}/items/{current_folder_id}/children'
-            response = requests.get(folder_url, headers={'Authorization': f'Bearer {self.access_token}'})
+            response = self._graph_request('get', folder_url)
             items_data = response.json()
 
             # Loop through the items and find the folder
@@ -309,7 +335,7 @@ class SharePointClient:
         items_list = []
         folder_contents_url = f'https://graph.microsoft.com/v1.0/sites/{site_id}/drives/{drive_id}/items/{folder_id}/children'
         while folder_contents_url:
-                contents_response = requests.get(folder_contents_url, headers={'Authorization': f'Bearer {self.access_token}'})
+                contents_response = self._graph_request('get', folder_contents_url)
                 folder_contents = contents_response.json()
                 for item in folder_contents.get('value', []):
                     path_parts = item['parentReference']['path'].split('root:')
@@ -318,7 +344,7 @@ class SharePointClient:
                     
                     # Modifiez le site_web_url pour pointer vers l'élément spécifique
                     item_url = f'https://graph.microsoft.com/v1.0/sites/{site_id}/drives/{drive_id}/items/{item["id"]}'
-                    response = requests.get(item_url, headers={'Authorization': f'Bearer {self.access_token}'})
+                    response = self._graph_request('get', item_url)
                     item_data = response.json()
                     item_web_url = item_data.get('webUrl', '')
 
@@ -364,10 +390,11 @@ class SharePointClient:
             else:
                 raise ValueError("file_name could not be determined for download")
 
-        headers = {'Authorization': f'Bearer {self.access_token}'}
         parsed_url = urllib.parse.urlparse(resolved_url)
-        request_headers = headers if parsed_url.netloc.endswith('graph.microsoft.com') else {}
-        response = requests.get(resolved_url, headers=request_headers, stream=True)
+        if parsed_url.netloc.endswith('graph.microsoft.com'):
+            response = self._graph_request('get', resolved_url, stream=True)
+        else:
+            response = requests.get(resolved_url, stream=True)
         if response.status_code == 200:
             full_path = os.path.join(local_path, resolved_name)
             full_path = get_long_path(full_path)
@@ -397,8 +424,7 @@ class SharePointClient:
         """
         # Recursively download all contents from a folder
         folder_contents_url = f'https://graph.microsoft.com/v1.0/sites/{site_id}/drives/{drive_id}/items/{folder_id}/children'
-        contents_headers = {'Authorization': f'Bearer {self.access_token}'}
-        contents_response = requests.get(folder_contents_url, headers=contents_headers)
+        contents_response = self._graph_request('get', folder_contents_url)
         folder_contents = contents_response.json()
 
         if 'value' in folder_contents:
@@ -430,8 +456,7 @@ class SharePointClient:
         try:
             # Get the file details
             file_url = f'https://graph.microsoft.com/v1.0/sites/{site_id}/drives/{drive_id}/items/{file_id}'
-            headers = {'Authorization': f'Bearer {self.access_token}'}
-            response = requests.get(file_url, headers=headers)
+            response = self._graph_request('get', file_url)
             file_data = response.json()
 
             # Get the download URL and file name
