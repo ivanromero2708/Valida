@@ -2,7 +2,7 @@
 numpy>=2.1,<3
 pandas==2.3.0
 pyarrow==20.0.0
-orjson>=3.9.7,<3.10.17
+orjson>=3.9.7,<3.10.17          # alineado con constraints de la imagen (LGP)
 ormsgpack>=1.10.0,<2
 jiter>=0.4.0,<1
 pydantic>=2.6,<3
@@ -14,15 +14,14 @@ unidecode>=1.3,<2
 
 # ── I/O, documentos y medios ────────────────────────────────────────────────
 pillow>=9.2,<12
-pypdf==5.7.0
-pypdf2
+pypdf==5.7.0                    # fork moderno
+PyPDF2==3.0.1                   # compatibilidad con código legado que importa PyPDF2
 pymupdf==1.25.5
 openpyxl==3.1.5
 xlrd>=2.0.1,<3
-python-docx==0.8.11
-docxtpl==0.16.7 
-docxcompose==1.4.0
-unstructured[docx]==0.18.2
+python-docx==1.1.2              # requerido por docxtpl>=0.17 y unstructured[docx]>=0.18.2
+docxtpl==0.20.0                 # compatible con python-docx>=1.1.1
+unstructured[docx]==0.18.2      # requiere python-docx>=1.1.2
 moviepy==2.2.1
 proglog>=0.1.10,<1.1
 jinja2==3.1.6
@@ -38,7 +37,7 @@ squarify==0.4.4
 streamlit==1.45.1
 
 # ── SDKs de modelos ─────────────────────────────────────────────────────────
-openai>=1.40,<2
+openai>=1.40,<2                 # compatible con langchain-openai 0.3.x
 mistralai==1.9.9
 sentence-transformers>=2.7,<3
 
@@ -53,10 +52,10 @@ langchain-experimental>=0.3,<0.4
 
 langgraph==0.6.5
 langgraph-supervisor==0.0.29
-# langgraph-api  ← lo trae la imagen base de LGP
+# langgraph-api (lo aporta la imagen base; no lo incluyas aquí)
 
 # ── Otros ───────────────────────────────────────────────────────────────────
-trustcall==0.0.39
+trustcall
 pytest
 pytest-cov
-# setuptools  ← NO lo instales: la imagen final lo desinstala
+# setuptools (NO incluir: la imagen lo elimina; tu shim de pkg_resources cubre runtime slim)
