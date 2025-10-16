@@ -15,7 +15,7 @@ unidecode>=1.3,<2
 # ── I/O, documentos y medios ────────────────────────────────────────────────
 pillow>=9.2,<12
 pypdf==5.7.0
-# pypdf2  ← (eliminar para evitar duplicidad)
+pypdf2
 pymupdf==1.25.5
 openpyxl==3.1.5
 xlrd>=2.0.1,<3
