@@ -29,7 +29,7 @@ from typing import Any, Callable, Optional, Sequence, Annotated
 
 from langchain_core.runnables import RunnableConfig
 from langchain_core.messages import AnyMessage
-from typing_extensions import TypedDict, NotRequired
+from typing import TypedDict
 from langgraph.graph.message import add_messages
 
 # The reference package used in your snippet:

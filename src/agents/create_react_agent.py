@@ -20,14 +20,12 @@ from typing import Callable, Iterable, Optional
 
 from langchain_core.runnables import RunnableConfig
 from langgraph.prebuilt import create_react_agent
-from src.config.configuration import Configuration
-from src.tools.tools_registry import get_tools
-
 from dotenv import load_dotenv
 
 load_dotenv()
 
 from src.config.configuration import Configuration
+from src.tools.tools_registry import get_tools
 from src.utils.serialization_utils import load_chat_model
 
 async def make_react_agent(

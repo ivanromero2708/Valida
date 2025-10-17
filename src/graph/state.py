@@ -1,12 +1,9 @@
 from langgraph.prebuilt.chat_agent_executor import AgentStateWithStructuredResponse
 from enum import Enum
-from typing import Annotated, List, Dict, Any, Optional, Union, Iterator, Literal
+from typing import List, Dict, Any, Optional, Tuple, Annotated, Literal, Union, Iterator, Mapping, Callable
 from pydantic import Field, BaseModel, ConfigDict
-import operator
 from collections.abc import Mapping
 
-from typing import List, Optional, Dict, Any, Tuple, Callable
-from typing_extensions import Annotated
 import operator
 
 class IndexNodeOutput(BaseModel):
